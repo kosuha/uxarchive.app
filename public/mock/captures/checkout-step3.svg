@@ -1,0 +1,14 @@
+<svg width="900" height="1600" viewBox="0 0 900 1600" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="체크아웃 단계 3">
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ede9fe" />
+      <stop offset="100%" stop-color="#fbcfe8" />
+    </linearGradient>
+  </defs>
+  <rect width="900" height="1600" fill="url(#grad)" rx="48" />
+  <rect x="200" y="240" width="500" height="1080" rx="32" fill="#fff" stroke="#c7d2fe" stroke-width="4" />
+  <rect x="250" y="420" width="400" height="120" rx="28" fill="#f5f3ff" />
+  <rect x="250" y="580" width="400" height="120" rx="28" fill="#ede9fe" />
+  <rect x="250" y="960" width="400" height="90" rx="24" fill="#6366f1" />
+  <text x="450" y="360" font-family="'Pretendard', 'Noto Sans KR', sans-serif" font-size="44" font-weight="600" text-anchor="middle" fill="#4c1d95">검증 단계</text>
+</svg>

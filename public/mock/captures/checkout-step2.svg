@@ -1,0 +1,15 @@
+<svg width="900" height="1600" viewBox="0 0 900 1600" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="체크아웃 단계 2">
+  <defs>
+    <linearGradient id="grad" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fef3c7" />
+      <stop offset="100%" stop-color="#ffe4e6" />
+    </linearGradient>
+  </defs>
+  <rect width="900" height="1600" fill="url(#grad)" rx="48" />
+  <rect x="160" y="220" width="580" height="1120" rx="36" fill="#fff" stroke="#fde68a" stroke-width="4" />
+  <rect x="240" y="420" width="420" height="140" rx="28" fill="#fef9c3" />
+  <rect x="240" y="600" width="420" height="140" rx="28" fill="#ffedd5" />
+  <rect x="240" y="780" width="420" height="140" rx="28" fill="#ffe4e6" />
+  <rect x="240" y="980" width="420" height="72" rx="36" fill="#ea580c" />
+  <text x="450" y="350" font-family="'Pretendard', 'Noto Sans KR', sans-serif" font-size="46" font-weight="600" text-anchor="middle" fill="#9a3412">결제 수단</text>
+</svg>
