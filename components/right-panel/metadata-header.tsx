@@ -13,9 +13,7 @@ interface MetadataHeaderProps {
 export const MetadataHeader = ({ pattern }: MetadataHeaderProps) => {
   if (!pattern) {
     return (
-      <section className="rounded-2xl border border-dashed border-border/70 bg-white/60 p-5 text-sm text-muted-foreground dark:bg-card/40">
-        우측 패널은 패턴을 선택하면 활성화됩니다. 좌측 트리에서 패턴을 고르면 서비스 메타데이터와 인사이트가 표시돼요.
-      </section>
+      <></>
     )
   }
 

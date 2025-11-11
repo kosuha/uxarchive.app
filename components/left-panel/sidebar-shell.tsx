@@ -32,7 +32,7 @@ export const SidebarShell = ({
 
   return (
     <aside className={cn("panel-column", className)} data-panel="left">
-      <div className="panel-scroll flex flex-col gap-6 overflow-y-hidden p-4">
+      <div className="panel-scroll flex min-h-0 flex-col gap-6 p-4">
         <section className="flex justify-between space-y-2">
           <div>
             <h1 className="text-2xl font-semibold">UX Archive</h1>
@@ -58,7 +58,7 @@ export const SidebarShell = ({
           </div>
         </section>
 
-        <ScrollArea className="flex-1 pr-4">
+        <ScrollArea className="flex-1 min-h-0 pr-4">
           <div className="space-y-3 pb-6">{children}</div>
         </ScrollArea>
       </div>

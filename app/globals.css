@@ -142,13 +142,16 @@
     display: grid;
     grid-template-columns: 384px minmax(0, 1fr) 400px;
     min-height: 100vh;
+    height: 100vh;
     background: var(--background);
     border-left: 1px solid var(--shell-divider);
     border-right: 1px solid var(--shell-divider);
+    overflow: hidden;
   }
 
   .app-shell > * {
-    min-height: 100vh;
+    min-height: 100%;
+    max-height: 100%;
   }
 
   .panel-column {
@@ -156,6 +159,8 @@
     display: flex;
     flex-direction: column;
     border-right: 1px solid var(--shell-divider);
+    min-height: 0;
+    min-width: 0;
   }
 
   .panel-column[data-panel="canvas"] {
