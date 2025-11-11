@@ -1,0 +1,16 @@
+{
+  "name": "UX Archive",
+  "short_name": "UXArchive",
+  "description": "UX 팀을 위한 패턴·캡쳐·인사이트 아카이브",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f4f5ff",
+  "theme_color": "#6655ff",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "128x128",
+      "type": "image/svg+xml"
+    }
+  ]
+}
