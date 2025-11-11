@@ -85,6 +85,7 @@ const SIDEBAR_MIN_WIDTH = 240
 const SIDEBAR_MAX_WIDTH = 480
 const SIDEBAR_DEFAULT_WIDTH = 320
 const RESIZE_HANDLE_WIDTH = 8
+const LIVE_WIDTH_CSS_VAR = "--app-sidebar-live-width"
 
 const clamp = (value: number, min: number, max: number) => {
   return Math.min(Math.max(value, min), max)
@@ -458,22 +459,61 @@ export function AppSidebar({
     startX: 0,
     startWidth: SIDEBAR_DEFAULT_WIDTH,
   })
+  const liveWidthRef = React.useRef(SIDEBAR_DEFAULT_WIDTH)
+  const handleRef = React.useRef<HTMLDivElement | null>(null)
 
   const sidebarStyle = React.useMemo(
     () =>
       ({
         ...(incomingStyle ?? {}),
-        "--sidebar-width": `${sidebarWidth}px`,
+        "--sidebar-width": `var(${LIVE_WIDTH_CSS_VAR}, ${sidebarWidth}px)`
       }) as React.CSSProperties,
     [incomingStyle, sidebarWidth]
   )
 
-  const resizeHandlePositionStyle = React.useMemo<React.CSSProperties>(() => {
-    const offset = RESIZE_HANDLE_WIDTH / 2
-    return sideProp === "right"
-      ? { right: `${sidebarWidth - offset}px`, width: RESIZE_HANDLE_WIDTH }
-      : { left: `${sidebarWidth - offset}px`, width: RESIZE_HANDLE_WIDTH }
-  }, [sidebarWidth, sideProp])
+  const applyWidthStyles = React.useCallback(
+    (width: number) => {
+      if (typeof document !== "undefined") {
+        document.documentElement.style.setProperty(LIVE_WIDTH_CSS_VAR, `${width}px`)
+      }
+      const handleEl = handleRef.current
+      if (handleEl) {
+        const offset = RESIZE_HANDLE_WIDTH / 2
+        handleEl.style.width = `${RESIZE_HANDLE_WIDTH}px`
+        if (sideProp === "right") {
+          handleEl.style.right = `${width - offset}px`
+          handleEl.style.left = ""
+        } else {
+          handleEl.style.left = `${width - offset}px`
+          handleEl.style.right = ""
+        }
+      }
+    },
+    [sideProp]
+  )
+
+  React.useEffect(() => {
+    liveWidthRef.current = sidebarWidth
+    applyWidthStyles(sidebarWidth)
+  }, [applyWidthStyles, sidebarWidth])
+
+  React.useEffect(() => {
+    return () => {
+      if (typeof document !== "undefined") {
+        document.documentElement.style.removeProperty(LIVE_WIDTH_CSS_VAR)
+      }
+    }
+  }, [])
+
+  const getHandleStyle = React.useCallback(
+    (width: number): React.CSSProperties => {
+      const offset = RESIZE_HANDLE_WIDTH / 2
+      return sideProp === "right"
+        ? { right: `${width - offset}px`, width: RESIZE_HANDLE_WIDTH }
+        : { left: `${width - offset}px`, width: RESIZE_HANDLE_WIDTH }
+    },
+    [sideProp]
+  )
 
   const workspaceId = folders[0]?.workspaceId ?? "workspace-default"
   const selectedPattern = React.useMemo(
@@ -556,12 +596,12 @@ export function AppSidebar({
       event.preventDefault()
       resizeStateRef.current = {
         startX: event.clientX,
-        startWidth: sidebarWidth,
+        startWidth: liveWidthRef.current,
       }
       setIsResizing(true)
       event.currentTarget.setPointerCapture?.(event.pointerId)
     },
-    [sidebarWidth]
+    []
   )
 
   React.useEffect(() => {
@@ -575,11 +615,13 @@ export function AppSidebar({
         SIDEBAR_MIN_WIDTH,
         SIDEBAR_MAX_WIDTH
       )
-      setSidebarWidth(nextWidth)
+      liveWidthRef.current = nextWidth
+      applyWidthStyles(nextWidth)
     }
 
     const stopResizing = () => {
       setIsResizing(false)
+      setSidebarWidth(liveWidthRef.current)
     }
 
     window.addEventListener("pointermove", handlePointerMove)
@@ -598,7 +640,7 @@ export function AppSidebar({
       document.body.style.userSelect = previousUserSelect
       document.body.style.cursor = previousCursor
     }
-  }, [isResizing, sideProp])
+  }, [applyWidthStyles, isResizing, sideProp])
 
   const handlePatternInputSubmit = React.useCallback(
     (rawName: string, folderId: string) => {
@@ -652,9 +694,17 @@ export function AppSidebar({
     [folders, workspaceId, handleFolderSelect]
   )
 
+  const initialHandleStyle = React.useMemo(() => getHandleStyle(sidebarWidth), [getHandleStyle, sidebarWidth])
+
   return (
     <>
-      <Sidebar variant="inset" side={sideProp} style={sidebarStyle} {...props}>
+      <Sidebar
+        variant="inset"
+        side={sideProp}
+        style={sidebarStyle}
+        data-resizing={isResizing ? "true" : undefined}
+        {...props}
+      >
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
@@ -760,7 +810,8 @@ export function AppSidebar({
           "transition-colors",
           isResizing ? "bg-primary/20" : "bg-transparent hover:bg-primary/10"
         )}
-        style={resizeHandlePositionStyle}
+        ref={handleRef}
+        style={initialHandleStyle}
         onPointerDown={handleResizeStart}
         data-sidebar-resizer="true"
       />
