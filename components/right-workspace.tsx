@@ -3,6 +3,7 @@
 import * as React from "react"
 import Image from "next/image"
 import {
+  Calendar,
   CalendarRange,
   Camera,
   Pin,
@@ -82,7 +83,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
 
   if (!pattern) {
     return (
-      <div className="text-muted-foreground flex flex-1 items-center justify-center rounded-2xl border border-dashed">
+      <div className="text-muted-foreground flex flex-1 items-center justify-center rounded-md border border-dashed">
         표시할 패턴 데이터가 없습니다.
       </div>
     )
@@ -95,7 +96,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
 
   return (
     <div className="flex flex-1 gap-4 overflow-hidden">
-      <section className="flex min-h-[640px] flex-1 flex-col rounded-[28px] border border-border/60 bg-gradient-to-b from-card to-muted/20 shadow-sm">
+      <section className="flex min-h-[640px] flex-1 flex-col rounded-xl border border-border/60 bg-gradient-to-b from-card to-muted/20 shadow-sm">
         <CanvasHeader
           captureOrder={captureIndex}
           totalCount={captures.length}
@@ -146,14 +147,14 @@ function CanvasHeader({
           variant="outline"
           size="sm"
         >
-          <Pin className="size-3.5" />
+          <Pin className="size-3.5 mr-2" />
           핀 추가
         </Button>
         <Button
           variant="outline"
           size="sm"
         >
-          <Share2 className="size-3.5" />
+          <Share2 className="size-3.5 mr-2" />
           공유
         </Button>
       </div>
@@ -184,9 +185,9 @@ function CaptureCanvas({
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden px-6 pb-6 pt-4">
       <div className="absolute inset-x-0 -z-10 h-[25%] bg-gradient-to-b from-primary/10 to-transparent" />
-      <div className="relative flex flex-1 items-center justify-center rounded-[32px] border border-border/60 bg-muted/30 p-4">
+      <div className="relative flex flex-1 items-center justify-center rounded-xl border border-border/60 bg-muted/30 p-4">
         <div className="relative flex h-full w-full max-w-[960px] items-center justify-center">
-          <div className="relative h-full min-h-[420px] w-full overflow-hidden rounded-[28px] border bg-white shadow-xl">
+          <div className="relative h-full min-h-[420px] w-full overflow-hidden rounded-xl border bg-white shadow-xl">
             <Image
               src={capture.imageUrl}
               alt="패턴 캡처"
@@ -277,8 +278,8 @@ function CaptureStrip({
                 sizes="80px"
                 className="object-cover"
               />
-              <span className="absolute bottom-1 left-1 rounded-md bg-black/70 px-1.5 text-[10px] font-medium text-white">
-                {capture.order}단계
+              <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-1.5 text-[10px] font-medium text-white">
+                {capture.order}
               </span>
             </button>
           )
@@ -296,7 +297,7 @@ function PatternMetadata({
   captureCount: number
 }) {
   return (
-    <section className="space-y-4 rounded-[28px] border border-border/60 bg-gradient-to-b from-card to-muted/20 p-6 shadow-sm">
+    <section className="space-y-4 rounded-xl border border-border/60 bg-gradient-to-b from-card to-muted/20 p-6 shadow-sm">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -357,7 +358,7 @@ function InsightsPanel({
   onHighlight: (id: string | null) => void
 }) {
   return (
-    <section className="flex flex-1 flex-col rounded-[28px] border border-border/60 bg-card shadow-sm">
+    <section className="flex flex-1 flex-col rounded-xl border border-border/60 bg-card shadow-sm">
       <header className="flex items-center justify-between border-b border-border/60 px-6 py-4">
         <div>
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -404,7 +405,7 @@ function InsightCard({
   return (
     <article
       className={cn(
-        "rounded-2xl border px-4 py-3 text-sm transition-all",
+        "rounded-xl border px-4 py-3 text-sm transition-all",
         isActive
           ? "border-primary/70 bg-primary/5"
           : "border-border/60 bg-card"
@@ -417,10 +418,6 @@ function InsightCard({
     >
       <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         <span>핀 #{index}</span>
-        <span className="flex items-center gap-1">
-          <CalendarRange className="size-3.5" />
-          {formatDate(insight.createdAt)}
-        </span>
       </div>
       <p className="mt-2 text-sm leading-relaxed text-foreground">
         {insight.note}
