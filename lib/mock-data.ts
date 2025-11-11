@@ -43,6 +43,13 @@ export const mockFolders: Folder[] = [
     name: "결제 & 체크아웃",
     createdAt: "2024-02-04T09:00:00.000Z",
   },
+  {
+    id: "folder-payments-funnel",
+    workspaceId,
+    name: "체크아웃 퍼널",
+    parentId: "folder-payments",
+    createdAt: "2024-02-10T09:00:00.000Z",
+  },
 ]
 
 export const mockPatterns: Pattern[] = [
@@ -71,6 +78,19 @@ export const mockPatterns: Pattern[] = [
     createdAt: "2024-04-02T06:05:00.000Z",
     updatedAt: "2024-04-03T12:45:00.000Z",
     captureCount: 3,
+  },
+  {
+    id: "pattern-nested-express",
+    folderId: "folder-payments-funnel",
+    name: "익스프레스 결제 시나리오",
+    serviceName: "Lemon Eats",
+    summary: "체크아웃 퍼널 중간에 고정형 요약 패널을 배치해 이탈률을 줄임",
+    tags: [mockTags[2], mockTags[3]],
+    author: "mina.c",
+    isFavorite: true,
+    createdAt: "2024-04-10T08:22:00.000Z",
+    updatedAt: "2024-04-11T11:02:00.000Z",
+    captureCount: 1,
   },
 ]
 

@@ -1,23 +1,15 @@
 "use client"
 
 import * as React from "react"
-import {
-  BookOpen,
-  Bot,
-  Command,
-  Frame,
-  LifeBuoy,
-  Map,
-  PieChart,
-  Send,
-  Settings2,
-  SquareTerminal,
-} from "lucide-react"
+import { ChevronDown, Command, Folder as FolderIcon, LifeBuoy, Send } from "lucide-react"
 
-import { NavMain } from "@/components/nav-main"
-import { NavProjects } from "@/components/nav-projects"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import {
   Sidebar,
   SidebarContent,
@@ -26,7 +18,12 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
 } from "@/components/ui/sidebar"
+import { mockFolders, mockPatterns } from "@/lib/mock-data"
+import type { Folder, Pattern } from "@/lib/types"
 
 const data = {
   user: {
@@ -34,93 +31,6 @@ const data = {
     email: "m@example.com",
     avatar: "/avatars/shadcn.jpg",
   },
-  navMain: [
-    {
-      title: "Playground",
-      url: "#",
-      icon: SquareTerminal,
-      isActive: true,
-      items: [
-        {
-          title: "History",
-          url: "#",
-        },
-        {
-          title: "Starred",
-          url: "#",
-        },
-        {
-          title: "Settings",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Models",
-      url: "#",
-      icon: Bot,
-      items: [
-        {
-          title: "Genesis",
-          url: "#",
-        },
-        {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Documentation",
-      url: "#",
-      icon: BookOpen,
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: Settings2,
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
-        },
-      ],
-    },
-  ],
   navSecondary: [
     {
       title: "Support",
@@ -133,23 +43,143 @@ const data = {
       icon: Send,
     },
   ],
-  projects: [
-    {
-      name: "Design Engineering",
-      url: "#",
-      icon: Frame,
-    },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: PieChart,
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: Map,
-    },
-  ],
+}
+
+type FolderTreeNode = {
+  folder: Folder
+  patterns: Pattern[]
+  children: FolderTreeNode[]
+}
+
+const buildFolderTree = (): FolderTreeNode[] => {
+  const nodeMap = new Map<string, FolderTreeNode>()
+
+  mockFolders.forEach((folder) => {
+    nodeMap.set(folder.id, {
+      folder,
+      patterns: [],
+      children: [],
+    })
+  })
+
+  mockPatterns.forEach((pattern) => {
+    const node = nodeMap.get(pattern.folderId)
+    if (node) {
+      node.patterns.push(pattern)
+    }
+  })
+
+  const roots: FolderTreeNode[] = []
+
+  nodeMap.forEach((node) => {
+    const parentId = node.folder.parentId
+    if (parentId) {
+      const parentNode = nodeMap.get(parentId)
+      if (parentNode) {
+        parentNode.children.push(node)
+        return
+      }
+    }
+    roots.push(node)
+  })
+
+  return roots
+}
+
+const getPatternCount = (node: FolderTreeNode): number => {
+  return (
+    node.patterns.length +
+    node.children.reduce((total, child) => total + getPatternCount(child), 0)
+  )
+}
+
+function FolderTree() {
+  const tree = React.useMemo(() => buildFolderTree(), [])
+
+  if (!tree.length) {
+    return (
+      <div className="text-sidebar-foreground/70 rounded-md border border-dashed border-border/60 px-3 py-4 text-xs">
+        폴더 데이터가 없습니다.
+      </div>
+    )
+  }
+
+  return <FolderMenuList nodes={tree} />
+}
+
+function FolderMenuList({ nodes, nested = false }: { nodes: FolderTreeNode[]; nested?: boolean }) {
+  return (
+    <SidebarMenu className={nested ? "" : undefined}>
+      {nodes.map((node) => (
+        <SidebarMenuItem key={node.folder.id} className="px-0">
+          <FolderNodeItem node={node} />
+        </SidebarMenuItem>
+      ))}
+    </SidebarMenu>
+  )
+}
+
+function FolderNodeItem({ node }: { node: FolderTreeNode }) {
+  const hasChildren = node.children.length > 0
+  const totalPatterns = getPatternCount(node)
+
+  return (
+    <Collapsible defaultOpen className="group/collapsible">
+      <CollapsibleTrigger asChild>
+        <SidebarMenuButton className="justify-between">
+          <span className="flex flex-1 items-center gap-2">
+            <ChevronDown className="size-3.5 text-muted-foreground transition-transform group-data-[state=closed]/collapsible:-rotate-90" />
+            <FolderIcon className="size-4 text-muted-foreground" />
+            <span className="truncate font-medium">{node.folder.name}</span>
+          </span>
+          <span className="text-xs text-muted-foreground">{totalPatterns}</span>
+        </SidebarMenuButton>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="border-l border-border/40 pl-3">
+          {hasChildren && <FolderMenuList nodes={node.children} nested />}
+          <PatternList patterns={node.patterns} showEmpty={!hasChildren} />
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  )
+}
+
+function PatternList({
+  patterns,
+  showEmpty,
+}: {
+  patterns: Pattern[]
+  showEmpty?: boolean
+}) {
+  if (!patterns.length && showEmpty) {
+    return (
+      <div className="text-muted-foreground/80 ml-3 border-l border-dashed border-border/50 pl-3 text-xs">
+        아직 패턴이 없습니다.
+      </div>
+    )
+  }
+
+  if (!patterns.length) {
+    return null
+  }
+
+  return (
+    <SidebarMenu className="gap-1">
+      {patterns.map((pattern) => (
+        <SidebarMenuItem key={pattern.id}>
+          <SidebarMenuButton className="h-auto items-start gap-2 py-2">
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">{pattern.name}</span>
+              <span className="text-xs text-muted-foreground">
+                {pattern.serviceName}
+              </span>
+            </div>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      ))}
+    </SidebarMenu>
+  )
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -173,8 +203,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
+        <SidebarGroup>
+          <SidebarGroupLabel className="flex items-center justify-between">
+            <span>내 아카이브</span>
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <FolderTree />
+          </SidebarGroupContent>
+        </SidebarGroup>
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
