@@ -63,6 +63,13 @@ export const CaptureCanvas = ({
       />
 
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.55),_transparent_60%)]" aria-hidden />
+      {(serviceName || patternName) && (
+        <div className="pointer-events-none absolute left-6 top-6 inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/80 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm">
+          {serviceName && <span>{serviceName}</span>}
+          {serviceName && patternName && <span className="h-1 w-1 rounded-full bg-slate-400/70" />}
+          {patternName && <span>{patternName}</span>}
+        </div>
+      )}
       <div className="pointer-events-none absolute bottom-6 right-6 flex items-center gap-2 rounded-full border border-white/40 bg-white/70 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-slate-700 shadow-sm backdrop-blur">
         <span>{currentIndexLabel}</span>
       </div>

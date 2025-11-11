@@ -3,7 +3,31 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react"
 
 import { useStorageCollections } from "@/lib/use-storage-collections"
-import type { Capture, Pattern, StorageCollections } from "@/lib/types"
+import { storageService } from "@/lib/storage"
+import type { Capture, Insight, Pattern, StorageCollections } from "@/lib/types"
+
+const generateInsightId = () => {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  return `insight-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`
+}
+
+const sortInsights = (insights: Insight[]) =>
+  [...insights].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+
+export interface CreateInsightPayload {
+  captureId: string
+  note: string
+  x: number
+  y: number
+}
+
+export interface UpdateInsightPayload {
+  note?: string
+  x?: number
+  y?: number
+}
 
 interface PatternWorkspaceContextValue {
   snapshot: StorageCollections
@@ -14,6 +38,12 @@ interface PatternWorkspaceContextValue {
   activePattern: Pattern | null
   capturesForActivePattern: Capture[]
   activeCapture: Capture | null
+  insightsForActiveCapture: Insight[]
+  highlightedInsightId: string | null
+  setHighlightedInsightId: (insightId: string | null) => void
+  createInsight: (payload: CreateInsightPayload) => Insight | null
+  updateInsight: (insightId: string, payload: UpdateInsightPayload) => Insight | null
+  deleteInsight: (insightId: string) => void
 }
 
 const PatternWorkspaceContext = createContext<PatternWorkspaceContextValue | null>(null)
@@ -30,6 +60,7 @@ export const PatternWorkspaceProvider = ({ children }: { children: ReactNode }) 
   const snapshot = useStorageCollections()
   const [selectedPatternId, setSelectedPatternId] = useState<string | null>(null)
   const [selectedCaptureId, setSelectedCaptureId] = useState<string | null>(null)
+  const [highlightedInsightId, setHighlightedInsightId] = useState<string | null>(null)
 
   const resolvedPatternId = useMemo(() => {
     if (!selectedPatternId) return null
@@ -57,6 +88,7 @@ export const PatternWorkspaceProvider = ({ children }: { children: ReactNode }) 
   const selectPattern = useCallback(
     (patternId: string | null) => {
       setSelectedPatternId(patternId)
+      setHighlightedInsightId(null)
       if (!patternId) {
         setSelectedCaptureId(null)
         return
@@ -69,12 +101,56 @@ export const PatternWorkspaceProvider = ({ children }: { children: ReactNode }) 
 
   const selectCapture = useCallback((captureId: string | null) => {
     setSelectedCaptureId(captureId)
+    setHighlightedInsightId(null)
   }, [])
 
   const activeCapture = useMemo(() => {
     if (!resolvedCaptureId) return null
     return capturesForActivePattern.find((capture) => capture.id === resolvedCaptureId) ?? null
   }, [capturesForActivePattern, resolvedCaptureId])
+
+  const insightsForActiveCapture = useMemo(() => {
+    if (!resolvedCaptureId) return []
+    return sortInsights(snapshot.insights.filter((insight) => insight.captureId === resolvedCaptureId))
+  }, [snapshot.insights, resolvedCaptureId])
+
+  const resolvedHighlightedInsightId = useMemo(() => {
+    if (!highlightedInsightId) return null
+    return insightsForActiveCapture.some((insight) => insight.id === highlightedInsightId) ? highlightedInsightId : null
+  }, [highlightedInsightId, insightsForActiveCapture])
+
+  const createInsight = useCallback((payload: CreateInsightPayload) => {
+    if (!payload.captureId) return null
+    const insight: Insight = {
+      id: generateInsightId(),
+      captureId: payload.captureId,
+      note: payload.note,
+      x: payload.x,
+      y: payload.y,
+      createdAt: new Date().toISOString(),
+    }
+    storageService.insights.create(insight)
+    setHighlightedInsightId(insight.id)
+    return insight
+  }, [])
+
+  const updateInsight = useCallback((insightId: string, payload: UpdateInsightPayload) => {
+    const updated = storageService.insights.update(insightId, (current) => ({
+      ...current,
+      ...payload,
+    }))
+    return updated ?? null
+  }, [])
+
+  const deleteInsight = useCallback(
+    (insightId: string) => {
+      storageService.insights.remove(insightId)
+      if (highlightedInsightId === insightId) {
+        setHighlightedInsightId(null)
+      }
+    },
+    [highlightedInsightId],
+  )
 
   const value: PatternWorkspaceContextValue = {
     snapshot,
@@ -85,6 +161,12 @@ export const PatternWorkspaceProvider = ({ children }: { children: ReactNode }) 
     activePattern,
     capturesForActivePattern,
     activeCapture,
+    insightsForActiveCapture,
+    highlightedInsightId: resolvedHighlightedInsightId,
+    setHighlightedInsightId,
+    createInsight,
+    updateInsight,
+    deleteInsight,
   }
 
   return <PatternWorkspaceContext.Provider value={value}>{children}</PatternWorkspaceContext.Provider>

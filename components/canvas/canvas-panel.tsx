@@ -2,10 +2,19 @@
 
 import { CaptureCanvas } from "./capture-canvas"
 import { CaptureStrip } from "./capture-strip"
+import { InsightPinsOverlay } from "./insight-pins-overlay"
 import { usePatternWorkspace } from "@/components/pattern-workspace/pattern-workspace-provider"
 
 export const CanvasPanel = () => {
-  const { activePattern, activeCapture, capturesForActivePattern, selectCapture } = usePatternWorkspace()
+  const {
+    activePattern,
+    activeCapture,
+    capturesForActivePattern,
+    selectCapture,
+    insightsForActiveCapture,
+    highlightedInsightId,
+    setHighlightedInsightId,
+  } = usePatternWorkspace()
 
   const canShowStrip = capturesForActivePattern.length > 0 && !!activeCapture
 
@@ -19,7 +28,15 @@ export const CanvasPanel = () => {
             serviceName={activePattern?.serviceName}
             totalCaptures={capturesForActivePattern.length}
             className="flex-1 min-h-full"
-          />
+          >
+            {activeCapture ? (
+              <InsightPinsOverlay
+                insights={insightsForActiveCapture}
+                highlightedInsightId={highlightedInsightId}
+                onHighlight={setHighlightedInsightId}
+              />
+            ) : null}
+          </CaptureCanvas>
         </div>
 
         {canShowStrip ? (

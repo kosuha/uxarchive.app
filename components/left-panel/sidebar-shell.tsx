@@ -36,6 +36,7 @@ export const SidebarShell = ({
         <section className="flex justify-between space-y-2">
           <div>
             <h1 className="text-2xl font-semibold">UX Archive</h1>
+            <p className="text-xs text-muted-foreground">폴더 {folderCount}개 · {summaryText}</p>
           </div>
           <Button
             variant="outline"
