@@ -7,7 +7,7 @@ interface FolderTreeProps {
   nodes: FolderTreeNode[]
   expandedFolders: Set<string>
   onToggle: (folderId: string) => void
-  isSearching?: boolean
+  isFiltering?: boolean
 }
 
 interface FolderBranchProps {
@@ -59,11 +59,13 @@ const FolderBranch = ({ node, expandedFolders, onToggle }: FolderBranchProps) =>
   )
 }
 
-export const FolderTree = ({ nodes, expandedFolders, onToggle, isSearching }: FolderTreeProps) => {
+export const FolderTree = ({ nodes, expandedFolders, onToggle, isFiltering }: FolderTreeProps) => {
   if (!nodes.length) {
     return (
       <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 px-4 py-6 text-center text-sm text-muted-foreground">
-        {isSearching ? "검색 결과가 없습니다." : "아직 생성된 폴더가 없습니다. mock 데이터를 활성화하거나 새 패턴을 추가해보세요."}
+        {isFiltering
+          ? "선택한 검색/필터 조합과 일치하는 패턴이 없습니다. 조건을 조정해보세요."
+          : "아직 생성된 폴더가 없습니다. mock 데이터를 활성화하거나 새 패턴을 추가해보세요."}
       </div>
     )
   }

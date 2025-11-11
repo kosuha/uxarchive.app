@@ -1,7 +1,9 @@
 "use client"
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useMemo, type ReactNode } from "react"
 
+import { workspaceActions, useWorkspaceStore } from "@/lib/state"
+import { patternMatchesFilters } from "@/lib/pattern-filters"
 import { useStorageCollections } from "@/lib/use-storage-collections"
 import { storageService } from "@/lib/storage"
 import type { Capture, Insight, Pattern, StorageCollections } from "@/lib/types"
@@ -58,14 +60,34 @@ const sortCaptures = (captures: Capture[]) =>
 
 export const PatternWorkspaceProvider = ({ children }: { children: ReactNode }) => {
   const snapshot = useStorageCollections()
-  const [selectedPatternId, setSelectedPatternId] = useState<string | null>(null)
-  const [selectedCaptureId, setSelectedCaptureId] = useState<string | null>(null)
-  const [highlightedInsightId, setHighlightedInsightId] = useState<string | null>(null)
+  const workspaceState = useWorkspaceStore()
+
+  const filteredPatternIds = useMemo(() => {
+    return snapshot.patterns
+      .filter((pattern) =>
+        patternMatchesFilters(pattern, {
+          searchTerm: workspaceState.searchTerm,
+          folderFilterId: workspaceState.folderFilterId,
+          favoriteOnly: workspaceState.favoriteOnly,
+          tagFilters: workspaceState.tagFilters,
+        }),
+      )
+      .map((pattern) => pattern.id)
+  }, [snapshot.patterns, workspaceState.searchTerm, workspaceState.folderFilterId, workspaceState.favoriteOnly, workspaceState.tagFilters])
+
+  useEffect(() => {
+    if (!workspaceState.selectedPatternId) return
+    if (!filteredPatternIds.includes(workspaceState.selectedPatternId)) {
+      workspaceActions.setSelectedPatternId(null)
+      workspaceActions.setSelectedCaptureId(null)
+      workspaceActions.setHighlightedInsightId(null)
+    }
+  }, [filteredPatternIds, workspaceState.selectedPatternId])
 
   const resolvedPatternId = useMemo(() => {
-    if (!selectedPatternId) return null
-    return snapshot.patterns.some((pattern) => pattern.id === selectedPatternId) ? selectedPatternId : null
-  }, [snapshot.patterns, selectedPatternId])
+    if (!workspaceState.selectedPatternId) return null
+    return filteredPatternIds.includes(workspaceState.selectedPatternId) ? workspaceState.selectedPatternId : null
+  }, [filteredPatternIds, workspaceState.selectedPatternId])
 
   const activePattern = useMemo(() => {
     if (!resolvedPatternId) return null
@@ -79,29 +101,34 @@ export const PatternWorkspaceProvider = ({ children }: { children: ReactNode }) 
 
   const resolvedCaptureId = useMemo(() => {
     if (!capturesForActivePattern.length) return null
-    if (selectedCaptureId && capturesForActivePattern.some((capture) => capture.id === selectedCaptureId)) {
-      return selectedCaptureId
+    if (workspaceState.selectedCaptureId && capturesForActivePattern.some((capture) => capture.id === workspaceState.selectedCaptureId)) {
+      return workspaceState.selectedCaptureId
     }
     return capturesForActivePattern[0].id ?? null
-  }, [capturesForActivePattern, selectedCaptureId])
+  }, [capturesForActivePattern, workspaceState.selectedCaptureId])
+
+  useEffect(() => {
+    if (workspaceState.selectedCaptureId === resolvedCaptureId) return
+    workspaceActions.setSelectedCaptureId(resolvedCaptureId)
+  }, [resolvedCaptureId, workspaceState.selectedCaptureId])
 
   const selectPattern = useCallback(
     (patternId: string | null) => {
-      setSelectedPatternId(patternId)
-      setHighlightedInsightId(null)
+      workspaceActions.setSelectedPatternId(patternId)
+      workspaceActions.setHighlightedInsightId(null)
       if (!patternId) {
-        setSelectedCaptureId(null)
+        workspaceActions.setSelectedCaptureId(null)
         return
       }
       const firstCapture = sortCaptures(snapshot.captures.filter((capture) => capture.patternId === patternId))[0]
-      setSelectedCaptureId(firstCapture?.id ?? null)
+      workspaceActions.setSelectedCaptureId(firstCapture?.id ?? null)
     },
     [snapshot.captures],
   )
 
   const selectCapture = useCallback((captureId: string | null) => {
-    setSelectedCaptureId(captureId)
-    setHighlightedInsightId(null)
+    workspaceActions.setSelectedCaptureId(captureId)
+    workspaceActions.setHighlightedInsightId(null)
   }, [])
 
   const activeCapture = useMemo(() => {
@@ -115,9 +142,16 @@ export const PatternWorkspaceProvider = ({ children }: { children: ReactNode }) 
   }, [snapshot.insights, resolvedCaptureId])
 
   const resolvedHighlightedInsightId = useMemo(() => {
-    if (!highlightedInsightId) return null
-    return insightsForActiveCapture.some((insight) => insight.id === highlightedInsightId) ? highlightedInsightId : null
-  }, [highlightedInsightId, insightsForActiveCapture])
+    if (!workspaceState.highlightedInsightId) return null
+    return insightsForActiveCapture.some((insight) => insight.id === workspaceState.highlightedInsightId)
+      ? workspaceState.highlightedInsightId
+      : null
+  }, [workspaceState.highlightedInsightId, insightsForActiveCapture])
+
+  useEffect(() => {
+    if (workspaceState.highlightedInsightId === resolvedHighlightedInsightId) return
+    workspaceActions.setHighlightedInsightId(resolvedHighlightedInsightId)
+  }, [resolvedHighlightedInsightId, workspaceState.highlightedInsightId])
 
   const createInsight = useCallback((payload: CreateInsightPayload) => {
     if (!payload.captureId) return null
@@ -130,7 +164,7 @@ export const PatternWorkspaceProvider = ({ children }: { children: ReactNode }) 
       createdAt: new Date().toISOString(),
     }
     storageService.insights.create(insight)
-    setHighlightedInsightId(insight.id)
+    workspaceActions.setHighlightedInsightId(insight.id)
     return insight
   }, [])
 
@@ -145,11 +179,11 @@ export const PatternWorkspaceProvider = ({ children }: { children: ReactNode }) 
   const deleteInsight = useCallback(
     (insightId: string) => {
       storageService.insights.remove(insightId)
-      if (highlightedInsightId === insightId) {
-        setHighlightedInsightId(null)
+      if (workspaceState.highlightedInsightId === insightId) {
+        workspaceActions.setHighlightedInsightId(null)
       }
     },
-    [highlightedInsightId],
+    [workspaceState.highlightedInsightId],
   )
 
   const value: PatternWorkspaceContextValue = {
@@ -163,7 +197,7 @@ export const PatternWorkspaceProvider = ({ children }: { children: ReactNode }) 
     activeCapture,
     insightsForActiveCapture,
     highlightedInsightId: resolvedHighlightedInsightId,
-    setHighlightedInsightId,
+    setHighlightedInsightId: workspaceActions.setHighlightedInsightId,
     createInsight,
     updateInsight,
     deleteInsight,

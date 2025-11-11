@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react"
+import { useMemo } from "react"
 
+import { getPatternFilterFlags, patternMatchesFilters, type PatternFilterOptions } from "@/lib/pattern-filters"
 import { useStorageCollections } from "@/lib/use-storage-collections"
 import type { Folder, Pattern } from "@/lib/types"
 
@@ -9,19 +10,6 @@ export interface FolderTreeNode {
   patterns: Pattern[]
   children: FolderTreeNode[]
   visiblePatternCount: number
-}
-
-const normalize = (value: string) => value.normalize("NFC").toLowerCase()
-
-const matchesSearch = (pattern: Pattern, query: string) => {
-  if (!query) return true
-  const target = normalize(query)
-  return (
-    normalize(pattern.name).includes(target) ||
-    normalize(pattern.serviceName).includes(target) ||
-    normalize(pattern.summary).includes(target) ||
-    pattern.tags.some((tag) => normalize(tag.label).includes(target))
-  )
 }
 
 const assignDepth = (nodes: FolderTreeNode[], depth = 0) => {
@@ -50,7 +38,9 @@ const pruneNodes = (nodes: FolderTreeNode[]): FolderTreeNode[] =>
     })
     .filter((node) => node.visiblePatternCount > 0)
 
-const buildFolderTree = (folders: Folder[], patterns: Pattern[], query: string): FolderTreeNode[] => {
+const EMPTY_TAG_FILTERS: string[] = []
+
+const buildFolderTree = (folders: Folder[], patterns: Pattern[], filters: PatternFilterOptions): FolderTreeNode[] => {
   if (!folders.length) return []
 
   const folderMap = new Map<string, FolderTreeNode>()
@@ -67,7 +57,7 @@ const buildFolderTree = (folders: Folder[], patterns: Pattern[], query: string):
   normalizedPatterns.forEach((pattern) => {
     const node = folderMap.get(pattern.folderId)
     if (!node) return
-    if (matchesSearch(pattern, query)) {
+    if (patternMatchesFilters(pattern, filters)) {
       node.patterns.push(pattern)
     }
   })
@@ -86,20 +76,37 @@ const buildFolderTree = (folders: Folder[], patterns: Pattern[], query: string):
   sortNodesByName(roots)
   roots.forEach((node) => attachCounts(node))
 
-  if (!query.trim()) {
+  const { isFiltering } = getPatternFilterFlags(filters)
+
+  if (!isFiltering) {
     return roots
   }
 
   return pruneNodes(roots)
 }
 
-export const useLeftPanelData = () => {
-  const [searchTerm, setSearchTerm] = useState("")
+export const useLeftPanelData = (filters: PatternFilterOptions) => {
   const snapshot = useStorageCollections()
+  const searchTerm = filters.searchTerm ?? ""
+  const folderFilterId = filters.folderFilterId ?? null
+  const favoriteOnly = filters.favoriteOnly ?? false
+  const tagFilters = filters.tagFilters ?? EMPTY_TAG_FILTERS
+
+  const normalizedFilters: PatternFilterOptions = useMemo(
+    () => ({
+      searchTerm,
+      folderFilterId,
+      favoriteOnly,
+      tagFilters,
+    }),
+    [searchTerm, folderFilterId, favoriteOnly, tagFilters],
+  )
+
+  const filterFlags = useMemo(() => getPatternFilterFlags(normalizedFilters), [normalizedFilters])
 
   const folderNodes = useMemo(
-    () => buildFolderTree(snapshot.folders, snapshot.patterns, searchTerm),
-    [snapshot.folders, snapshot.patterns, searchTerm],
+    () => buildFolderTree(snapshot.folders, snapshot.patterns, normalizedFilters),
+    [snapshot.folders, snapshot.patterns, normalizedFilters],
   )
 
   const visiblePatternCount = useMemo(
@@ -107,13 +114,24 @@ export const useLeftPanelData = () => {
     [folderNodes],
   )
 
+  const sortedFolders = useMemo(
+    () => [...snapshot.folders].sort((a, b) => a.name.localeCompare(b.name, "ko")),
+    [snapshot.folders],
+  )
+
+  const sortedTags = useMemo(
+    () => [...snapshot.tags].sort((a, b) => a.label.localeCompare(b.label, "ko")),
+    [snapshot.tags],
+  )
+
   return {
-    searchTerm,
-    setSearchTerm,
     folderNodes,
     folderCount: snapshot.folders.length,
     totalPatternCount: snapshot.patterns.length,
     visiblePatternCount,
     allFolderIds: snapshot.folders.map((folder) => folder.id),
+    folders: sortedFolders,
+    tags: sortedTags,
+    filterFlags,
   }
 }
