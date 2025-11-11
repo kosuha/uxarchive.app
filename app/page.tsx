@@ -1,3 +1,7 @@
+"use client"
+
+import * as React from "react"
+
 import { AppSidebar } from "@/components/app-sidebar"
 import {
   Breadcrumb,
@@ -18,10 +22,16 @@ import { mockPatterns } from "@/lib/mock-data"
 
 export default function Page() {
   const defaultPatternId = mockPatterns[0]?.id
+  const [selectedPatternId, setSelectedPatternId] = React.useState<string | undefined>(
+    defaultPatternId
+  )
 
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar
+        selectedPatternId={selectedPatternId}
+        onPatternSelect={setSelectedPatternId}
+      />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2">
           <div className="flex items-center gap-2 px-4">
@@ -44,7 +54,7 @@ export default function Page() {
           </div>
         </header>
         <div className="flex flex-1 flex-col gap-4 overflow-hidden p-4 pt-0">
-          <RightWorkspace patternId={defaultPatternId} />
+          <RightWorkspace patternId={selectedPatternId} />
         </div>
       </SidebarInset>
     </SidebarProvider>

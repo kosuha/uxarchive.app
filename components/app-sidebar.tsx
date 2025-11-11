@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/sidebar"
 import { mockFolders, mockPatterns } from "@/lib/mock-data"
 import type { Folder, Pattern } from "@/lib/types"
+import { cn } from "@/lib/utils"
 
 const data = {
   user: {
@@ -93,7 +94,13 @@ const getPatternCount = (node: FolderTreeNode): number => {
   )
 }
 
-function FolderTree() {
+function FolderTree({
+  selectedPatternId,
+  onPatternSelect,
+}: {
+  selectedPatternId?: string
+  onPatternSelect?: (patternId: string) => void
+}) {
   const tree = React.useMemo(() => buildFolderTree(), [])
 
   if (!tree.length) {
@@ -104,22 +111,50 @@ function FolderTree() {
     )
   }
 
-  return <FolderMenuList nodes={tree} />
+  return (
+    <FolderMenuList
+      nodes={tree}
+      selectedPatternId={selectedPatternId}
+      onPatternSelect={onPatternSelect}
+    />
+  )
 }
 
-function FolderMenuList({ nodes, nested = false }: { nodes: FolderTreeNode[]; nested?: boolean }) {
+function FolderMenuList({
+  nodes,
+  nested = false,
+  selectedPatternId,
+  onPatternSelect,
+}: {
+  nodes: FolderTreeNode[]
+  nested?: boolean
+  selectedPatternId?: string
+  onPatternSelect?: (patternId: string) => void
+}) {
   return (
     <SidebarMenu className={nested ? "" : undefined}>
       {nodes.map((node) => (
         <SidebarMenuItem key={node.folder.id} className="px-0">
-          <FolderNodeItem node={node} />
+          <FolderNodeItem
+            node={node}
+            selectedPatternId={selectedPatternId}
+            onPatternSelect={onPatternSelect}
+          />
         </SidebarMenuItem>
       ))}
     </SidebarMenu>
   )
 }
 
-function FolderNodeItem({ node }: { node: FolderTreeNode }) {
+function FolderNodeItem({
+  node,
+  selectedPatternId,
+  onPatternSelect,
+}: {
+  node: FolderTreeNode
+  selectedPatternId?: string
+  onPatternSelect?: (patternId: string) => void
+}) {
   const hasChildren = node.children.length > 0
   const totalPatterns = getPatternCount(node)
 
@@ -137,8 +172,20 @@ function FolderNodeItem({ node }: { node: FolderTreeNode }) {
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="border-l border-border/40 pl-3">
-          {hasChildren && <FolderMenuList nodes={node.children} nested />}
-          <PatternList patterns={node.patterns} showEmpty={!hasChildren} />
+          {hasChildren && (
+            <FolderMenuList
+              nodes={node.children}
+              nested
+              selectedPatternId={selectedPatternId}
+              onPatternSelect={onPatternSelect}
+            />
+          )}
+          <PatternList
+            patterns={node.patterns}
+            showEmpty={!hasChildren}
+            selectedPatternId={selectedPatternId}
+            onPatternSelect={onPatternSelect}
+          />
         </div>
       </CollapsibleContent>
     </Collapsible>
@@ -148,9 +195,13 @@ function FolderNodeItem({ node }: { node: FolderTreeNode }) {
 function PatternList({
   patterns,
   showEmpty,
+  selectedPatternId,
+  onPatternSelect,
 }: {
   patterns: Pattern[]
   showEmpty?: boolean
+  selectedPatternId?: string
+  onPatternSelect?: (patternId: string) => void
 }) {
   if (!patterns.length && showEmpty) {
     return (
@@ -165,24 +216,46 @@ function PatternList({
   }
 
   return (
-    <SidebarMenu className="gap-1">
-      {patterns.map((pattern) => (
-        <SidebarMenuItem key={pattern.id}>
-          <SidebarMenuButton className="h-auto items-start gap-2 py-2">
-            <div className="flex flex-col">
-              <span className="text-sm font-medium">{pattern.name}</span>
-              <span className="text-xs text-muted-foreground">
-                {pattern.serviceName}
-              </span>
-            </div>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      ))}
+    <SidebarMenu className="gap-1 mt-1">
+      {patterns.map((pattern) => {
+        const isSelected = pattern.id === selectedPatternId
+
+        return (
+          <SidebarMenuItem key={pattern.id}>
+            <SidebarMenuButton
+              className={cn(
+                "h-auto items-start gap-2 py-2 transition-colors",
+                isSelected &&
+                  "text-primary font-semibold ring-1 ring-primary/50 shadow-sm"
+              )}
+              isActive={isSelected}
+              type="button"
+              onClick={() => onPatternSelect?.(pattern.id)}
+            >
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">{pattern.name}</span>
+                <span className="text-xs text-muted-foreground">
+                  {pattern.serviceName}
+                </span>
+              </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )
+      })}
     </SidebarMenu>
   )
 }
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
+  selectedPatternId?: string
+  onPatternSelect?: (patternId: string) => void
+}
+
+export function AppSidebar({
+  selectedPatternId,
+  onPatternSelect,
+  ...props
+}: AppSidebarProps) {
   return (
     <Sidebar variant="inset" {...props}>
       <SidebarHeader>
@@ -208,7 +281,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <span>내 아카이브</span>
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <FolderTree />
+            <FolderTree
+              selectedPatternId={selectedPatternId}
+              onPatternSelect={onPatternSelect}
+            />
           </SidebarGroupContent>
         </SidebarGroup>
         <NavSecondary items={data.navSecondary} className="mt-auto" />

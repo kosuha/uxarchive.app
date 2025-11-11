@@ -28,16 +28,13 @@ type RightWorkspaceProps = {
 }
 
 export function RightWorkspace({ patternId }: RightWorkspaceProps) {
-  const defaultPatternId = React.useMemo(
+  const resolvedPatternId = React.useMemo(
     () => patternId ?? mockPatterns[0]?.id,
     [patternId]
   )
-  const [selectedPatternId] = React.useState<string | undefined>(
-    defaultPatternId
-  )
   const pattern = React.useMemo(
-    () => mockPatterns.find((item) => item.id === selectedPatternId),
-    [selectedPatternId]
+    () => mockPatterns.find((item) => item.id === resolvedPatternId),
+    [resolvedPatternId]
   )
 
   const captures = React.useMemo(() => {
