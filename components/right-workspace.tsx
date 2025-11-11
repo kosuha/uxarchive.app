@@ -2,15 +2,7 @@
 
 import * as React from "react"
 import Image from "next/image"
-import {
-  Calendar,
-  CalendarRange,
-  Camera,
-  Pin,
-  Share2,
-  Sparkles,
-  Star,
-} from "lucide-react"
+import { Camera, Pin, Share2, Star } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -19,8 +11,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { mockCaptures, mockInsights, mockPatterns } from "@/lib/mock-data"
 import type { Capture, Insight, Pattern } from "@/lib/types"
+import { useStorageCollections } from "@/lib/use-storage-collections"
 import { cn } from "@/lib/utils"
 
 type RightWorkspaceProps = {
@@ -28,51 +20,55 @@ type RightWorkspaceProps = {
 }
 
 export function RightWorkspace({ patternId }: RightWorkspaceProps) {
+  const { patterns, captures, insights } = useStorageCollections()
+
   const resolvedPatternId = React.useMemo(
-    () => patternId ?? mockPatterns[0]?.id,
-    [patternId]
-  )
-  const pattern = React.useMemo(
-    () => mockPatterns.find((item) => item.id === resolvedPatternId),
-    [resolvedPatternId]
+    () => patternId ?? patterns[0]?.id,
+    [patternId, patterns]
   )
 
-  const captures = React.useMemo(() => {
+  const pattern = React.useMemo(
+    () => patterns.find((item) => item.id === resolvedPatternId),
+    [patterns, resolvedPatternId]
+  )
+
+  const patternCaptures = React.useMemo(() => {
     if (!pattern) return []
-    return mockCaptures
+    return captures
       .filter((item) => item.patternId === pattern.id)
       .sort((a, b) => a.order - b.order)
-  }, [pattern])
+  }, [captures, pattern])
 
-  const [activeCaptureId, setActiveCaptureId] = React.useState<
-    string | undefined
-  >(() => captures[0]?.id)
+  const [activeCaptureId, setActiveCaptureId] = React.useState<string | undefined>(undefined)
 
   React.useEffect(() => {
-    if (!captures.length) {
+    if (!patternCaptures.length) {
       setActiveCaptureId(undefined)
       return
     }
 
-    if (!activeCaptureId || !captures.some((c) => c.id === activeCaptureId)) {
-      setActiveCaptureId(captures[0].id)
-    }
-  }, [captures, activeCaptureId])
+    setActiveCaptureId((current) => {
+      if (current && patternCaptures.some((capture) => capture.id === current)) {
+        return current
+      }
+      return patternCaptures[0]?.id
+    })
+  }, [patternCaptures])
 
   const activeCapture = React.useMemo(
-    () => captures.find((capture) => capture.id === activeCaptureId),
-    [captures, activeCaptureId]
+    () => patternCaptures.find((capture) => capture.id === activeCaptureId),
+    [patternCaptures, activeCaptureId]
   )
 
-  const insights = React.useMemo(() => {
+  const captureInsights = React.useMemo(() => {
     if (!activeCapture) return []
-    return mockInsights
+    return insights
       .filter((insight) => insight.captureId === activeCapture.id)
       .sort(
         (a, b) =>
           new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       )
-  }, [activeCapture])
+  }, [insights, activeCapture])
 
   const [highlightedInsightId, setHighlightedInsightId] = React.useState<
     string | null
@@ -87,8 +83,8 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
   }
 
   const captureIndex =
-    activeCaptureId && captures.length
-      ? captures.findIndex((capture) => capture.id === activeCaptureId) + 1
+    activeCaptureId && patternCaptures.length
+      ? patternCaptures.findIndex((capture) => capture.id === activeCaptureId) + 1
       : 0
 
   return (
@@ -96,24 +92,24 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
       <section className="flex min-h-[640px] flex-1 flex-col rounded-xl border border-border/60 bg-gradient-to-b from-card to-muted/20 shadow-sm">
         <CanvasHeader
           captureOrder={captureIndex}
-          totalCount={captures.length}
+          totalCount={patternCaptures.length}
         />
         <CaptureCanvas
           capture={activeCapture}
-          insights={insights}
+          insights={captureInsights}
           highlightedInsightId={highlightedInsightId}
           onHighlight={setHighlightedInsightId}
         />
         <CaptureStrip
-          captures={captures}
+          captures={patternCaptures}
           activeId={activeCaptureId}
           onSelect={setActiveCaptureId}
         />
       </section>
       <aside className="flex w-full max-w-[360px] flex-1 flex-col gap-4">
-        <PatternMetadata pattern={pattern} captureCount={captures.length} />
+        <PatternMetadata pattern={pattern} captureCount={patternCaptures.length} />
         <InsightsPanel
-          insights={insights}
+          insights={captureInsights}
           highlightedInsightId={highlightedInsightId}
           onHighlight={setHighlightedInsightId}
         />
@@ -330,6 +326,8 @@ function PatternMetadata({
           label="최종 수정"
           value={formatDate(pattern.updatedAt)}
         />
+        <MetadataItem label="캡처 수" value={`${captureCount}개`} />
+        <MetadataItem label="생성일" value={formatDate(pattern.createdAt)} />
       </dl>
       <p className="text-sm text-muted-foreground">{pattern.summary}</p>
     </section>

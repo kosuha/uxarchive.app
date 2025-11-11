@@ -1,10 +1,20 @@
 "use client"
 
 import * as React from "react"
-import { ChevronDown, Command, Folder as FolderIcon, LifeBuoy, Send } from "lucide-react"
+import {
+  ChevronDown,
+  Command,
+  FilePlus,
+  Folder as FolderIcon,
+  FolderPlus,
+  LifeBuoy,
+  Send,
+} from "lucide-react"
 
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Collapsible,
   CollapsibleContent,
@@ -22,8 +32,10 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
 } from "@/components/ui/sidebar"
-import { mockFolders, mockPatterns } from "@/lib/mock-data"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import type { Folder, Pattern } from "@/lib/types"
+import { storageService } from "@/lib/storage"
+import { useStorageCollections } from "@/lib/use-storage-collections"
 import { cn } from "@/lib/utils"
 
 const data = {
@@ -52,10 +64,36 @@ type FolderTreeNode = {
   children: FolderTreeNode[]
 }
 
-const buildFolderTree = (): FolderTreeNode[] => {
+type PendingPatternInput = {
+  folderId: string
+  token: string
+}
+
+type PendingFolderInput = {
+  parentId: string | null
+  token: string
+}
+
+const createId = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID()
+  }
+  return Math.random().toString(36).slice(2)
+}
+
+const SIDEBAR_MIN_WIDTH = 240
+const SIDEBAR_MAX_WIDTH = 480
+const SIDEBAR_DEFAULT_WIDTH = 320
+const RESIZE_HANDLE_WIDTH = 8
+
+const clamp = (value: number, min: number, max: number) => {
+  return Math.min(Math.max(value, min), max)
+}
+
+const buildFolderTree = (folders: Folder[], patterns: Pattern[]): FolderTreeNode[] => {
   const nodeMap = new Map<string, FolderTreeNode>()
 
-  mockFolders.forEach((folder) => {
+  folders.forEach((folder) => {
     nodeMap.set(folder.id, {
       folder,
       patterns: [],
@@ -63,7 +101,7 @@ const buildFolderTree = (): FolderTreeNode[] => {
     })
   })
 
-  mockPatterns.forEach((pattern) => {
+  patterns.forEach((pattern) => {
     const node = nodeMap.get(pattern.folderId)
     if (node) {
       node.patterns.push(pattern)
@@ -95,15 +133,35 @@ const getPatternCount = (node: FolderTreeNode): number => {
 }
 
 function FolderTree({
+  folders,
+  patterns,
   selectedPatternId,
   onPatternSelect,
+  pendingPatternInput,
+  pendingFolderInput,
+  onPatternInputSubmit,
+  onPatternInputCancel,
+  onFolderInputSubmit,
+  onFolderInputCancel,
+  selectedFolderId,
+  onFolderSelect,
 }: {
+  folders: Folder[]
+  patterns: Pattern[]
   selectedPatternId?: string
-  onPatternSelect?: (patternId: string) => void
+  onPatternSelect?: (patternId?: string) => void
+  pendingPatternInput?: PendingPatternInput | null
+  pendingFolderInput?: PendingFolderInput | null
+  onPatternInputSubmit?: (name: string, folderId: string) => void
+  onPatternInputCancel?: () => void
+  onFolderInputSubmit?: (name: string, parentId: string | null) => void
+  onFolderInputCancel?: () => void
+  selectedFolderId?: string | null
+  onFolderSelect?: (folderId: string | null) => void
 }) {
-  const tree = React.useMemo(() => buildFolderTree(), [])
+  const tree = React.useMemo(() => buildFolderTree(folders, patterns), [folders, patterns])
 
-  if (!tree.length) {
+  if (!tree.length && !pendingFolderInput) {
     return (
       <div className="text-sidebar-foreground/70 rounded-md border border-dashed border-border/60 px-3 py-4 text-xs">
         폴더 데이터가 없습니다.
@@ -114,31 +172,89 @@ function FolderTree({
   return (
     <FolderMenuList
       nodes={tree}
+      parentId={null}
       selectedPatternId={selectedPatternId}
       onPatternSelect={onPatternSelect}
+      pendingPatternInput={pendingPatternInput}
+      pendingFolderInput={pendingFolderInput}
+      onPatternInputSubmit={onPatternInputSubmit}
+      onPatternInputCancel={onPatternInputCancel}
+      onFolderInputSubmit={onFolderInputSubmit}
+      onFolderInputCancel={onFolderInputCancel}
+      selectedFolderId={selectedFolderId}
+      onFolderSelect={onFolderSelect}
     />
   )
 }
 
 function FolderMenuList({
   nodes,
+  parentId = null,
   nested = false,
   selectedPatternId,
   onPatternSelect,
+  pendingPatternInput,
+  pendingFolderInput,
+  onPatternInputSubmit,
+  onPatternInputCancel,
+  onFolderInputSubmit,
+  onFolderInputCancel,
+  selectedFolderId,
+  onFolderSelect,
 }: {
   nodes: FolderTreeNode[]
+  parentId?: string | null
   nested?: boolean
   selectedPatternId?: string
-  onPatternSelect?: (patternId: string) => void
+  onPatternSelect?: (patternId?: string) => void
+  pendingPatternInput?: PendingPatternInput | null
+  pendingFolderInput?: PendingFolderInput | null
+  onPatternInputSubmit?: (name: string, folderId: string) => void
+  onPatternInputCancel?: () => void
+  onFolderInputSubmit?: (name: string, parentId: string | null) => void
+  onFolderInputCancel?: () => void
+  selectedFolderId?: string | null
+  onFolderSelect?: (folderId: string | null) => void
 }) {
+  const showFolderInput =
+    pendingFolderInput && pendingFolderInput.parentId === (parentId ?? null)
+
   return (
-    <SidebarMenu className={nested ? "" : undefined}>
+    <SidebarMenu className={nested ? "gap-1" : undefined}>
+      {showFolderInput && pendingFolderInput && (
+        <SidebarMenuItem
+          key={`folder-input-${pendingFolderInput.token}`}
+          className="px-0"
+        >
+          <div
+            className={cn(
+              "mx-2 mb-2 rounded-md border border-dashed border-border/60 bg-muted/40 px-2 py-1.5",
+              nested && "ml-4"
+            )}
+            data-tree-interactive="true"
+          >
+            <InlineCreateInput
+              placeholder="새 폴더 이름"
+              onSubmit={(value) => onFolderInputSubmit?.(value, parentId ?? null)}
+              onCancel={onFolderInputCancel ?? (() => {})}
+            />
+          </div>
+        </SidebarMenuItem>
+      )}
       {nodes.map((node) => (
         <SidebarMenuItem key={node.folder.id} className="px-0">
           <FolderNodeItem
             node={node}
             selectedPatternId={selectedPatternId}
             onPatternSelect={onPatternSelect}
+            pendingPatternInput={pendingPatternInput}
+            pendingFolderInput={pendingFolderInput}
+            onPatternInputSubmit={onPatternInputSubmit}
+            onPatternInputCancel={onPatternInputCancel}
+            onFolderInputSubmit={onFolderInputSubmit}
+            onFolderInputCancel={onFolderInputCancel}
+            selectedFolderId={selectedFolderId}
+            onFolderSelect={onFolderSelect}
           />
         </SidebarMenuItem>
       ))}
@@ -150,18 +266,51 @@ function FolderNodeItem({
   node,
   selectedPatternId,
   onPatternSelect,
+  pendingPatternInput,
+  pendingFolderInput,
+  onPatternInputSubmit,
+  onPatternInputCancel,
+  onFolderInputSubmit,
+  onFolderInputCancel,
+  selectedFolderId,
+  onFolderSelect,
 }: {
   node: FolderTreeNode
   selectedPatternId?: string
-  onPatternSelect?: (patternId: string) => void
+  onPatternSelect?: (patternId?: string) => void
+  pendingPatternInput?: PendingPatternInput | null
+  pendingFolderInput?: PendingFolderInput | null
+  onPatternInputSubmit?: (name: string, folderId: string) => void
+  onPatternInputCancel?: () => void
+  onFolderInputSubmit?: (name: string, parentId: string | null) => void
+  onFolderInputCancel?: () => void
+  selectedFolderId?: string | null
+  onFolderSelect?: (folderId: string | null) => void
 }) {
   const hasChildren = node.children.length > 0
+  const shouldShowChildFolderInput = pendingFolderInput?.parentId === node.folder.id
+  const shouldRenderChildList = hasChildren || shouldShowChildFolderInput
   const totalPatterns = getPatternCount(node)
+  const isSelected = node.folder.id === selectedFolderId
+  const [isOpen, setIsOpen] = React.useState(true)
+
+  React.useEffect(() => {
+    if (pendingFolderInput?.parentId === node.folder.id) {
+      setIsOpen(true)
+    }
+  }, [pendingFolderInput, node.folder.id])
 
   return (
-    <Collapsible defaultOpen className="group/collapsible">
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="group/collapsible">
       <CollapsibleTrigger asChild>
-        <SidebarMenuButton className="justify-between">
+        <SidebarMenuButton
+          data-tree-interactive="true"
+          className={cn(
+            "justify-between",
+            isSelected && "text-primary bg-primary/10 ring-1 ring-primary/40"
+          )}
+          onClick={() => onFolderSelect?.(node.folder.id)}
+        >
           <span className="flex flex-1 items-center gap-2">
             <ChevronDown className="size-3.5 text-muted-foreground transition-transform group-data-[state=closed]/collapsible:-rotate-90" />
             <FolderIcon className="size-4 text-muted-foreground" />
@@ -171,20 +320,33 @@ function FolderNodeItem({
         </SidebarMenuButton>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="border-l border-border/40 pl-3">
-          {hasChildren && (
+        <div className="border-l border-border pl-3 mt-1">
+          {shouldRenderChildList && (
             <FolderMenuList
               nodes={node.children}
               nested
+              parentId={node.folder.id}
               selectedPatternId={selectedPatternId}
               onPatternSelect={onPatternSelect}
+              pendingPatternInput={pendingPatternInput}
+              pendingFolderInput={pendingFolderInput}
+              onPatternInputSubmit={onPatternInputSubmit}
+              onPatternInputCancel={onPatternInputCancel}
+              onFolderInputSubmit={onFolderInputSubmit}
+              onFolderInputCancel={onFolderInputCancel}
+              selectedFolderId={selectedFolderId}
+              onFolderSelect={onFolderSelect}
             />
           )}
           <PatternList
+            folderId={node.folder.id}
             patterns={node.patterns}
             showEmpty={!hasChildren}
             selectedPatternId={selectedPatternId}
             onPatternSelect={onPatternSelect}
+            pendingPatternInput={pendingPatternInput}
+            onPatternInputSubmit={onPatternInputSubmit}
+            onPatternInputCancel={onPatternInputCancel}
           />
         </div>
       </CollapsibleContent>
@@ -193,76 +355,311 @@ function FolderNodeItem({
 }
 
 function PatternList({
+  folderId,
   patterns,
   showEmpty,
   selectedPatternId,
   onPatternSelect,
+  pendingPatternInput,
+  onPatternInputSubmit,
+  onPatternInputCancel,
 }: {
+  folderId: string
   patterns: Pattern[]
   showEmpty?: boolean
   selectedPatternId?: string
-  onPatternSelect?: (patternId: string) => void
+  onPatternSelect?: (patternId?: string) => void
+  pendingPatternInput?: PendingPatternInput | null
+  onPatternInputSubmit?: (name: string, folderId: string) => void
+  onPatternInputCancel?: () => void
 }) {
-  if (!patterns.length && showEmpty) {
-    return (
-      <div className="text-muted-foreground/80 ml-3 border-l border-dashed border-border/50 pl-3 text-xs">
-        아직 패턴이 없습니다.
-      </div>
-    )
-  }
-
-  if (!patterns.length) {
-    return null
-  }
+  const showCreationRow = pendingPatternInput?.folderId === folderId
+  const hasPatterns = patterns.length > 0
+  const shouldRenderMenu = hasPatterns || showCreationRow
 
   return (
-    <SidebarMenu className="gap-1 mt-1">
-      {patterns.map((pattern) => {
-        const isSelected = pattern.id === selectedPatternId
-
-        return (
-          <SidebarMenuItem key={pattern.id}>
-            <SidebarMenuButton
-              className={cn(
-                "h-auto items-start gap-2 py-2 transition-colors",
-                isSelected &&
-                  "text-primary font-semibold ring-1 ring-primary/50 shadow-sm"
-              )}
-              isActive={isSelected}
-              type="button"
-              onClick={() => onPatternSelect?.(pattern.id)}
+    <>
+      {shouldRenderMenu && (
+        <SidebarMenu className="gap-1 mt-1">
+          {showCreationRow && pendingPatternInput && (
+            <SidebarMenuItem
+              key={`pattern-input-${pendingPatternInput.token}`}
+              className="px-0"
             >
-              <div className="flex flex-col">
-                <span className="text-sm font-medium">{pattern.name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {pattern.serviceName}
-                </span>
+              <div
+                className="ml-4 mr-2 rounded-md border border-dashed border-border/60 bg-muted/40 px-2 py-1.5"
+                data-tree-interactive="true"
+              >
+                <InlineCreateInput
+                  placeholder="새 패턴 이름"
+                  onSubmit={(value) => onPatternInputSubmit?.(value, folderId)}
+                  onCancel={onPatternInputCancel ?? (() => {})}
+                />
               </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        )
-      })}
-    </SidebarMenu>
+            </SidebarMenuItem>
+          )}
+          {patterns.map((pattern) => {
+            const isSelected = pattern.id === selectedPatternId
+
+            return (
+              <SidebarMenuItem key={pattern.id}>
+                <SidebarMenuButton
+                  data-tree-interactive="true"
+                  className={cn(
+                    "h-auto items-start gap-2 py-2 transition-colors",
+                    isSelected &&
+                      "text-primary font-semibold ring-1 ring-primary/50 shadow-sm"
+                  )}
+                  isActive={isSelected}
+                  type="button"
+                  onClick={() => onPatternSelect?.(pattern.id)}
+                >
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">{pattern.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {pattern.serviceName}
+                    </span>
+                  </div>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )
+          })}
+        </SidebarMenu>
+      )}
+      {!hasPatterns && showEmpty && !showCreationRow && (
+        <div className="text-muted-foreground/80 ml-3 border-l border-dashed border-border/50 pl-3 text-xs">
+          아직 패턴이 없습니다.
+        </div>
+      )}
+    </>
   )
 }
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   selectedPatternId?: string
-  onPatternSelect?: (patternId: string) => void
+  onPatternSelect?: (patternId?: string) => void
 }
 
 export function AppSidebar({
   selectedPatternId,
   onPatternSelect,
+  style: incomingStyle,
+  side: sideProp = "left",
   ...props
 }: AppSidebarProps) {
+  const { folders, patterns } = useStorageCollections()
+  const [pendingPatternInput, setPendingPatternInput] = React.useState<PendingPatternInput | null>(null)
+  const [pendingFolderInput, setPendingFolderInput] = React.useState<PendingFolderInput | null>(null)
+  const [selectedFolderId, setSelectedFolderId] = React.useState<string | null>(null)
+  const [uiSelectedPatternId, setUiSelectedPatternId] = React.useState<string | null>(null)
+  const [sidebarWidth, setSidebarWidth] = React.useState(SIDEBAR_DEFAULT_WIDTH)
+  const [isResizing, setIsResizing] = React.useState(false)
+  const resizeStateRef = React.useRef<{ startX: number; startWidth: number }>({
+    startX: 0,
+    startWidth: SIDEBAR_DEFAULT_WIDTH,
+  })
+
+  const sidebarStyle = React.useMemo(
+    () =>
+      ({
+        ...(incomingStyle ?? {}),
+        "--sidebar-width": `${sidebarWidth}px`,
+      }) as React.CSSProperties,
+    [incomingStyle, sidebarWidth]
+  )
+
+  const resizeHandlePositionStyle = React.useMemo<React.CSSProperties>(() => {
+    const offset = RESIZE_HANDLE_WIDTH / 2
+    return sideProp === "right"
+      ? { right: `${sidebarWidth - offset}px`, width: RESIZE_HANDLE_WIDTH }
+      : { left: `${sidebarWidth - offset}px`, width: RESIZE_HANDLE_WIDTH }
+  }, [sidebarWidth, sideProp])
+
+  const workspaceId = folders[0]?.workspaceId ?? "workspace-default"
+  const selectedPattern = React.useMemo(
+    () => patterns.find((pattern) => pattern.id === selectedPatternId),
+    [patterns, selectedPatternId]
+  )
+  const canCreatePattern = folders.length > 0
+
+  React.useEffect(() => {
+    if (selectedFolderId && !folders.some((folder) => folder.id === selectedFolderId)) {
+      setSelectedFolderId(null)
+    }
+  }, [selectedFolderId, folders])
+
+  React.useEffect(() => {
+    if (pendingPatternInput && !folders.some((folder) => folder.id === pendingPatternInput.folderId)) {
+      setPendingPatternInput(null)
+    }
+  }, [pendingPatternInput, folders])
+
+  React.useEffect(() => {
+    if (
+      pendingFolderInput &&
+      pendingFolderInput.parentId &&
+      !folders.some((folder) => folder.id === pendingFolderInput.parentId)
+    ) {
+      setPendingFolderInput(null)
+    }
+  }, [pendingFolderInput, folders])
+
+  const openPatternInput = React.useCallback(() => {
+    if (!canCreatePattern) return
+    const targetFolderId = selectedFolderId ?? selectedPattern?.folderId ?? folders[0]?.id
+    if (!targetFolderId) return
+    setPendingFolderInput(null)
+    setPendingPatternInput({ folderId: targetFolderId, token: createId() })
+  }, [canCreatePattern, selectedFolderId, selectedPattern?.folderId, folders])
+
+  const openFolderInput = React.useCallback(() => {
+    setPendingPatternInput(null)
+    setPendingFolderInput({ parentId: selectedFolderId ?? selectedPattern?.folderId ?? null, token: createId() })
+  }, [selectedFolderId, selectedPattern?.folderId])
+
+  const handlePatternSelect = React.useCallback(
+    (patternId: string) => {
+      setSelectedFolderId(null)
+      setUiSelectedPatternId(patternId)
+      onPatternSelect?.(patternId)
+    },
+    [onPatternSelect]
+  )
+
+  const handleFolderSelect = React.useCallback((folderId: string | null) => {
+    setSelectedFolderId(folderId)
+    if (folderId) {
+      setUiSelectedPatternId(null)
+    }
+  }, [])
+
+  const clearSelection = React.useCallback(() => {
+    setSelectedFolderId(null)
+    setUiSelectedPatternId(null)
+  }, [])
+
+  const handleTreeBackgroundClick = React.useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('[data-tree-interactive="true"]')) {
+        clearSelection()
+      }
+    },
+    [clearSelection]
+  )
+
+  const handleResizeStart = React.useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0 && event.pointerType !== "touch") {
+        return
+      }
+      event.preventDefault()
+      resizeStateRef.current = {
+        startX: event.clientX,
+        startWidth: sidebarWidth,
+      }
+      setIsResizing(true)
+      event.currentTarget.setPointerCapture?.(event.pointerId)
+    },
+    [sidebarWidth]
+  )
+
+  React.useEffect(() => {
+    if (!isResizing) return
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const delta = event.clientX - resizeStateRef.current.startX
+      const adjustedDelta = sideProp === "right" ? -delta : delta
+      const nextWidth = clamp(
+        resizeStateRef.current.startWidth + adjustedDelta,
+        SIDEBAR_MIN_WIDTH,
+        SIDEBAR_MAX_WIDTH
+      )
+      setSidebarWidth(nextWidth)
+    }
+
+    const stopResizing = () => {
+      setIsResizing(false)
+    }
+
+    window.addEventListener("pointermove", handlePointerMove)
+    window.addEventListener("pointerup", stopResizing)
+    window.addEventListener("pointercancel", stopResizing)
+
+    const previousUserSelect = document.body.style.userSelect
+    const previousCursor = document.body.style.cursor
+    document.body.style.userSelect = "none"
+    document.body.style.cursor = "col-resize"
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove)
+      window.removeEventListener("pointerup", stopResizing)
+      window.removeEventListener("pointercancel", stopResizing)
+      document.body.style.userSelect = previousUserSelect
+      document.body.style.cursor = previousCursor
+    }
+  }, [isResizing, sideProp])
+
+  const handlePatternInputSubmit = React.useCallback(
+    (rawName: string, folderId: string) => {
+      const trimmed = rawName.trim()
+      if (!trimmed) {
+        setPendingPatternInput(null)
+        return
+      }
+      const timestamp = new Date().toISOString()
+      const pattern: Pattern = {
+        id: createId(),
+        folderId,
+        name: trimmed,
+        serviceName: trimmed,
+        summary: "",
+        tags: [],
+        author: data.user.name,
+        isFavorite: false,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        captureCount: 0,
+      }
+      storageService.patterns.create(pattern)
+      setPendingPatternInput(null)
+      handlePatternSelect(pattern.id)
+    },
+    [handlePatternSelect]
+  )
+
+  const handleFolderInputSubmit = React.useCallback(
+    (rawName: string, parentId: string | null) => {
+      const trimmed = rawName.trim()
+      if (!trimmed) {
+        setPendingFolderInput(null)
+        return
+      }
+      const parentWorkspaceId = parentId
+        ? folders.find((folder) => folder.id === parentId)?.workspaceId
+        : undefined
+      const folder: Folder = {
+        id: createId(),
+        workspaceId: parentWorkspaceId ?? workspaceId,
+        name: trimmed,
+        parentId: parentId ?? undefined,
+        createdAt: new Date().toISOString(),
+      }
+      storageService.folders.create(folder)
+      setPendingFolderInput(null)
+      handleFolderSelect(folder.id)
+    },
+    [folders, workspaceId, handleFolderSelect]
+  )
+
   return (
-    <Sidebar variant="inset" {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <a href="#">
+    <>
+      <Sidebar variant="inset" side={sideProp} style={sidebarStyle} {...props}>
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton size="lg" asChild>
+                <a href="#">
                 <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                   <Command className="size-4" />
                 </div>
@@ -275,23 +672,159 @@ export function AppSidebar({
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className="flex items-center justify-between">
-            <span>내 아카이브</span>
+      <SidebarContent className="flex flex-1 flex-col">
+        <div className="flex flex-1 flex-col" onClick={handleTreeBackgroundClick}>
+          <SidebarGroup>
+          <SidebarGroupLabel className="flex items-center justify-between gap-2">
+            <span
+              role="button"
+              tabIndex={0}
+              className="select-none"
+              onClick={clearSelection}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault()
+                  clearSelection()
+                }
+              }}
+            >
+              내 아카이브
+            </span>
+            <div className="flex items-center gap-1.5">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="size-7 text-muted-foreground"
+                    aria-label="새 패턴 추가"
+                    onClick={openPatternInput}
+                    disabled={!canCreatePattern}
+                  >
+                    <FilePlus className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">새 패턴</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="size-7 text-muted-foreground"
+                    aria-label="새 폴더 추가"
+                    onClick={openFolderInput}
+                  >
+                    <FolderPlus className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">새 폴더</TooltipContent>
+              </Tooltip>
+            </div>
           </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <FolderTree
-              selectedPatternId={selectedPatternId}
-              onPatternSelect={onPatternSelect}
-            />
+          <SidebarGroupContent className="flex flex-col gap-2">
+            <div className="rounded-md">
+              <FolderTree
+                folders={folders}
+                patterns={patterns}
+                selectedPatternId={uiSelectedPatternId ?? undefined}
+                onPatternSelect={handlePatternSelect}
+                pendingPatternInput={pendingPatternInput}
+                pendingFolderInput={pendingFolderInput}
+                onPatternInputSubmit={handlePatternInputSubmit}
+                onPatternInputCancel={() => setPendingPatternInput(null)}
+                onFolderInputSubmit={handleFolderInputSubmit}
+                onFolderInputCancel={() => setPendingFolderInput(null)}
+                selectedFolderId={selectedFolderId}
+                onFolderSelect={handleFolderSelect}
+              />
+            </div>
           </SidebarGroupContent>
         </SidebarGroup>
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+          <div className="flex-1" />
+        </div>
+        <NavSecondary items={data.navSecondary} className="mt-4" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />
       </SidebarFooter>
-    </Sidebar>
+      </Sidebar>
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="사이드바 너비 조절"
+        className={cn(
+          "fixed inset-y-0 z-30 hidden cursor-col-resize touch-none md:block",
+          "transition-colors",
+          isResizing ? "bg-primary/20" : "bg-transparent hover:bg-primary/10"
+        )}
+        style={resizeHandlePositionStyle}
+        onPointerDown={handleResizeStart}
+        data-sidebar-resizer="true"
+      />
+    </>
+  )
+}
+
+type InlineCreateInputProps = {
+  placeholder: string
+  onSubmit: (value: string) => void
+  onCancel: () => void
+}
+
+function InlineCreateInput({ placeholder, onSubmit, onCancel }: InlineCreateInputProps) {
+  const [value, setValue] = React.useState("")
+  const inputRef = React.useRef<HTMLInputElement | null>(null)
+  const finishedRef = React.useRef(false)
+
+  React.useEffect(() => {
+    const id = requestAnimationFrame(() => inputRef.current?.focus())
+    return () => cancelAnimationFrame(id)
+  }, [])
+
+  const cancel = React.useCallback(() => {
+    if (finishedRef.current) return
+    finishedRef.current = true
+    onCancel()
+  }, [onCancel])
+
+  const submit = React.useCallback(() => {
+    if (finishedRef.current) return
+    const trimmed = value.trim()
+    if (!trimmed) {
+      cancel()
+      return
+    }
+    finishedRef.current = true
+    onSubmit(trimmed)
+  }, [cancel, onSubmit, value])
+
+  return (
+    <Input
+      ref={inputRef}
+      value={value}
+      onChange={(event) => setValue(event.target.value)}
+      placeholder={placeholder}
+      className="h-8 text-sm"
+      onBlur={() => {
+        if (!value.trim()) {
+          cancel()
+        } else {
+          submit()
+        }
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault()
+          submit()
+        }
+        if (event.key === "Escape") {
+          event.preventDefault()
+          cancel()
+        }
+      }}
+    />
   )
 }

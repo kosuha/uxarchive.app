@@ -73,7 +73,7 @@ export const mockPatterns: Pattern[] = [
     serviceName: "Spoon Market",
     summary: "가상 카드와 페이 계정을 결합한 세그먼트별 결제",
     tags: [mockTags[0], mockTags[2]],
-    author: "juyeon.lee",
+    author: "juya.lee",
     isFavorite: false,
     createdAt: "2024-04-02T06:05:00.000Z",
     updatedAt: "2024-04-03T12:45:00.000Z",

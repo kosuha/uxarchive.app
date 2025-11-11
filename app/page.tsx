@@ -18,13 +18,22 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { RightWorkspace } from "@/components/right-workspace"
-import { mockPatterns } from "@/lib/mock-data"
+import { useStorageCollections } from "@/lib/use-storage-collections"
 
 export default function Page() {
-  const defaultPatternId = mockPatterns[0]?.id
-  const [selectedPatternId, setSelectedPatternId] = React.useState<string | undefined>(
-    defaultPatternId
-  )
+  const { patterns } = useStorageCollections()
+  const [selectedPatternId, setSelectedPatternId] = React.useState<string | undefined>(undefined)
+
+  React.useEffect(() => {
+    setSelectedPatternId((current) => {
+      if (!patterns.length) {
+        return undefined
+      }
+      return patterns.some((pattern) => pattern.id === current)
+        ? current
+        : patterns[0].id
+    })
+  }, [patterns])
 
   return (
     <SidebarProvider>
