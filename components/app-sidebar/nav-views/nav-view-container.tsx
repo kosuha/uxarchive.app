@@ -8,6 +8,7 @@ import { EmptyPlaceholder } from "@/components/app-sidebar/nav-views/empty-place
 import { FavoritesView } from "@/components/app-sidebar/nav-views/favorites-view"
 import { RecentUpdatesView } from "@/components/app-sidebar/nav-views/recent-updates-view"
 import { SearchView, type SearchViewProps } from "@/components/app-sidebar/nav-views/search-view"
+import { TagSettingsView } from "@/components/app-sidebar/nav-views/tag-settings-view"
 
 type NavViewContainerProps = {
   activeNavId: string
@@ -19,6 +20,7 @@ const NAV_VIEW_COMPONENTS: Record<string, React.ComponentType | undefined> = {
   search: SearchView,
   "recent-updates": RecentUpdatesView,
   favorites: FavoritesView,
+  "tag-settings": TagSettingsView,
 }
 
 export function NavViewContainer({ activeNavId, exploreView, searchViewProps }: NavViewContainerProps) {

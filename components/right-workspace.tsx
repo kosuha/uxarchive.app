@@ -2,28 +2,47 @@
 
 import * as React from "react"
 import Image from "next/image"
-import { Camera, MessageCircle, Pin, Share2, Star, Trash2 } from "lucide-react"
+import { Camera, Check, MessageCircle, Pin, Plus, Share2, Star, Tags, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { TagBadge } from "@/components/tag-badge"
+import { TagColorPicker } from "@/components/tag-color-picker"
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { storageService } from "@/lib/storage"
-import type { Capture, Insight, Pattern } from "@/lib/types"
+import type { Capture, Insight, Pattern, Tag } from "@/lib/types"
 import { useStorageCollections } from "@/lib/use-storage-collections"
 import { cn } from "@/lib/utils"
+import { DEFAULT_TAG_COLOR } from "@/lib/tag-constants"
+import { emitNavigateNavEvent } from "@/lib/navigation-events"
 
 type RightWorkspaceProps = {
   patternId?: string
@@ -43,11 +62,20 @@ const generateInsightId = () => {
   return `insight-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
+const generateTagId = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID()
+  }
+  return `tag-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+const MAX_PATTERN_TAGS = 7
+
 const CONTEXT_MENU_ATTRIBUTE = "data-allow-context-menu"
 const allowContextMenuProps = { [CONTEXT_MENU_ATTRIBUTE]: "true" } as const
 
 export function RightWorkspace({ patternId }: RightWorkspaceProps) {
-  const { patterns, captures, insights } = useStorageCollections()
+  const { patterns, captures, insights, tags } = useStorageCollections()
 
   const resolvedPatternId = React.useMemo(
     () => patternId ?? patterns[0]?.id,
@@ -195,7 +223,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
         />
       </section>
       <aside className="flex h-full w-full max-w-[360px] flex-1 basis-0 min-h-0 flex-col gap-4 overflow-hidden">
-        <PatternMetadata pattern={pattern} captureCount={patternCaptures.length} />
+        <PatternMetadata pattern={pattern} allTags={tags} />
         <InsightsPanel
           pattern={pattern}
           insights={captureInsights}
@@ -502,18 +530,17 @@ function CaptureStrip({
 
 function PatternMetadata({
   pattern,
-  captureCount,
+  allTags,
 }: {
   pattern: Pattern
-  captureCount: number
+  allTags: Tag[]
 }) {
   const [serviceNameValue, setServiceNameValue] = React.useState(pattern.serviceName)
   const [nameValue, setNameValue] = React.useState(pattern.name)
-
-  React.useEffect(() => {
-    setServiceNameValue(pattern.serviceName)
-    setNameValue(pattern.name)
-  }, [pattern.serviceName, pattern.name, pattern.id])
+  const [isTagDialogOpen, setIsTagDialogOpen] = React.useState(false)
+  const [tagSearch, setTagSearch] = React.useState("")
+  const [newTagLabel, setNewTagLabel] = React.useState("")
+  const [newTagColor, setNewTagColor] = React.useState(DEFAULT_TAG_COLOR)
 
   const updatePattern = React.useCallback(
     (updates: Partial<Pattern>) => {
@@ -524,6 +551,89 @@ function PatternMetadata({
     },
     [pattern.id]
   )
+
+  React.useEffect(() => {
+    setServiceNameValue(pattern.serviceName)
+    setNameValue(pattern.name)
+  }, [pattern.serviceName, pattern.name, pattern.id])
+
+  React.useEffect(() => {
+    if (!isTagDialogOpen) {
+      setTagSearch("")
+      setNewTagLabel("")
+      setNewTagColor(DEFAULT_TAG_COLOR)
+    }
+  }, [isTagDialogOpen])
+
+  const sortedTags = React.useMemo(
+    () => [...allTags].sort((a, b) => a.label.localeCompare(b.label, "ko")),
+    [allTags]
+  )
+
+  const normalizedTagSearch = tagSearch.trim().toLowerCase()
+
+  const filteredTags = React.useMemo(() => {
+    if (!normalizedTagSearch) return sortedTags
+    return sortedTags.filter((tag) =>
+      tag.label.toLowerCase().includes(normalizedTagSearch) ||
+      tag.type.toLowerCase().includes(normalizedTagSearch)
+    )
+  }, [sortedTags, normalizedTagSearch])
+
+  const patternTagIds = React.useMemo(() => new Set(pattern.tags.map((tag) => tag.id)), [pattern.tags])
+  const canCreateTag = newTagLabel.trim().length > 0
+  const isTagLimitReached = pattern.tags.length >= MAX_PATTERN_TAGS
+
+  const handleToggleTag = React.useCallback(
+    (tagId: string) => {
+      const hasTag = pattern.tags.some((tag) => tag.id === tagId)
+      if (hasTag) {
+        updatePattern({ tags: pattern.tags.filter((tag) => tag.id !== tagId) })
+        return
+      }
+      if (pattern.tags.length >= MAX_PATTERN_TAGS) {
+        return
+      }
+      const tagToAdd = sortedTags.find((tag) => tag.id === tagId)
+      if (!tagToAdd) return
+      updatePattern({ tags: [...pattern.tags, tagToAdd] })
+    },
+    [pattern.tags, sortedTags, updatePattern]
+  )
+
+  const handleCreateTag = React.useCallback(() => {
+    const label = newTagLabel.trim()
+    if (!label) return
+    const normalizedLabel = label.toLowerCase()
+    const existingTag = sortedTags.find((tag) => tag.label.toLowerCase() === normalizedLabel)
+    if (existingTag) {
+      if (!pattern.tags.some((tag) => tag.id === existingTag.id)) {
+        if (pattern.tags.length >= MAX_PATTERN_TAGS) {
+          return
+        }
+        updatePattern({ tags: [...pattern.tags, existingTag] })
+      }
+      setNewTagLabel("")
+      setNewTagColor(DEFAULT_TAG_COLOR)
+      return
+    }
+
+    if (pattern.tags.length >= MAX_PATTERN_TAGS) {
+      return
+    }
+
+    const nextTag: Tag = {
+      id: generateTagId(),
+      label,
+      type: "custom",
+      color: newTagColor,
+    }
+
+    storageService.tags.create(nextTag)
+    updatePattern({ tags: [...pattern.tags, nextTag] })
+    setNewTagLabel("")
+    setNewTagColor(DEFAULT_TAG_COLOR)
+  }, [newTagLabel, newTagColor, pattern.tags, sortedTags, updatePattern])
 
   const commitServiceName = React.useCallback(() => {
     const next = serviceNameValue.trim()
@@ -590,11 +700,107 @@ function PatternMetadata({
           </div>
         )}
       </div>
-      <div className="flex flex-wrap gap-2">
-        {pattern.tags.map((tag) => (
-          <TagBadge key={tag.id} tag={tag} />
-        ))}
-      </div>
+      <Dialog open={isTagDialogOpen} onOpenChange={setIsTagDialogOpen}>
+        <div className="flex flex-wrap gap-2">
+          {pattern.tags.length ? (
+            pattern.tags.map((tag) => <TagBadge key={tag.id} tag={tag} />)
+          ) : (
+            <span className="text-xs text-muted-foreground">태그가 없습니다.</span>
+          )}
+          <DialogTrigger asChild>
+            <button
+              type="button"
+              className="text-muted-foreground inline-flex items-center gap-1 rounded-full border border-dashed border-border/80 px-2.5 py-0.5 text-[11px] font-medium transition hover:border-foreground/70 hover:text-foreground"
+            >
+              <Plus className="size-3" />
+              태그 추가
+            </button>
+          </DialogTrigger>
+        </div>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>태그 관리</DialogTitle>
+            <DialogDescription>이 패턴에 연결할 태그를 추가하거나 제거하세요.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">현재 태그</p>
+                <span className={cn(
+                  "text-[11px] font-medium text-muted-foreground"
+                )}>
+                  {pattern.tags.length} / {MAX_PATTERN_TAGS}
+                </span>
+              </div>
+              {pattern.tags.length ? (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {pattern.tags.map((tag) => (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      className="rounded-full"
+                      onClick={() => handleToggleTag(tag.id)}
+                    >
+                      <TagBadge tag={tag} className="transition-colors hover:bg-muted/30" />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-muted-foreground">아직 선택된 태그가 없습니다.</p>
+              )}
+            </div>
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">전체 태그</p>
+                {sortedTags.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-border/70 px-4 py-8 text-center text-sm text-muted-foreground">
+                    아직 등록된 태그가 없습니다. 아래에서 새 태그를 추가하세요.
+                  </div>
+                ) : (
+                  <Command className="h-40 rounded-lg border border-border/60 bg-background shadow-sm overflow-hidden">
+                    <CommandInput
+                      value={tagSearch}
+                      onValueChange={setTagSearch}
+                      placeholder="태그 이름이나 유형을 검색하세요"
+                    />
+                    <CommandList className="flex-1 overflow-y-auto">
+                      <CommandEmpty>일치하는 태그가 없습니다.</CommandEmpty>
+                      <CommandGroup>
+                        {filteredTags.map((tag) => {
+                          const isSelected = patternTagIds.has(tag.id)
+                          return (
+                            <CommandItem
+                              key={tag.id}
+                              value={`${tag.label} ${tag.type}`}
+                              onSelect={() => handleToggleTag(tag.id)}
+                              className="flex items-center gap-3"
+                              disabled={isTagLimitReached && !isSelected}
+                            >
+                              <span
+                                className="size-2 rounded-full"
+                                style={{ backgroundColor: tag.color ?? "var(--primary)" }}
+                              />
+                              <div className="flex flex-1 flex-col text-left">
+                                <span className="text-sm">{tag.label}</span>
+                              </div>
+                              <Check
+                                className={cn(
+                                  "size-4 text-primary transition-opacity",
+                                  isSelected ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                            </CommandItem>
+                          )
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                )}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       <dl className="grid grid-cols-2 gap-4 text-sm">
         <MetadataItem label="작성자" value={pattern.author} />
         <MetadataItem label="생성일" value={formatDate(pattern.createdAt)} />
@@ -696,7 +902,7 @@ function InsightsPanel({
       <div className="flex flex-1 basis-0 min-h-0 flex-col px-2 py-0">
         <div className="flex flex-1 basis-0 min-h-0 flex-col">
           <ScrollArea className="flex-1 basis-0 min-h-0">
-            <div className="space-y-3 pb-2 pt-2">
+            <div className="space-y-1 pb-2 pt-2">
               <PatternSummaryCard pattern={pattern} />
               {insights.length ? (
                 insights.map((insight, index) => (

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Clock, Folder as FolderIcon, LibraryBig, Search, Star } from "lucide-react"
+import { Clock, Folder as FolderIcon, LibraryBig, Search, Star, Tags } from "lucide-react"
 
 import { ExploreView } from "@/components/app-sidebar/nav-views/explore-view"
 import type { PendingFolderInput, PendingPatternInput } from "@/components/app-sidebar/folder-tree"
@@ -19,6 +19,7 @@ import { storageService } from "@/lib/storage"
 import { useStorageCollections } from "@/lib/use-storage-collections"
 import { cn } from "@/lib/utils"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { NAVIGATE_NAV_EVENT, type NavigateNavDetail } from "@/lib/navigation-events"
 
 const data = {
   user: {
@@ -52,6 +53,12 @@ const PRIMARY_NAV_ITEMS: NavItem[] = [
     title: "FAVORITES",
     description: "",
     icon: Star,
+  },
+  {
+    id: "tag-settings",
+    title: "TAG SETTINGS",
+    description: "",
+    icon: Tags,
   },
 ]
 
@@ -122,6 +129,22 @@ export function AppSidebar({
       setSelectedFolderId(null)
     }
   }, [selectedFolderId, folders])
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const handleNavEvent = (event: Event) => {
+      const detail = (event as CustomEvent<NavigateNavDetail>).detail
+      const nextNavId = detail?.navId
+      if (!nextNavId) return
+      const exists = PRIMARY_NAV_ITEMS.some((item) => item.id === nextNavId)
+      if (!exists) return
+      setActiveNavId(nextNavId)
+    }
+
+    window.addEventListener(NAVIGATE_NAV_EVENT, handleNavEvent as EventListener)
+    return () => window.removeEventListener(NAVIGATE_NAV_EVENT, handleNavEvent as EventListener)
+  }, [])
 
   React.useEffect(() => {
     if (
