@@ -260,26 +260,6 @@ function FolderMenuList({
 
   return (
     <SidebarMenu className={nested ? "gap-1" : undefined}>
-      {showFolderInput && pendingFolderInput && (
-        <SidebarMenuItem
-          key={`folder-input-${pendingFolderInput.token}`}
-          className="px-0"
-        >
-          <div
-            className={cn(
-              "mx-2 mb-2 rounded-md border border-dashed border-border/60 bg-muted/40 px-2 py-1.5",
-              nested && "ml-4"
-            )}
-            data-tree-interactive="true"
-          >
-            <InlineCreateInput
-              placeholder="새 폴더 이름"
-              onSubmit={(value) => onFolderInputSubmit?.(value, parentId ?? null)}
-              onCancel={onFolderInputCancel ?? (() => {})}
-            />
-          </div>
-        </SidebarMenuItem>
-      )}
       {nodes.map((node) => (
         <SidebarMenuItem key={node.folder.id} className="px-0">
           <FolderNodeItem
@@ -301,6 +281,29 @@ function FolderMenuList({
           />
         </SidebarMenuItem>
       ))}
+      {showFolderInput && pendingFolderInput && (
+        <SidebarMenuItem
+          key={`folder-input-${pendingFolderInput.token}`}
+          className="px-0"
+        >
+          <SidebarMenuButton
+            asChild
+            className="cursor-text"
+            data-tree-interactive="true"
+          >
+            <div className="flex w-full items-center gap-2">
+              <ChevronDown className="size-3.5 text-muted-foreground opacity-0" />
+              <FolderIcon className="size-4 text-muted-foreground" />
+              <InlineCreateInput
+                placeholder="새 폴더 이름"
+                onSubmit={(value) => onFolderInputSubmit?.(value, parentId ?? null)}
+                onCancel={onFolderInputCancel ?? (() => {})}
+                className="px-0"
+              />
+            </div>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      )}
     </SidebarMenu>
   )
 }
@@ -485,26 +488,6 @@ function PatternList({
     <>
       {shouldRenderMenu && (
         <SidebarMenu className={cn("gap-1", nested ? "mt-1" : "mt-0 px-1")}>
-          {showCreationRow && pendingPatternInput && (
-            <SidebarMenuItem
-              key={`pattern-input-${pendingPatternInput.token}`}
-              className={cn("px-0", !nested && "px-1")}
-            >
-              <div
-                className={cn(
-                  "rounded-md border border-dashed border-border/60 bg-muted/40 px-2 py-1.5",
-                  nested ? "ml-4 mr-2" : "mx-0"
-                )}
-                data-tree-interactive="true"
-              >
-                <InlineCreateInput
-                  placeholder="새 패턴 이름"
-                  onSubmit={(value) => onPatternInputSubmit?.(value, folderId)}
-                  onCancel={onPatternInputCancel ?? (() => {})}
-                />
-              </div>
-            </SidebarMenuItem>
-          )}
           {patterns.map((pattern) => {
             const isSelected = pattern.id === selectedPatternId
 
@@ -522,6 +505,25 @@ function PatternList({
               </SidebarMenuItem>
             )
           })}
+          {showCreationRow && pendingPatternInput && (
+            <SidebarMenuItem
+              key={`pattern-input-${pendingPatternInput.token}`}
+              className={cn("px-0", !nested && "px-1")}
+            >
+              <SidebarMenuButton
+                asChild
+                className={cn("cursor-text", !nested && "px-2")}
+                data-tree-interactive="true"
+              >
+                <InlineCreateInput
+                  placeholder="새 패턴 이름"
+                  onSubmit={(value) => onPatternInputSubmit?.(value, folderId)}
+                  onCancel={onPatternInputCancel ?? (() => {})}
+                  className="px-2"
+                />
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
         </SidebarMenu>
       )}
       {!hasPatterns && showEmpty && !showCreationRow && (
@@ -563,10 +565,9 @@ function PatternMenuItem({
         <SidebarMenuButton
           data-tree-interactive="true"
           className={cn(
-            "h-auto items-start gap-2 py-2 transition-colors",
-            isSelected && "text-primary font-semibold ring-1 ring-primary/50 shadow-sm"
+            "h-auto items-start gap-2 py-1 transition-colors",
+            isSelected && "bg-primary/10 text-primary ring-1 ring-primary/40"
           )}
-          isActive={isSelected}
           type="button"
           onClick={() => onPatternSelect?.(pattern.id)}
           onPointerDown={(event) => {
@@ -1138,9 +1139,10 @@ type InlineCreateInputProps = {
   placeholder: string
   onSubmit: (value: string) => void
   onCancel: () => void
+  className?: string
 }
 
-function InlineCreateInput({ placeholder, onSubmit, onCancel }: InlineCreateInputProps) {
+function InlineCreateInput({ placeholder, onSubmit, onCancel, className }: InlineCreateInputProps) {
   const [value, setValue] = React.useState("")
   const inputRef = React.useRef<HTMLInputElement | null>(null)
   const finishedRef = React.useRef(false)
@@ -1173,7 +1175,10 @@ function InlineCreateInput({ placeholder, onSubmit, onCancel }: InlineCreateInpu
       value={value}
       onChange={(event) => setValue(event.target.value)}
       placeholder={placeholder}
-      className="h-8 text-sm"
+      className={cn(
+        "h-8 w-full border-none bg-transparent px-0 text-sm shadow-none focus-visible:ring-0 focus-visible:outline-none",
+        className
+      )}
       onBlur={() => {
         if (!value.trim()) {
           cancel()
