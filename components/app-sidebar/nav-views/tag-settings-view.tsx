@@ -198,7 +198,7 @@ export function TagSettingsView() {
         </div>
         <div className="rounded-xl border border-border/60 bg-card">
           <ScrollArea className="h-[50vh] rounded-xl border border-border/60 bg-card">
-            <div className="flex flex-wrap gap-2 p-4">
+            <div className="flex flex-wrap p-4">
               {sortedTags.length === 0 ? (
                 <p className="text-sm text-muted-foreground">아직 등록된 태그가 없습니다.</p>
               ) : (
@@ -211,7 +211,7 @@ export function TagSettingsView() {
                       onClick={() => setActiveTagId(tag.id)}
                       ref={registerTagRef(tag.id)}
                       className={cn(
-                        "relative rounded-full border border-transparent p-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        "relative rounded-full border border-transparent p-1 transition focus-visible:outline-none"
                       )}
                     >
                       <TagBadge tag={tag} className="cursor-pointer" />
