@@ -38,7 +38,6 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import type { Folder, Pattern } from "@/lib/types"
 import { storageService } from "@/lib/storage"
 import { useStorageCollections } from "@/lib/use-storage-collections"
@@ -678,6 +677,7 @@ export function AppSidebar({
   const [pendingFolderInput, setPendingFolderInput] = React.useState<PendingFolderInput | null>(null)
   const [selectedFolderId, setSelectedFolderId] = React.useState<string | null>(null)
   const [uiSelectedPatternId, setUiSelectedPatternId] = React.useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = React.useState("")
   const [sidebarWidth, setSidebarWidth] = React.useState(SIDEBAR_DEFAULT_WIDTH)
   const [isResizing, setIsResizing] = React.useState(false)
   const resizeStateRef = React.useRef<{ startX: number; startWidth: number }>({
@@ -1077,6 +1077,17 @@ export function AppSidebar({
               onContextMenu={handleTreeBackgroundContextMenu}
             >
               <SidebarGroup>
+                <div className="px-1 pb-2">
+                  <Input
+                    type="search"
+                    placeholder="패턴 검색"
+                    aria-label="패턴 검색"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    className="h-8 border-border bg-sidebar text-sm"
+                    data-tree-interactive="true"
+                  />
+                </div>
                 <SidebarGroupLabel className="flex items-center justify-between gap-2">
                   <span
                     role="button"
@@ -1093,36 +1104,26 @@ export function AppSidebar({
                     내 아카이브
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          className="size-7 text-muted-foreground"
-                          aria-label="새 패턴 추가"
-                          onClick={() => openPatternInput(null)}
-                        >
-                          <FilePlus className="size-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">새 패턴</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          className="size-7 text-muted-foreground"
-                          aria-label="새 폴더 추가"
-                          onClick={() => openFolderInput(null)}
-                        >
-                          <FolderPlus className="size-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">새 폴더</TooltipContent>
-                    </Tooltip>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="size-7 text-muted-foreground"
+                      aria-label="새 패턴 추가"
+                      onClick={() => openPatternInput(null)}
+                    >
+                      <FilePlus className="size-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="size-7 text-muted-foreground"
+                      aria-label="새 폴더 추가"
+                      onClick={() => openFolderInput(null)}
+                    >
+                      <FolderPlus className="size-4" />
+                    </Button>
                   </div>
                 </SidebarGroupLabel>
                 <SidebarGroupContent className="flex flex-col gap-2">
