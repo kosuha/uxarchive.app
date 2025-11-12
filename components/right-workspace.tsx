@@ -2,17 +2,24 @@
 
 import * as React from "react"
 import Image from "next/image"
-import { Camera, MessageCircle, Pin, Share2, Star } from "lucide-react"
+import { Camera, MessageCircle, Pin, Share2, Star, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { TagBadge } from "@/components/tag-badge"
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
+import { Textarea } from "@/components/ui/textarea"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { storageService } from "@/lib/storage"
 import type { Capture, Insight, Pattern } from "@/lib/types"
 import { useStorageCollections } from "@/lib/use-storage-collections"
@@ -35,6 +42,9 @@ const generateInsightId = () => {
   }
   return `insight-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
+
+const CONTEXT_MENU_ATTRIBUTE = "data-allow-context-menu"
+const allowContextMenuProps = { [CONTEXT_MENU_ATTRIBUTE]: "true" } as const
 
 export function RightWorkspace({ patternId }: RightWorkspaceProps) {
   const { patterns, captures, insights } = useStorageCollections()
@@ -92,76 +102,56 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
   >(null)
 
   const [isPlacingInsight, setIsPlacingInsight] = React.useState(false)
-  const [draftPosition, setDraftPosition] = React.useState<CanvasPoint | null>(null)
-  const [draftNote, setDraftNote] = React.useState("")
-
-  const resetDraftState = React.useCallback(() => {
-    setIsPlacingInsight(false)
-    setDraftPosition(null)
-    setDraftNote("")
-  }, [])
 
   React.useEffect(() => {
-    resetDraftState()
-  }, [activeCapture?.id, resetDraftState])
+    setIsPlacingInsight(false)
+  }, [activeCapture?.id])
 
-  const isAddingInsight = isPlacingInsight || Boolean(draftPosition)
+  const isAddingInsight = isPlacingInsight
 
   const handleToggleAddMode = React.useCallback(() => {
     if (!activeCapture) return
-    if (isAddingInsight) {
-      resetDraftState()
-      return
-    }
-    setDraftNote("")
-    setIsPlacingInsight(true)
-  }, [activeCapture, isAddingInsight, resetDraftState])
+    setIsPlacingInsight((prev) => !prev)
+  }, [activeCapture])
 
   const handleCanvasPlacement = React.useCallback(
     (point: CanvasPoint) => {
       if (!activeCapture) return
-      setDraftPosition(point)
+      const newInsight: Insight = {
+        id: generateInsightId(),
+        captureId: activeCapture.id,
+        x: point.x,
+        y: point.y,
+        note: "",
+        createdAt: new Date().toISOString(),
+      }
+      storageService.insights.create(newInsight)
+      setHighlightedInsightId(newInsight.id)
       setIsPlacingInsight(false)
-      setDraftNote("")
     },
     [activeCapture]
   )
-
-  const handleDraftCancel = React.useCallback(() => {
-    resetDraftState()
-  }, [resetDraftState])
-
-  const handleDraftSubmit = React.useCallback(() => {
-    if (!draftPosition || !activeCapture) {
-      resetDraftState()
-      return
-    }
-
-    const nextNote = draftNote.trim()
-    if (!nextNote) {
-      resetDraftState()
-      return
-    }
-
-    const newInsight: Insight = {
-      id: generateInsightId(),
-      captureId: activeCapture.id,
-      x: draftPosition.x,
-      y: draftPosition.y,
-      note: nextNote,
-      createdAt: new Date().toISOString(),
-    }
-
-    storageService.insights.create(newInsight)
-    setHighlightedInsightId(newInsight.id)
-    resetDraftState()
-  }, [draftPosition, activeCapture, draftNote, resetDraftState])
 
   const handleUpdateInsightPosition = React.useCallback((insightId: string, point: CanvasPoint) => {
     storageService.insights.update(insightId, (current) => ({
       ...current,
       x: point.x,
       y: point.y,
+    }))
+  }, [])
+
+  const handleDeleteInsight = React.useCallback(
+    (insightId: string) => {
+      storageService.insights.remove(insightId)
+      setHighlightedInsightId((current) => (current === insightId ? null : current))
+    },
+    []
+  )
+
+  const handleUpdateInsightNote = React.useCallback((insightId: string, note: string) => {
+    storageService.insights.update(insightId, (current) => ({
+      ...current,
+      note,
     }))
   }, [])
 
@@ -179,8 +169,8 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
       : 0
 
   return (
-    <div className="flex flex-1 gap-4 overflow-hidden">
-      <section className="flex min-h-[640px] flex-1 flex-col rounded-xl border border-border/60 bg-gradient-to-b from-card to-muted/20 shadow-sm">
+    <div className="flex h-full min-h-0 flex-1 basis-0 gap-4 overflow-hidden">
+      <section className="flex flex-1 basis-0 min-h-0 flex-col rounded-xl border border-border/60 bg-gradient-to-b from-card to-muted/20 shadow-sm md:min-h-[640px]">
         <CanvasHeader
           captureOrder={captureIndex}
           totalCount={patternCaptures.length}
@@ -194,10 +184,9 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
           highlightedInsightId={highlightedInsightId}
           onHighlight={setHighlightedInsightId}
           isPlacingInsight={isPlacingInsight}
-          draftInsightPosition={draftPosition}
-          draftIndex={captureInsights.length + 1}
           onCanvasPlace={handleCanvasPlacement}
           onUpdateInsightPosition={handleUpdateInsightPosition}
+          onDeleteInsight={handleDeleteInsight}
         />
         <CaptureStrip
           captures={patternCaptures}
@@ -205,18 +194,15 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
           onSelect={setActiveCaptureId}
         />
       </section>
-      <aside className="flex w-full max-w-[360px] flex-1 flex-col gap-4">
+      <aside className="flex h-full w-full max-w-[360px] flex-1 basis-0 min-h-0 flex-col gap-4 overflow-hidden">
         <PatternMetadata pattern={pattern} captureCount={patternCaptures.length} />
         <InsightsPanel
+          pattern={pattern}
           insights={captureInsights}
           highlightedInsightId={highlightedInsightId}
           onHighlight={setHighlightedInsightId}
-          showDraftInput={Boolean(draftPosition)}
-          draftNote={draftNote}
-          draftIndex={captureInsights.length + 1}
-          onDraftChange={setDraftNote}
-          onDraftSubmit={handleDraftSubmit}
-          onDraftCancel={handleDraftCancel}
+          onDeleteInsight={handleDeleteInsight}
+          onUpdateInsightNote={handleUpdateInsightNote}
         />
       </aside>
     </div>
@@ -275,20 +261,18 @@ function CaptureCanvas({
   highlightedInsightId,
   onHighlight,
   isPlacingInsight,
-  draftInsightPosition,
-  draftIndex,
   onCanvasPlace,
   onUpdateInsightPosition,
+  onDeleteInsight,
 }: {
   capture?: Capture
   insights: Insight[]
   highlightedInsightId: string | null
   onHighlight: (id: string | null) => void
   isPlacingInsight: boolean
-  draftInsightPosition: CanvasPoint | null
-  draftIndex: number
   onCanvasPlace: (point: CanvasPoint) => void
   onUpdateInsightPosition: (insightId: string, point: CanvasPoint) => void
+  onDeleteInsight: (insightId: string) => void
 }) {
   const canvasRef = React.useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = React.useState<{ id: string; x: number; y: number } | null>(null)
@@ -405,47 +389,53 @@ function CaptureCanvas({
               const position = isDragging ? dragging : { x: insight.x, y: insight.y }
               const isActive = highlightedInsightId === insight.id || isDragging
               return (
-                <Tooltip key={insight.id}>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      data-insight-marker
-                      onPointerDown={(event) => startDragging(event, insight.id)}
-                      onMouseEnter={() => onHighlight(insight.id)}
-                      onMouseLeave={() => onHighlight(null)}
-                      onFocus={() => onHighlight(insight.id)}
-                      onBlur={() => onHighlight(null)}
-                      className={cn(
-                        "absolute flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white font-semibold text-xs text-white shadow-lg",
-                        isDragging ? "transition-none" : "transition-all",
-                        isActive ? "bg-primary" : "bg-black/70",
-                        "cursor-grab active:cursor-grabbing"
-                      )}
-                      style={{
-                        left: `${position.x}%`,
-                        top: `${position.y}%`,
+                <ContextMenu key={insight.id}>
+                  <Tooltip>
+                    <ContextMenuTrigger asChild>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          data-insight-marker
+                          {...allowContextMenuProps}
+                          onPointerDown={(event) => startDragging(event, insight.id)}
+                          onMouseEnter={() => onHighlight(insight.id)}
+                          onMouseLeave={() => onHighlight(null)}
+                          onFocus={() => onHighlight(insight.id)}
+                          onBlur={() => onHighlight(null)}
+                          className={cn(
+                            "absolute flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white font-semibold text-xs text-white shadow-lg",
+                            isDragging ? "transition-none" : "transition-all",
+                            isActive ? "bg-primary" : "bg-black/70",
+                            "cursor-grab active:cursor-grabbing"
+                          )}
+                          style={{
+                            left: `${position.x}%`,
+                            top: `${position.y}%`,
+                          }}
+                        >
+                          {index + 1}
+                        </button>
+                      </TooltipTrigger>
+                    </ContextMenuTrigger>
+                    <TooltipContent side="top">
+                      <p className="max-w-[220px] text-xs">{insight.note}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <ContextMenuContent align="start">
+                    <ContextMenuItem
+                      variant="destructive"
+                      onSelect={(event) => {
+                        event.preventDefault()
+                        onDeleteInsight(insight.id)
                       }}
                     >
-                      {index + 1}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    <p className="max-w-[220px] text-xs">{insight.note}</p>
-                  </TooltipContent>
-                </Tooltip>
+                      <Trash2 className="size-3.5" />
+                      인사이트 삭제
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
               )
             })}
-            {draftInsightPosition && (
-              <div
-                className="absolute flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-dashed border-primary/60 bg-primary/20 text-xs font-semibold text-primary"
-                style={{
-                  left: `${draftInsightPosition.x}%`,
-                  top: `${draftInsightPosition.y}%`,
-                }}
-              >
-                {draftIndex}
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -517,16 +507,82 @@ function PatternMetadata({
   pattern: Pattern
   captureCount: number
 }) {
+  const [serviceNameValue, setServiceNameValue] = React.useState(pattern.serviceName)
+  const [nameValue, setNameValue] = React.useState(pattern.name)
+
+  React.useEffect(() => {
+    setServiceNameValue(pattern.serviceName)
+    setNameValue(pattern.name)
+  }, [pattern.serviceName, pattern.name, pattern.id])
+
+  const updatePattern = React.useCallback(
+    (updates: Partial<Pattern>) => {
+      storageService.patterns.update(pattern.id, (current) => ({
+        ...current,
+        ...updates,
+      }))
+    },
+    [pattern.id]
+  )
+
+  const commitServiceName = React.useCallback(() => {
+    const next = serviceNameValue.trim()
+    if (next === pattern.serviceName) return
+    updatePattern({ serviceName: next })
+  }, [serviceNameValue, pattern.serviceName, updatePattern])
+
+  const commitName = React.useCallback(() => {
+    const next = nameValue.trim()
+    if (next === pattern.name) return
+    updatePattern({ name: next })
+  }, [nameValue, pattern.name, updatePattern])
+
+  const handleServiceKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault()
+      setServiceNameValue(pattern.serviceName)
+      event.currentTarget.blur()
+    }
+    if (event.key === "Enter") {
+      event.preventDefault()
+      commitServiceName()
+      event.currentTarget.blur()
+    }
+  }
+
+  const handleNameKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault()
+      setNameValue(pattern.name)
+      event.currentTarget.blur()
+    }
+    if (event.key === "Enter") {
+      event.preventDefault()
+      commitName()
+      event.currentTarget.blur()
+    }
+  }
+
   return (
-    <section className="space-y-4 rounded-xl border border-border/60 bg-gradient-to-b from-card to-muted/20 p-6 shadow-sm">
+    <section className="shrink-0 space-y-4 rounded-xl border border-border/60 bg-gradient-to-b from-card to-muted/20 p-6 shadow-sm">
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            {pattern.serviceName}
-          </p>
-          <h2 className="text-md font-semibold leading-snug">
-            {pattern.name}
-          </h2>
+        <div className="flex flex-col">
+          <Input
+            value={serviceNameValue}
+            onChange={(event) => setServiceNameValue(event.target.value)}
+            onBlur={commitServiceName}
+            onKeyDown={handleServiceKeyDown}
+            placeholder="서비스명을 입력하세요"
+            className="text-muted-foreground rounded-none shadow-none hover:bg-primary/10 focus-visible:ring-0 focus-visible:border-none border-none bg-transparent px-0 py-0 !text-xs uppercase tracking-wide h-auto"
+          />
+          <Input
+            value={nameValue}
+            onChange={(event) => setNameValue(event.target.value)}
+            onBlur={commitName}
+            onKeyDown={handleNameKeyDown}
+            placeholder="패턴 이름을 입력하세요"
+            className="!text-base font-semibold shadow-none rounded-none hover:bg-primary/10 leading-snug focus-visible:ring-0 focus-visible:border-none border-none bg-transparent px-0 py-0 h-auto"
+          />
         </div>
         {pattern.isFavorite && (
           <div className="rounded-full p-2 text-primary">
@@ -543,7 +599,6 @@ function PatternMetadata({
         <MetadataItem label="작성자" value={pattern.author} />
         <MetadataItem label="생성일" value={formatDate(pattern.createdAt)} />
       </dl>
-      <p className="text-sm text-muted-foreground">{pattern.summary}</p>
     </section>
   )
 }
@@ -557,64 +612,114 @@ function MetadataItem({ label, value }: { label: string; value: string }) {
   )
 }
 
+function PatternSummaryCard({ pattern }: { pattern: Pattern }) {
+  const [value, setValue] = React.useState(pattern.summary)
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null)
+
+  React.useEffect(() => {
+    setValue(pattern.summary)
+  }, [pattern.summary, pattern.id])
+
+  const resizeTextarea = React.useCallback(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = "auto"
+    el.style.height = `${el.scrollHeight}px`
+  }, [])
+
+  React.useLayoutEffect(() => {
+    resizeTextarea()
+  }, [value, resizeTextarea])
+
+  const commitChange = React.useCallback(() => {
+    const next = value.trim()
+    if (next === pattern.summary) return
+    storageService.patterns.update(pattern.id, (current) => ({
+      ...current,
+      summary: next,
+    }))
+  }, [value, pattern.summary, pattern.id])
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault()
+      setValue(pattern.summary)
+      event.currentTarget.blur()
+    }
+  }
+
+  const handleBlur = () => {
+    commitChange()
+  }
+
+  return (
+    <article className="w-full rounded-xl border border-border/60 bg-card px-4 py-3 text-sm">
+      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Description
+      </div>
+      <Textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
+        placeholder="패턴 설명을 입력하세요"
+        rows={2}
+        className="mt-2 w-full resize-none rounded-none overflow-hidden border-none bg-transparent px-0 py-0 text-sm text-foreground shadow-none outline-none focus-visible:border-none focus-visible:ring-0"
+      />
+    </article>
+  )
+}
+
 function InsightsPanel({
+  pattern,
   insights,
   highlightedInsightId,
   onHighlight,
-  showDraftInput,
-  draftNote,
-  draftIndex,
-  onDraftChange,
-  onDraftSubmit,
-  onDraftCancel,
+  onDeleteInsight,
+  onUpdateInsightNote,
 }: {
+  pattern: Pattern
   insights: Insight[]
   highlightedInsightId: string | null
   onHighlight: (id: string | null) => void
-  showDraftInput: boolean
-  draftNote: string
-  draftIndex: number
-  onDraftChange: (value: string) => void
-  onDraftSubmit: () => void
-  onDraftCancel: () => void
+  onDeleteInsight: (insightId: string) => void
+  onUpdateInsightNote: (insightId: string, note: string) => void
 }) {
-  const hasContent = insights.length > 0 || showDraftInput
   return (
-    <section className="flex flex-1 flex-col rounded-xl border border-border/60 bg-card shadow-sm">
+    <section className="flex h-full flex-1 basis-0 min-h-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
       <header className="flex items-center justify-between border-b border-border/60 px-6 py-4">
         <div>
-          <p className="text-md font-semibold">인사이트 노트</p>
+          <p className="text-md font-semibold">Insights</p>
         </div>
       </header>
-      {hasContent ? (
-        <ScrollArea className="flex-1 px-2">
-          <div className="space-y-3 py-4 pr-2">
-            {showDraftInput && (
-              <DraftInsightCard
-                index={draftIndex}
-                value={draftNote}
-                onChange={onDraftChange}
-                onSubmit={onDraftSubmit}
-                onCancel={onDraftCancel}
-              />
-            )}
-            {insights.map((insight, index) => (
-              <InsightCard
-                key={insight.id}
-                index={index + 1}
-                insight={insight}
-                isActive={highlightedInsightId === insight.id}
-                onHighlight={onHighlight}
-              />
-            ))}
-          </div>
-        </ScrollArea>
-      ) : (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center text-sm text-muted-foreground">
-          <Pin className="size-5" />
-          아직 인사이트가 없습니다.
+      <div className="flex flex-1 basis-0 min-h-0 flex-col px-2 py-0">
+        <div className="flex flex-1 basis-0 min-h-0 flex-col">
+          <ScrollArea className="flex-1 basis-0 min-h-0">
+            <div className="space-y-3 pb-2 pt-2">
+              <PatternSummaryCard pattern={pattern} />
+              {insights.length ? (
+                insights.map((insight, index) => (
+                  <InsightCard
+                    key={insight.id}
+                    index={index + 1}
+                    insight={insight}
+                    isActive={highlightedInsightId === insight.id}
+                    onHighlight={onHighlight}
+                    onDelete={onDeleteInsight}
+                    onUpdateNote={onUpdateInsightNote}
+                  />
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
+                  <Pin className="size-5" />
+                  아직 인사이트가 없습니다.
+                </div>
+              )}
+            </div>
+          </ScrollArea>
         </div>
-      )}
+      </div>
     </section>
   )
 }
@@ -624,95 +729,103 @@ function InsightCard({
   index,
   isActive,
   onHighlight,
+  onDelete,
+  onUpdateNote,
 }: {
   insight: Insight
   index: number
   isActive: boolean
   onHighlight: (id: string | null) => void
+  onDelete: (id: string) => void
+  onUpdateNote: (id: string, note: string) => void
 }) {
-  return (
-    <article
-      className={cn(
-        "rounded-xl border px-4 py-3 text-sm transition-all",
-        isActive
-          ? "border-primary/70 bg-primary/5"
-          : "border-border/60 bg-card"
-      )}
-      tabIndex={0}
-      onMouseEnter={() => onHighlight(insight.id)}
-      onMouseLeave={() => onHighlight(null)}
-      onFocus={() => onHighlight(insight.id)}
-      onBlur={() => onHighlight(null)}
-    >
-      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        <span>Insight #{index}</span>
-      </div>
-      <p className="mt-2 text-sm leading-relaxed text-foreground">
-        {insight.note}
-      </p>
-    </article>
-  )
-}
-
-function DraftInsightCard({
-  index,
-  value,
-  onChange,
-  onSubmit,
-  onCancel,
-}: {
-  index: number
-  value: string
-  onChange: (value: string) => void
-  onSubmit: () => void
-  onCancel: () => void
-}) {
-  const inputRef = React.useRef<HTMLInputElement>(null)
-  const cancelNextBlurRef = React.useRef(false)
+  const [value, setValue] = React.useState(insight.note)
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null)
 
   React.useEffect(() => {
-    inputRef.current?.focus()
+    setValue(insight.note)
+  }, [insight.note])
+
+  const resizeTextarea = React.useCallback(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = "auto"
+    el.style.height = `${el.scrollHeight}px`
   }, [])
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Escape") {
-      cancelNextBlurRef.current = true
-      onCancel()
+  React.useLayoutEffect(() => {
+    resizeTextarea()
+  }, [value, resizeTextarea])
+
+  const commitChange = React.useCallback(() => {
+    const trimmed = value.trim()
+    if (!trimmed) {
+      setValue(insight.note)
       return
     }
-    if (event.key === "Enter") {
+    if (trimmed === insight.note) return
+    onUpdateNote(insight.id, trimmed)
+  }, [value, insight.note, insight.id, onUpdateNote])
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Escape") {
       event.preventDefault()
-      onSubmit()
+      setValue(insight.note)
+      event.currentTarget.blur()
+      return
     }
   }
 
   const handleBlur = () => {
-    if (cancelNextBlurRef.current) {
-      cancelNextBlurRef.current = false
-      return
-    }
-    onSubmit()
+    commitChange()
   }
 
   return (
-    <article className="rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-sm">
-      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-primary">
-        <span>Insight #{index}</span>
-        <span className="text-[11px]">작성 중</span>
-      </div>
-      <Input
-        ref={inputRef}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        onKeyDown={handleKeyDown}
-        onBlur={handleBlur}
-        placeholder="인사이트를 입력하세요"
-        className="mt-3 bg-white/70"
-      />
-      <p className="mt-2 text-xs text-muted-foreground">
-        엔터 또는 포커스 아웃으로 저장, ESC로 취소됩니다.
-      </p>
-    </article>
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <article
+          className={cn(
+            "rounded-xl border px-4 py-3 text-sm transition-all",
+            isActive
+              ? "border-primary/70 bg-primary/5"
+              : "border-border/60 bg-card"
+          )}
+          tabIndex={0}
+          {...allowContextMenuProps}
+          onMouseEnter={() => onHighlight(insight.id)}
+          onMouseLeave={() => onHighlight(null)}
+          onFocus={() => onHighlight(insight.id)}
+          onBlur={() => onHighlight(null)}
+        >
+          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <span>Insight #{index}</span>
+          </div>
+          <Textarea
+            {...allowContextMenuProps}
+            ref={textareaRef}
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
+            placeholder="인사이트를 입력하세요"
+            className="mt-2 w-full resize-none overflow-hidden rounded-none border-none bg-transparent px-0 py-0 text-sm leading-relaxed text-foreground shadow-none outline-none focus-visible:border-none focus-visible:ring-0"
+            rows={1}
+          />
+        </article>
+      </ContextMenuTrigger>
+      <ContextMenuContent align="start">
+        <ContextMenuItem
+          variant="destructive"
+          onSelect={(event) => {
+            event.preventDefault()
+            onDelete(insight.id)
+          }}
+        >
+          <Trash2 className="size-3.5" />
+          인사이트 삭제
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   )
 }
 

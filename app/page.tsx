@@ -93,7 +93,7 @@ export default function Page() {
             </Breadcrumb>
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-4 overflow-hidden p-4 pt-0">
+        <div className="flex flex-1 basis-0 min-h-0 flex-col gap-4 overflow-hidden p-4 pt-0">
           <RightWorkspace patternId={selectedPatternId} />
         </div>
       </SidebarInset>
