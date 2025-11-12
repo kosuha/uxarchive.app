@@ -97,7 +97,7 @@ export function FolderTree({
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1">
       {shouldShowRootFolders && (
         <FolderMenuList
           nodes={tree}
@@ -238,7 +238,7 @@ function FolderMenuList({
     pendingFolderInput && pendingFolderInput.parentId === (parentId ?? null)
 
   return (
-    <SidebarMenu className="gap-1.5">
+    <SidebarMenu className={nested ? "gap-1" : undefined}>
       {nodes.map((node) => (
         <SidebarMenuItem key={node.folder.id} className="px-0">
           <FolderNodeItem
@@ -407,7 +407,11 @@ function FolderNodeItem({
             </SidebarMenuButton>
           </CollapsibleTrigger>
         </ContextMenuTrigger>
-        <ContextMenuContent className="w-44" onCloseAutoFocus={(event) => event.preventDefault()}>
+        <ContextMenuContent
+          align="start"
+          className="w-44"
+          onCloseAutoFocus={(event) => event.preventDefault()}
+        >
           <ContextMenuItem onSelect={() => onPatternCreateRequest?.(node.folder.id)}>
             새 패턴
           </ContextMenuItem>
@@ -423,45 +427,44 @@ function FolderNodeItem({
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
-      <CollapsibleContent
-        className={cn(
-          shouldRenderChildList && "ml-5 border-l border-dashed border-border/60 pl-3"
-        )}
-      >
-        {shouldRenderChildList && (
-          <FolderMenuList
-            nodes={node.children}
-            parentId={node.folder.id}
-            nested
+      <CollapsibleContent>
+        <div className="relative mt-1 pl-5 before:absolute before:left-3.5 before:top-0 before:bottom-0 before:w-px before:bg-border">
+          {shouldRenderChildList && (
+            <FolderMenuList
+              nodes={node.children}
+              parentId={node.folder.id}
+              nested
+              selectedPatternId={selectedPatternId}
+              onPatternSelect={onPatternSelect}
+              pendingPatternInput={pendingPatternInput}
+              pendingFolderInput={pendingFolderInput}
+              onPatternInputSubmit={onPatternInputSubmit}
+              onPatternInputCancel={onPatternInputCancel}
+              onFolderInputSubmit={onFolderInputSubmit}
+              onFolderInputCancel={onFolderInputCancel}
+              selectedFolderId={selectedFolderId}
+              onFolderSelect={onFolderSelect}
+              onPatternCreateRequest={onPatternCreateRequest}
+              onFolderCreateRequest={onFolderCreateRequest}
+              onPatternDelete={onPatternDelete}
+              onFolderDelete={onFolderDelete}
+            />
+          )}
+          <PatternList
+            folderId={node.folder.id}
+            patterns={node.patterns}
+            showEmpty={!hasChildren}
             selectedPatternId={selectedPatternId}
             onPatternSelect={onPatternSelect}
             pendingPatternInput={pendingPatternInput}
-            pendingFolderInput={pendingFolderInput}
             onPatternInputSubmit={onPatternInputSubmit}
             onPatternInputCancel={onPatternInputCancel}
-            onFolderInputSubmit={onFolderInputSubmit}
-            onFolderInputCancel={onFolderInputCancel}
-            selectedFolderId={selectedFolderId}
-            onFolderSelect={onFolderSelect}
             onPatternCreateRequest={onPatternCreateRequest}
-            onFolderCreateRequest={onFolderCreateRequest}
             onPatternDelete={onPatternDelete}
-            onFolderDelete={onFolderDelete}
+            onFolderCreateRequest={onFolderCreateRequest}
+            nested
           />
-        )}
-        <PatternList
-          folderId={node.folder.id}
-          patterns={node.patterns}
-          selectedPatternId={selectedPatternId}
-          onPatternSelect={onPatternSelect}
-          pendingPatternInput={pendingPatternInput}
-          onPatternInputSubmit={onPatternInputSubmit}
-          onPatternInputCancel={onPatternInputCancel}
-          onPatternCreateRequest={onPatternCreateRequest}
-          onPatternDelete={onPatternDelete}
-          onFolderCreateRequest={onFolderCreateRequest}
-          nested
-        />
+        </div>
       </CollapsibleContent>
     </Collapsible>
   )
@@ -471,40 +474,42 @@ type PatternListProps = {
   folderId: string | null
   patterns: Pattern[]
   showEmpty?: boolean
-  nested?: boolean
   selectedPatternId?: string
   onPatternSelect?: (patternId: string) => void
   pendingPatternInput?: PendingPatternInput | null
   onPatternInputSubmit?: (name: string, folderId: string | null) => void
   onPatternInputCancel?: () => void
   onPatternCreateRequest?: (folderId: string | null) => void
-  onFolderCreateRequest?: (parentId: string | null) => void
   onPatternDelete?: (patternId: string) => void
+  onFolderCreateRequest?: (parentId: string | null) => void
+  nested?: boolean
 }
 
 function PatternList({
   folderId,
   patterns,
   showEmpty,
-  nested = true,
   selectedPatternId,
   onPatternSelect,
   pendingPatternInput,
   onPatternInputSubmit,
   onPatternInputCancel,
   onPatternCreateRequest,
-  onFolderCreateRequest,
   onPatternDelete,
+  onFolderCreateRequest,
+  nested = true,
 }: PatternListProps) {
-  const hasPatterns = patterns.length > 0
   const showCreationRow = pendingPatternInput?.folderId === folderId
+  const hasPatterns = patterns.length > 0
+  const shouldRenderMenu = hasPatterns || showCreationRow
 
   return (
     <>
-      {(hasPatterns || showCreationRow) && (
-        <SidebarMenu className={cn("gap-1.5", nested ? "ml-4" : "mt-1")}>
+      {shouldRenderMenu && (
+        <SidebarMenu className={cn("gap-1", nested ? "mt-1" : "mt-0 px-0")}>
           {patterns.map((pattern) => {
             const isSelected = pattern.id === selectedPatternId
+
             return (
               <SidebarMenuItem key={pattern.id}>
                 <PatternMenuItem
@@ -597,7 +602,11 @@ function PatternMenuItem({
           </div>
         </SidebarMenuButton>
       </ContextMenuTrigger>
-      <ContextMenuContent className="w-44" onCloseAutoFocus={(event) => event.preventDefault()}>
+      <ContextMenuContent
+        align="start"
+        className="w-44"
+        onCloseAutoFocus={(event) => event.preventDefault()}
+      >
         <ContextMenuItem onSelect={() => onPatternCreateRequest?.(folderId)}>
           새 패턴
         </ContextMenuItem>
