@@ -152,6 +152,7 @@ function CaptureCanvas({
   const panStateRef = React.useRef({ startX: 0, startY: 0, originX: 0, originY: 0 })
   const panCleanupRef = React.useRef<(() => void) | null>(null)
   const fitScaleRef = React.useRef(0.5)
+  const shouldAutoFitRef = React.useRef(true)
   const [imageDimensions, setImageDimensions] = React.useState<{ width: number; height: number } | null>(null)
   const [canvasSize, setCanvasSize] = React.useState<{ width: number; height: number }>({ width: 0, height: 0 })
 
@@ -261,6 +262,24 @@ function CaptureCanvas({
     setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight })
   }, [])
 
+  React.useEffect(() => {
+    if (typeof window === "undefined") return
+    if (!capture?.imageUrl) return
+    let isCancelled = false
+    const preloadImage = new window.Image()
+    preloadImage.src = capture.imageUrl
+    preloadImage.onload = () => {
+      if (isCancelled) return
+      const width = preloadImage.naturalWidth || preloadImage.width
+      const height = preloadImage.naturalHeight || preloadImage.height
+      if (!width || !height) return
+      setImageDimensions((current) => current ?? { width, height })
+    }
+    return () => {
+      isCancelled = true
+    }
+  }, [capture?.imageUrl])
+
   const calculateFitTransform = React.useCallback(() => {
     if (!imageDimensions || canvasSize.width === 0 || canvasSize.height === 0) {
       return null
@@ -287,8 +306,12 @@ function CaptureCanvas({
   }, [calculateFitTransform])
 
   React.useEffect(() => {
+    if (!shouldAutoFitRef.current) return
+    if (!imageDimensions) return
+    if (canvasSize.width === 0 || canvasSize.height === 0) return
     applyFitToScreen()
-  }, [applyFitToScreen])
+    shouldAutoFitRef.current = false
+  }, [applyFitToScreen, imageDimensions, canvasSize.height, canvasSize.width])
 
   const handleWheel: React.WheelEventHandler<HTMLDivElement> = React.useCallback(
     (event) => {
@@ -393,6 +416,7 @@ function CaptureCanvas({
     setIsPanning(false)
     panCleanupRef.current?.()
     setImageDimensions(null)
+    shouldAutoFitRef.current = true
   }, [capture?.id])
 
   if (!capture) {
@@ -415,7 +439,7 @@ function CaptureCanvas({
           <div
             ref={canvasRef}
             className={cn(
-              "relative h-full min-h-[420px] w-full select-none overflow-hidden bg-gray-500 shadow-xl",
+              "relative h-full min-h-[420px] w-full overflow-hidden bg-gray-500 shadow-xl",
               isPlacingInsight && !isSpacePressed && "cursor-crosshair",
               isSpacePressed && !isPanning && "cursor-grab",
               isPanning && "cursor-grabbing"
@@ -423,7 +447,6 @@ function CaptureCanvas({
             onClick={handleCanvasClick}
             onWheel={handleWheel}
             onPointerDownCapture={startPanning}
-            onContextMenu={(event) => event.preventDefault()}
           >
             <Button
               type="button"

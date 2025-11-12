@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/context-menu"
 import { Input } from "@/components/ui/input"
 import type { Folder, Pattern } from "@/lib/types"
+import { allowContextMenuProps } from "@/lib/context-menu"
 import { cn } from "@/lib/utils"
 
 type FolderTreeNode = {
@@ -385,6 +386,7 @@ function FolderNodeItem({
         <ContextMenuTrigger asChild>
           <CollapsibleTrigger asChild>
             <SidebarMenuButton
+              {...allowContextMenuProps}
               data-tree-interactive="true"
               className={cn(
                 "justify-between",
@@ -582,6 +584,7 @@ function PatternMenuItem({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <SidebarMenuButton
+          {...allowContextMenuProps}
           data-tree-interactive="true"
           className={cn(
             "h-auto items-start gap-2 py-2 px-3 transition-colors",

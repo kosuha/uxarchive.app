@@ -16,6 +16,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 import { FolderTree, type PendingFolderInput, type PendingPatternInput } from "@/components/app-sidebar/folder-tree"
+import { allowContextMenuProps } from "@/lib/context-menu"
 import type { Folder, Pattern } from "@/lib/types"
 
 type ArchiveTreeSectionState = {
@@ -82,6 +83,7 @@ export function ArchiveTreeSection({ title, state, handlers }: ArchiveTreeSectio
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <div
+          {...allowContextMenuProps}
           className="flex flex-1 flex-col"
           onClick={onBackgroundClick}
           onContextMenu={onBackgroundContextMenu}
