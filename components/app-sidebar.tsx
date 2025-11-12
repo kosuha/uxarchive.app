@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Clock, Folder as FolderIcon, Search, Star } from "lucide-react"
 
-import { ArchiveTreeSection } from "@/components/app-sidebar/archive-tree-section"
+import { ExploreView } from "@/components/app-sidebar/nav-views/explore-view"
 import type { PendingFolderInput, PendingPatternInput } from "@/components/app-sidebar/folder-tree"
 import { SidebarNavRail, NAV_RAIL_WIDTH, type NavItem } from "@/components/app-sidebar/nav-rail"
 import { NavViewContainer } from "@/components/app-sidebar/nav-views/nav-view-container"
@@ -369,7 +369,7 @@ export function AppSidebar({
   )
 
   const exploreView = (
-    <ArchiveTreeSection
+    <ExploreView
       title="내 아카이브"
       state={{
         folders,

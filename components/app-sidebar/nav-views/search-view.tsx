@@ -32,10 +32,6 @@ export function SearchView() {
             aria-label="패턴 검색"
           />
         </div>
-        <Button type="submit" variant="secondary" disabled={!query.trim() || isSearching}>
-          {isSearching ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-          <span className="ml-2">검색</span>
-        </Button>
       </form>
       <EmptyPlaceholder
         icon={Search}
