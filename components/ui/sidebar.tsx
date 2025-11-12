@@ -157,15 +157,19 @@ function Sidebar({
   collapsible = "offcanvas",
   className,
   style,
+  offset,
   children,
   ...props
 }: React.ComponentProps<"div"> & {
   side?: "left" | "right"
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
+  offset?: number | string
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
   const dataResizing = (props as { [key: string]: unknown })["data-resizing"] as string | undefined
+  const offsetValue =
+    offset === undefined ? "0px" : typeof offset === "number" ? `${offset}px` : offset
 
   if (collapsible === "none") {
     return (
@@ -230,6 +234,9 @@ function Sidebar({
             ? "group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4)))]"
             : "group-data-[collapsible=icon]:w-(--sidebar-width-icon)"
         )}
+        style={
+          side === "left" ? { marginLeft: offsetValue } : { marginRight: offsetValue }
+        }
       />
       <div
         data-slot="sidebar-container"
@@ -245,7 +252,10 @@ function Sidebar({
             : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
           className
         )}
-        style={style}
+        style={{
+          ...(side === "left" ? { left: offsetValue } : { right: offsetValue }),
+          ...style,
+        }}
         {...props}
       >
         <div

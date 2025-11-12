@@ -3,13 +3,14 @@
 import * as React from "react"
 import {
   ChevronDown,
+  Clock,
   Command,
   FilePlus,
   Folder as FolderIcon,
   FolderPlus,
-  LifeBuoy,
-  Send,
+  Star,
 } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 
 import { NavUser } from "@/components/nav-user"
 import { Button } from "@/components/ui/button"
@@ -30,6 +31,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import {
   ContextMenu,
@@ -42,6 +44,7 @@ import type { Folder, Pattern } from "@/lib/types"
 import { storageService } from "@/lib/storage"
 import { useStorageCollections } from "@/lib/use-storage-collections"
 import { cn } from "@/lib/utils"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 const data = {
   user: {
@@ -50,6 +53,59 @@ const data = {
     avatar: "/avatars/shadcn.jpg",
   }
 }
+
+type NavItem = {
+  id: string
+  title: string
+  description?: string
+  icon: LucideIcon
+}
+
+type NavRailButtonProps = {
+  item: NavItem
+  isActive: boolean
+  onSelect: () => void
+  isCollapsed?: boolean
+}
+
+const PRIMARY_NAV_ITEMS: NavItem[] = [
+  {
+    id: "my-archive",
+    title: "내 아카이브",
+    description: "저장한 패턴과 폴더 전체",
+    icon: FolderIcon,
+  },
+  {
+    id: "recent-updates",
+    title: "최근 업데이트",
+    description: "최근 수정한 패턴을 빠르게 살펴봅니다.",
+    icon: Clock,
+  },
+  {
+    id: "favorites",
+    title: "즐겨찾기",
+    description: "핵심 패턴만 집중해서 확인하세요.",
+    icon: Star,
+  },
+]
+
+function NavRailButton({ item, isActive, onSelect, isCollapsed }: NavRailButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-label={item.title}
+      className={cn(
+        "flex items-center gap-2 rounded-md px-2.5 py-2 text-xs font-medium transition-colors",
+        "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        isActive && "bg-sidebar-accent text-sidebar-accent-foreground"
+      )}
+    >
+      <item.icon className="size-4" />
+    </button>
+  )
+}
+
 
 type FolderTreeNode = {
   folder: Folder
@@ -79,6 +135,7 @@ const SIDEBAR_MAX_WIDTH = 480
 const SIDEBAR_DEFAULT_WIDTH = 320
 const RESIZE_HANDLE_WIDTH = 8
 const LIVE_WIDTH_CSS_VAR = "--app-sidebar-live-width"
+const NAV_RAIL_WIDTH = "calc(var(--sidebar-width-icon) + 1px)"
 
 const clamp = (value: number, min: number, max: number) => {
   return Math.min(Math.max(value, min), max)
@@ -670,8 +727,11 @@ export function AppSidebar({
   onPatternSelect,
   style: incomingStyle,
   side: sideProp = "left",
+  className,
   ...props
 }: AppSidebarProps) {
+  const isMobile = useIsMobile()
+  const { state: sidebarState } = useSidebar()
   const { folders, patterns } = useStorageCollections()
   const [pendingPatternInput, setPendingPatternInput] = React.useState<PendingPatternInput | null>(null)
   const [pendingFolderInput, setPendingFolderInput] = React.useState<PendingFolderInput | null>(null)
@@ -680,6 +740,8 @@ export function AppSidebar({
   const [searchQuery, setSearchQuery] = React.useState("")
   const [sidebarWidth, setSidebarWidth] = React.useState(SIDEBAR_DEFAULT_WIDTH)
   const [isResizing, setIsResizing] = React.useState(false)
+  const [activeNavId, setActiveNavId] = React.useState(PRIMARY_NAV_ITEMS[0]?.id ?? "")
+  const isSidebarCollapsed = sidebarState === "collapsed"
   const resizeStateRef = React.useRef<{ startX: number; startWidth: number }>({
     startX: 0,
     startWidth: SIDEBAR_DEFAULT_WIDTH,
@@ -687,13 +749,34 @@ export function AppSidebar({
   const liveWidthRef = React.useRef(SIDEBAR_DEFAULT_WIDTH)
   const handleRef = React.useRef<HTMLDivElement | null>(null)
 
+  const navOffsetValue = React.useMemo(
+    () => (isMobile ? "0px" : NAV_RAIL_WIDTH),
+    [isMobile]
+  )
+
+  const getHandleStyle = React.useCallback(
+    (width: number): React.CSSProperties => {
+      const offset = RESIZE_HANDLE_WIDTH / 2
+      if (sideProp === "right") {
+        return { right: `${width - offset}px`, width: RESIZE_HANDLE_WIDTH }
+      }
+      const basePosition = `${width - offset}px`
+      return {
+        left: isMobile ? basePosition : `calc(${navOffsetValue} + ${basePosition})`,
+        width: RESIZE_HANDLE_WIDTH,
+      }
+    },
+    [isMobile, navOffsetValue, sideProp]
+  )
+
   const sidebarStyle = React.useMemo(
     () =>
       ({
         ...(incomingStyle ?? {}),
-        "--sidebar-width": `var(${LIVE_WIDTH_CSS_VAR}, ${sidebarWidth}px)`
+        "--sidebar-width": `var(${LIVE_WIDTH_CSS_VAR}, ${sidebarWidth}px)`,
+        "--nav-rail-width": navOffsetValue,
       }) as React.CSSProperties,
-    [incomingStyle, sidebarWidth]
+    [incomingStyle, navOffsetValue, sidebarWidth]
   )
 
   const applyWidthStyles = React.useCallback(
@@ -703,18 +786,27 @@ export function AppSidebar({
       }
       const handleEl = handleRef.current
       if (handleEl) {
-        const offset = RESIZE_HANDLE_WIDTH / 2
-        handleEl.style.width = `${RESIZE_HANDLE_WIDTH}px`
-        if (sideProp === "right") {
-          handleEl.style.right = `${width - offset}px`
-          handleEl.style.left = ""
-        } else {
-          handleEl.style.left = `${width - offset}px`
+        const handleStyle = getHandleStyle(width)
+        const resolveCssValue = (value?: string | number) => {
+          if (typeof value === "number") {
+            return `${value}px`
+          }
+          return value
+        }
+        const resolvedWidth = resolveCssValue(handleStyle.width) ?? `${RESIZE_HANDLE_WIDTH}px`
+        handleEl.style.width = resolvedWidth
+        const leftValue = resolveCssValue(handleStyle.left)
+        const rightValue = resolveCssValue(handleStyle.right)
+        if (leftValue !== undefined) {
+          handleEl.style.left = leftValue
           handleEl.style.right = ""
+        } else if (rightValue !== undefined) {
+          handleEl.style.right = rightValue
+          handleEl.style.left = ""
         }
       }
     },
-    [sideProp]
+    [getHandleStyle]
   )
 
   React.useEffect(() => {
@@ -730,16 +822,6 @@ export function AppSidebar({
     }
   }, [])
 
-  const getHandleStyle = React.useCallback(
-    (width: number): React.CSSProperties => {
-      const offset = RESIZE_HANDLE_WIDTH / 2
-      return sideProp === "right"
-        ? { right: `${width - offset}px`, width: RESIZE_HANDLE_WIDTH }
-        : { left: `${width - offset}px`, width: RESIZE_HANDLE_WIDTH }
-    },
-    [sideProp]
-  )
-
   const workspaceId = folders[0]?.workspaceId ?? "workspace-default"
   const uiInteractionPattern = React.useMemo(() => {
     if (!uiSelectedPatternId) return null
@@ -753,6 +835,9 @@ export function AppSidebar({
   const interactionSelectedPattern = uiInteractionPattern ?? selectedPattern ?? null
   const interactionSelectedFolderId = interactionSelectedPattern?.folderId ?? null
   const canCreatePattern = true
+  const activeNavItem = React.useMemo(() => {
+    return PRIMARY_NAV_ITEMS.find((item) => item.id === activeNavId) ?? PRIMARY_NAV_ITEMS[0]
+  }, [activeNavId])
 
   React.useEffect(() => {
     if (selectedFolderId && !folders.some((folder) => folder.id === selectedFolderId)) {
@@ -841,6 +926,14 @@ export function AppSidebar({
     setSelectedFolderId(null)
     setUiSelectedPatternId(null)
   }, [])
+
+  const handleNavItemSelect = React.useCallback(
+    (itemId: string) => {
+      setActiveNavId(itemId)
+      clearSelection()
+    },
+    [clearSelection]
+  )
 
   const handleTreeBackgroundClick = React.useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
@@ -1041,152 +1134,211 @@ export function AppSidebar({
   )
 
   const initialHandleStyle = React.useMemo(() => getHandleStyle(sidebarWidth), [getHandleStyle, sidebarWidth])
+  const mergedClassName = React.useMemo(
+    () => cn("overflow-hidden *:data-[sidebar=sidebar]:flex-row", className),
+    [className]
+  )
 
   return (
     <>
+      {!isMobile && (
+        <aside
+          className="fixed inset-y-0 z-30 hidden border-r border-border/60 bg-sidebar py-2 md:flex md:flex-col"
+          style={{ width: NAV_RAIL_WIDTH }}
+        >
+          <div className="px-1 pb-2">
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton size="lg" className="justify-center" aria-label="워크스페이스 홈">
+                  <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                    <Command className="size-4" />
+                  </div>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <SidebarMenu>
+              {PRIMARY_NAV_ITEMS.map((item) => (
+                <SidebarMenuItem key={item.id} className="flex justify-center">
+                  <NavRailButton
+                    item={item}
+                    isActive={activeNavId === item.id}
+                    onSelect={() => handleNavItemSelect(item.id)}
+                  />
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </div>
+          <div className="border-t border-border/60 pt-2">
+            <NavUser user={data.user} />
+          </div>
+        </aside>
+      )}
       <Sidebar
         variant="inset"
+        collapsible="icon"
         side={sideProp}
         style={sidebarStyle}
         data-resizing={isResizing ? "true" : undefined}
+        className={mergedClassName}
+        offset={isMobile ? 0 : "var(--nav-rail-width)"}
         {...props}
       >
-        <SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton size="lg" asChild>
-                <a href="#">
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <Command className="size-4" />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">Acme Inc</span>
-                  <span className="truncate text-xs">Enterprise</span>
-                </div>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
-      <SidebarContent className="flex flex-1 flex-col">
-        <ContextMenu>
-          <ContextMenuTrigger asChild>
-            <div
-              className="flex flex-1 flex-col"
-              onClick={handleTreeBackgroundClick}
-              onContextMenu={handleTreeBackgroundContextMenu}
-            >
-              <SidebarGroup>
-                <div className="px-1 pb-2">
-                  <Input
-                    type="search"
-                    placeholder="패턴 검색"
-                    aria-label="패턴 검색"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    className="h-8 border-border bg-sidebar text-sm"
-                    data-tree-interactive="true"
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col transition-opacity duration-200",
+            isSidebarCollapsed && "pointer-events-none opacity-0"
+          )}
+          aria-hidden={isSidebarCollapsed}
+        >
+          <SidebarHeader className="gap-3.5 border-b border-border/60 p-4">
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton size="lg" asChild>
+                  <a href="#">
+                    <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                      <Command className="size-4" />
+                    </div>
+                    <div className="grid flex-1 text-left text-sm leading-tight">
+                      <span className="truncate font-medium">Acme Inc</span>
+                      <span className="truncate text-xs">Enterprise</span>
+                    </div>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+            {activeNavItem && (
+              <div className="flex flex-col gap-1 text-left">
+                <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">
+                  현재 보기
+                </span>
+                <span className="text-base font-medium text-foreground">{activeNavItem.title}</span>
+                {activeNavItem.description && (
+                  <span className="text-xs text-muted-foreground">{activeNavItem.description}</span>
+                )}
+              </div>
+            )}
+          </SidebarHeader>
+          <SidebarContent className="flex flex-1 flex-col">
+            <ContextMenu>
+              <ContextMenuTrigger asChild>
+                <div
+                  className="flex flex-1 flex-col"
+                  onClick={handleTreeBackgroundClick}
+                  onContextMenu={handleTreeBackgroundContextMenu}
+                >
+                  <SidebarGroup>
+                    <div className="px-1 pb-2">
+                      <Input
+                        type="search"
+                        placeholder="패턴 검색"
+                        aria-label="패턴 검색"
+                        value={searchQuery}
+                        onChange={(event) => setSearchQuery(event.target.value)}
+                        className="h-8 border-border bg-sidebar text-sm"
+                        data-tree-interactive="true"
+                      />
+                    </div>
+                    <SidebarGroupLabel className="flex items-center justify-between gap-2">
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="select-none"
+                        onClick={clearSelection}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault()
+                            clearSelection()
+                          }
+                        }}
+                      >
+                        내 아카이브
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="size-7 text-muted-foreground"
+                          aria-label="새 패턴 추가"
+                          onClick={() => openPatternInput(null)}
+                        >
+                          <FilePlus className="size-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="size-7 text-muted-foreground"
+                          aria-label="새 폴더 추가"
+                          onClick={() => openFolderInput(null)}
+                        >
+                          <FolderPlus className="size-4" />
+                        </Button>
+                      </div>
+                    </SidebarGroupLabel>
+                    <SidebarGroupContent className="flex flex-col gap-2">
+                      <div className="rounded-md">
+                        <FolderTree
+                          folders={folders}
+                          patterns={patterns}
+                          selectedPatternId={uiSelectedPatternId ?? undefined}
+                          onPatternSelect={handlePatternSelect}
+                          pendingPatternInput={pendingPatternInput}
+                          pendingFolderInput={pendingFolderInput}
+                          onPatternInputSubmit={handlePatternInputSubmit}
+                          onPatternInputCancel={() => setPendingPatternInput(null)}
+                          onFolderInputSubmit={handleFolderInputSubmit}
+                          onFolderInputCancel={() => setPendingFolderInput(null)}
+                          selectedFolderId={selectedFolderId}
+                          onFolderSelect={handleFolderSelect}
+                          onPatternCreateRequest={beginPatternCreation}
+                          onFolderCreateRequest={beginFolderCreation}
+                          onPatternDelete={handlePatternDelete}
+                          onFolderDelete={handleFolderDelete}
+                        />
+                      </div>
+                    </SidebarGroupContent>
+                  </SidebarGroup>
+                  <div
+                    className="flex-1"
+                    onClick={handleTreeBackgroundClick}
+                    onContextMenu={handleTreeBackgroundContextMenu}
+                    data-tree-interactive="false"
                   />
                 </div>
-                <SidebarGroupLabel className="flex items-center justify-between gap-2">
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    className="select-none"
-                    onClick={clearSelection}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault()
-                        clearSelection()
-                      }
-                    }}
-                  >
-                    내 아카이브
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="size-7 text-muted-foreground"
-                      aria-label="새 패턴 추가"
-                      onClick={() => openPatternInput(null)}
-                    >
-                      <FilePlus className="size-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="size-7 text-muted-foreground"
-                      aria-label="새 폴더 추가"
-                      onClick={() => openFolderInput(null)}
-                    >
-                      <FolderPlus className="size-4" />
-                    </Button>
-                  </div>
-                </SidebarGroupLabel>
-                <SidebarGroupContent className="flex flex-col gap-2">
-                  <div className="rounded-md">
-                    <FolderTree
-                      folders={folders}
-                      patterns={patterns}
-                      selectedPatternId={uiSelectedPatternId ?? undefined}
-                      onPatternSelect={handlePatternSelect}
-                      pendingPatternInput={pendingPatternInput}
-                      pendingFolderInput={pendingFolderInput}
-                      onPatternInputSubmit={handlePatternInputSubmit}
-                      onPatternInputCancel={() => setPendingPatternInput(null)}
-                      onFolderInputSubmit={handleFolderInputSubmit}
-                      onFolderInputCancel={() => setPendingFolderInput(null)}
-                      selectedFolderId={selectedFolderId}
-                      onFolderSelect={handleFolderSelect}
-                      onPatternCreateRequest={beginPatternCreation}
-                      onFolderCreateRequest={beginFolderCreation}
-                      onPatternDelete={handlePatternDelete}
-                      onFolderDelete={handleFolderDelete}
-                    />
-                  </div>
-                </SidebarGroupContent>
-              </SidebarGroup>
-              <div
-                className="flex-1"
-                onClick={handleTreeBackgroundClick}
-                onContextMenu={handleTreeBackgroundContextMenu}
-                data-tree-interactive="false"
-              />
-            </div>
-          </ContextMenuTrigger>
-          <ContextMenuContent
-            align="start"
-            className="w-48"
-            onCloseAutoFocus={(event) => event.preventDefault()} // 새 입력창 포커스 유지
-          >
-            <ContextMenuItem onSelect={() => openPatternInput(null)}>
-              새 패턴
-            </ContextMenuItem>
-            <ContextMenuItem onSelect={() => openFolderInput(null)}>새 폴더</ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenu>
-      </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={data.user} />
-      </SidebarFooter>
+              </ContextMenuTrigger>
+              <ContextMenuContent
+                align="start"
+                className="w-48"
+                onCloseAutoFocus={(event) => event.preventDefault()} // 새 입력창 포커스 유지
+              >
+                <ContextMenuItem onSelect={() => openPatternInput(null)}>
+                  새 패턴
+                </ContextMenuItem>
+                <ContextMenuItem onSelect={() => openFolderInput(null)}>새 폴더</ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
+          </SidebarContent>
+        </div>
       </Sidebar>
-      <div
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="사이드바 너비 조절"
-        className={cn(
-          "fixed inset-y-0 z-30 hidden cursor-col-resize touch-none md:block",
-          "transition-colors",
-          isResizing ? "bg-primary/20" : "bg-transparent hover:bg-primary/10"
-        )}
-        ref={handleRef}
-        style={initialHandleStyle}
-        onPointerDown={handleResizeStart}
-        data-sidebar-resizer="true"
-      />
+      {!isSidebarCollapsed && (
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="사이드바 너비 조절"
+          className={cn(
+            "fixed inset-y-0 z-30 hidden cursor-col-resize touch-none md:block",
+            "transition-colors",
+            isResizing ? "bg-primary/20" : "bg-transparent hover:bg-primary/10"
+          )}
+          ref={handleRef}
+          style={initialHandleStyle}
+          onPointerDown={handleResizeStart}
+          data-sidebar-resizer="true"
+        />
+      )}
     </>
   )
 }

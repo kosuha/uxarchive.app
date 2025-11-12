@@ -40,6 +40,7 @@ export default function Page() {
       <AppSidebar
         selectedPatternId={selectedPatternId}
         onPatternSelect={setSelectedPatternId}
+        className="p-0 pr-2"
       />
       <SidebarInset>
         <header className="flex h-10 shrink-0 items-center gap-2">
