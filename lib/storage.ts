@@ -78,11 +78,7 @@ const notifySubscribers = <K extends StorageCollectionKey>(key: K, payload: Stor
   subscribers[key].forEach((listener) => listener(clone(payload)))
 }
 
-type CollectionItem<K extends StorageCollectionKey> = StorageCollections[K] extends (infer Item)[]
-  ? Item extends IdentifiableEntity
-    ? Item
-    : never
-  : never
+type CollectionItem<K extends StorageCollectionKey> = StorageCollections[K][number]
 
 export interface CollectionRepository<K extends StorageCollectionKey> {
   key: K
@@ -100,7 +96,7 @@ export interface CollectionRepository<K extends StorageCollectionKey> {
 const createCollectionRepository = <K extends StorageCollectionKey>(key: K): CollectionRepository<K> => {
   const getAll = () => readCollection(key)
 
-  const setAll = (items: CollectionItem<K>[]) => writeCollection(key, items)
+  const setAll = (items: CollectionItem<K>[]) => writeCollection(key, items as StorageCollections[K])
 
   const getById = (id: string) => getAll().find((item) => item.id === id)
 

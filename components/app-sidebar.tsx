@@ -268,7 +268,11 @@ export function AppSidebar({
       const folderIdSet = new Set(folderIds)
       folderIds.forEach((id) => storageService.folders.remove(id))
 
-      const affectedPatterns = patterns.filter((pattern) => folderIdSet.has(pattern.folderId))
+      const affectedPatterns = patterns.filter((pattern) => {
+        const folderId = pattern.folderId
+        if (!folderId) return false
+        return folderIdSet.has(folderId)
+      })
       if (affectedPatterns.length) {
         const deletedPatternIds = new Set(affectedPatterns.map((pattern) => pattern.id))
         affectedPatterns.forEach((pattern) => storageService.patterns.remove(pattern.id))
@@ -281,7 +285,11 @@ export function AppSidebar({
       if (selectedFolderId && folderIdSet.has(selectedFolderId)) {
         setSelectedFolderId(null)
       }
-      if (pendingPatternInput && folderIdSet.has(pendingPatternInput.folderId)) {
+      if (
+        pendingPatternInput &&
+        pendingPatternInput.folderId &&
+        folderIdSet.has(pendingPatternInput.folderId)
+      ) {
         setPendingPatternInput(null)
       }
       if (

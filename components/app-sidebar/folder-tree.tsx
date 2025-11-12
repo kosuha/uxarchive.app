@@ -44,7 +44,7 @@ type FolderTreeProps = {
   folders: Folder[]
   patterns: Pattern[]
   selectedPatternId?: string
-  onPatternSelect?: (patternId?: string) => void
+  onPatternSelect?: (patternId: string) => void
   pendingPatternInput?: PendingPatternInput | null
   pendingFolderInput?: PendingFolderInput | null
   onPatternInputSubmit?: (name: string, folderId: string | null) => void
@@ -97,7 +97,7 @@ export function FolderTree({
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1.5">
       {shouldShowRootFolders && (
         <FolderMenuList
           nodes={tree}
@@ -200,7 +200,7 @@ type FolderMenuListProps = {
   parentId?: string | null
   nested?: boolean
   selectedPatternId?: string
-  onPatternSelect?: (patternId?: string) => void
+  onPatternSelect?: (patternId: string) => void
   pendingPatternInput?: PendingPatternInput | null
   pendingFolderInput?: PendingFolderInput | null
   onPatternInputSubmit?: (name: string, folderId: string | null) => void
@@ -238,7 +238,7 @@ function FolderMenuList({
     pendingFolderInput && pendingFolderInput.parentId === (parentId ?? null)
 
   return (
-    <SidebarMenu className={nested ? "gap-1" : undefined}>
+    <SidebarMenu className="gap-1.5">
       {nodes.map((node) => (
         <SidebarMenuItem key={node.folder.id} className="px-0">
           <FolderNodeItem
@@ -290,7 +290,7 @@ function FolderMenuList({
 type FolderNodeItemProps = {
   node: FolderTreeNode
   selectedPatternId?: string
-  onPatternSelect?: (patternId?: string) => void
+  onPatternSelect?: (patternId: string) => void
   pendingPatternInput?: PendingPatternInput | null
   pendingFolderInput?: PendingFolderInput | null
   onPatternInputSubmit?: (name: string, folderId: string | null) => void
@@ -407,11 +407,7 @@ function FolderNodeItem({
             </SidebarMenuButton>
           </CollapsibleTrigger>
         </ContextMenuTrigger>
-        <ContextMenuContent
-          align="start"
-          className="w-44"
-          onCloseAutoFocus={(event) => event.preventDefault()}
-        >
+        <ContextMenuContent className="w-44" onCloseAutoFocus={(event) => event.preventDefault()}>
           <ContextMenuItem onSelect={() => onPatternCreateRequest?.(node.folder.id)}>
             새 패턴
           </ContextMenuItem>
@@ -477,7 +473,7 @@ type PatternListProps = {
   showEmpty?: boolean
   nested?: boolean
   selectedPatternId?: string
-  onPatternSelect?: (patternId?: string) => void
+  onPatternSelect?: (patternId: string) => void
   pendingPatternInput?: PendingPatternInput | null
   onPatternInputSubmit?: (name: string, folderId: string | null) => void
   onPatternInputCancel?: () => void
@@ -506,7 +502,7 @@ function PatternList({
   return (
     <>
       {(hasPatterns || showCreationRow) && (
-        <SidebarMenu className={cn(nested ? "ml-4" : "mt-1")}>
+        <SidebarMenu className={cn("gap-1.5", nested ? "ml-4" : "mt-1")}>
           {patterns.map((pattern) => {
             const isSelected = pattern.id === selectedPatternId
             return (
@@ -562,7 +558,7 @@ type PatternMenuItemProps = {
   pattern: Pattern
   isSelected: boolean
   folderId: string | null
-  onPatternSelect?: (patternId?: string) => void
+  onPatternSelect?: (patternId: string) => void
   onPatternCreateRequest?: (folderId: string | null) => void
   onFolderCreateRequest?: (parentId: string | null) => void
   onPatternDelete?: (patternId: string) => void
@@ -601,11 +597,7 @@ function PatternMenuItem({
           </div>
         </SidebarMenuButton>
       </ContextMenuTrigger>
-      <ContextMenuContent
-        align="start"
-        className="w-44"
-        onCloseAutoFocus={(event) => event.preventDefault()}
-      >
+      <ContextMenuContent className="w-44" onCloseAutoFocus={(event) => event.preventDefault()}>
         <ContextMenuItem onSelect={() => onPatternCreateRequest?.(folderId)}>
           새 패턴
         </ContextMenuItem>

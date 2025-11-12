@@ -1,22 +1,23 @@
 export type TagType = "service-category" | "pattern-type" | "custom"
 
-export interface Tag {
+export interface IdentifiableEntity {
   id: string
+}
+
+export interface Tag extends IdentifiableEntity {
   label: string
   type: TagType
   color?: string
 }
 
-export interface Folder {
-  id: string
+export interface Folder extends IdentifiableEntity {
   workspaceId: string
   name: string
   parentId?: string | null
   createdAt: string
 }
 
-export interface Pattern {
-  id: string
+export interface Pattern extends IdentifiableEntity {
   folderId: string | null
   name: string
   serviceName: string
@@ -29,25 +30,19 @@ export interface Pattern {
   captureCount: number
 }
 
-export interface Capture {
-  id: string
+export interface Capture extends IdentifiableEntity {
   patternId: string
   imageUrl: string
   order: number
   createdAt: string
 }
 
-export interface Insight {
-  id: string
+export interface Insight extends IdentifiableEntity {
   captureId: string
   x: number
   y: number
   note: string
   createdAt: string
-}
-
-export interface IdentifiableEntity {
-  id: string
 }
 
 export interface StorageCollections {

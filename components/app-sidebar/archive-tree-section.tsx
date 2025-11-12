@@ -156,11 +156,7 @@ export function ArchiveTreeSection({ title, state, handlers }: ArchiveTreeSectio
           />
         </div>
       </ContextMenuTrigger>
-      <ContextMenuContent
-        align="start"
-        className="w-48"
-        onCloseAutoFocus={(event) => event.preventDefault()}
-      >
+      <ContextMenuContent className="w-48" onCloseAutoFocus={(event) => event.preventDefault()}>
         <ContextMenuItem onSelect={onRootPatternClick}>새 패턴</ContextMenuItem>
         <ContextMenuItem onSelect={onRootFolderClick}>새 폴더</ContextMenuItem>
       </ContextMenuContent>
