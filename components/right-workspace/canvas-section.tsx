@@ -5,7 +5,7 @@ import Image from "next/image"
 import { Layer, Stage, Image as KonvaImage } from "react-konva"
 import { Html } from "react-konva-utils"
 import useImage from "use-image"
-import { Camera, Maximize2, MessageCircle, Share2, Trash2 } from "lucide-react"
+import { Camera, GalleryHorizontalEnd, ImageUpscale, Maximize2, MessageCircle, Plus, Share2, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -455,7 +455,7 @@ function CaptureCanvas({
               handleFitToScreen()
             }}
           >
-            <Maximize2 className="size-4" />
+            <ImageUpscale className="size-4" />
           </Button>
           {canvasSize.width > 0 && canvasSize.height > 0 ? (
             <div
@@ -585,11 +585,21 @@ function CaptureStrip({
   return (
     <div className="border-t border-border/60 px-4 py-4">
       <div className="mb-3 flex items-center justify-between px-2">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          <Camera className="size-3.5" />
-          캡처 스트립
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <GalleryHorizontalEnd className="size-3.5" />
+            캡처 스트립
+          </div>
+          <span className="text-xs text-muted-foreground">{captures.length}장</span>
         </div>
-        <span className="text-xs text-muted-foreground">{captures.length}장</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => onSelect(captures[0].id)}
+          aria-label="캡쳐 이미지 업로드"
+        >
+          <Plus className="size-4" />
+        </Button>
       </div>
       <div className="flex gap-3 overflow-x-auto px-2">
         {captures.map((capture) => {
