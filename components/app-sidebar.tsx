@@ -8,6 +8,7 @@ import {
   FilePlus,
   Folder as FolderIcon,
   FolderPlus,
+  Search,
   Star,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
@@ -70,21 +71,27 @@ type NavRailButtonProps = {
 
 const PRIMARY_NAV_ITEMS: NavItem[] = [
   {
-    id: "my-archive",
-    title: "내 아카이브",
-    description: "저장한 패턴과 폴더 전체",
+    id: "explore",
+    title: "EXPLORE",
+    description: "",
     icon: FolderIcon,
   },
   {
+    id: "search",
+    title: "SEARCH",
+    description: "",
+    icon: Search,
+  },
+  {
     id: "recent-updates",
-    title: "최근 업데이트",
-    description: "최근 수정한 패턴을 빠르게 살펴봅니다.",
+    title: "RECENT UPDATES",
+    description: "",
     icon: Clock,
   },
   {
     id: "favorites",
-    title: "즐겨찾기",
-    description: "핵심 패턴만 집중해서 확인하세요.",
+    title: "FAVORITES",
+    description: "",
     icon: Star,
   },
 ]
@@ -135,7 +142,7 @@ const SIDEBAR_MAX_WIDTH = 480
 const SIDEBAR_DEFAULT_WIDTH = 320
 const RESIZE_HANDLE_WIDTH = 8
 const LIVE_WIDTH_CSS_VAR = "--app-sidebar-live-width"
-const NAV_RAIL_WIDTH = "calc(var(--sidebar-width-icon) + 1px)"
+const NAV_RAIL_WIDTH = "calc(3rem + 1px)"
 
 const clamp = (value: number, min: number, max: number) => {
   return Math.min(Math.max(value, min), max)
@@ -769,15 +776,19 @@ export function AppSidebar({
     [isMobile, navOffsetValue, sideProp]
   )
 
-  const sidebarStyle = React.useMemo(
-    () =>
-      ({
-        ...(incomingStyle ?? {}),
-        "--sidebar-width": `var(${LIVE_WIDTH_CSS_VAR}, ${sidebarWidth}px)`,
-        "--nav-rail-width": navOffsetValue,
-      }) as React.CSSProperties,
-    [incomingStyle, navOffsetValue, sidebarWidth]
-  )
+  const sidebarStyle = React.useMemo(() => {
+    const styleObject = {
+      ...(incomingStyle ?? {}),
+      "--sidebar-width": `var(${LIVE_WIDTH_CSS_VAR}, ${sidebarWidth}px)`,
+      "--nav-rail-width": navOffsetValue,
+    } as React.CSSProperties & Record<string, string | number>
+
+    if (isSidebarCollapsed) {
+      styleObject["--sidebar-collapsed-width"] = "0px"
+    }
+
+    return styleObject
+  }, [incomingStyle, isSidebarCollapsed, navOffsetValue, sidebarWidth])
 
   const applyWidthStyles = React.useCallback(
     (width: number) => {
@@ -1193,26 +1204,8 @@ export function AppSidebar({
           aria-hidden={isSidebarCollapsed}
         >
           <SidebarHeader className="gap-3.5 border-b border-border/60 p-4">
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton size="lg" asChild>
-                  <a href="#">
-                    <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                      <Command className="size-4" />
-                    </div>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-medium">Acme Inc</span>
-                      <span className="truncate text-xs">Enterprise</span>
-                    </div>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
             {activeNavItem && (
               <div className="flex flex-col gap-1 text-left">
-                <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">
-                  현재 보기
-                </span>
                 <span className="text-base font-medium text-foreground">{activeNavItem.title}</span>
                 {activeNavItem.description && (
                   <span className="text-xs text-muted-foreground">{activeNavItem.description}</span>
@@ -1229,17 +1222,6 @@ export function AppSidebar({
                   onContextMenu={handleTreeBackgroundContextMenu}
                 >
                   <SidebarGroup>
-                    <div className="px-1 pb-2">
-                      <Input
-                        type="search"
-                        placeholder="패턴 검색"
-                        aria-label="패턴 검색"
-                        value={searchQuery}
-                        onChange={(event) => setSearchQuery(event.target.value)}
-                        className="h-8 border-border bg-sidebar text-sm"
-                        data-tree-interactive="true"
-                      />
-                    </div>
                     <SidebarGroupLabel className="flex items-center justify-between gap-2">
                       <span
                         role="button"
