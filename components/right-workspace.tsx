@@ -2,12 +2,12 @@
 
 import * as React from "react"
 
-import { CanvasSection } from "@/components/right-workspace/canvas-section"
+import { CanvasSection, type CaptureUploadPayload } from "@/components/right-workspace/canvas-section"
 import { InsightsPanel } from "@/components/right-workspace/insights-panel"
 import { PatternMetadataCard } from "@/components/right-workspace/pattern-metadata-card"
 import type { CanvasPoint } from "@/components/right-workspace/shared"
 import { storageService } from "@/lib/storage"
-import type { Insight } from "@/lib/types"
+import type { Capture, Insight } from "@/lib/types"
 import { useStorageCollections } from "@/lib/use-storage-collections"
 
 type RightWorkspaceProps = {
@@ -20,6 +20,30 @@ const generateInsightId = () => {
   }
   return `insight-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
+
+const generateCaptureId = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID()
+  }
+  return `capture-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+const readFileAsDataUrl = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result
+      if (typeof result === "string") {
+        resolve(result)
+        return
+      }
+      reject(new Error("이미지 데이터를 변환할 수 없습니다."))
+    }
+    reader.onerror = () => {
+      reject(reader.error ?? new Error("이미지 파일을 읽는 중 오류가 발생했습니다."))
+    }
+    reader.readAsDataURL(file)
+  })
 
 export function RightWorkspace({ patternId }: RightWorkspaceProps) {
   const { patterns, captures, insights, tags } = useStorageCollections()
@@ -123,6 +147,44 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
     }))
   }, [])
 
+  const handleUploadCapture = React.useCallback(
+    async ({ file, order }: CaptureUploadPayload) => {
+      if (!pattern) {
+        throw new Error("패턴 정보를 찾을 수 없어 캡처를 추가할 수 없습니다.")
+      }
+      const imageUrl = await readFileAsDataUrl(file)
+      const allCaptures = storageService.captures.getAll()
+      const currentPatternCaptures = allCaptures.filter((capture) => capture.patternId === pattern.id)
+      const otherCaptures = allCaptures.filter((capture) => capture.patternId !== pattern.id)
+      const maxOrder = currentPatternCaptures.length + 1
+      const normalizedOrder = Math.min(Math.max(order, 1), maxOrder)
+
+      const adjustedPatternCaptures = currentPatternCaptures.map((capture) => {
+        if (capture.order >= normalizedOrder) {
+          return { ...capture, order: capture.order + 1 }
+        }
+        return capture
+      })
+
+      const newCapture: Capture = {
+        id: generateCaptureId(),
+        patternId: pattern.id,
+        imageUrl,
+        order: normalizedOrder,
+        createdAt: new Date().toISOString(),
+      }
+
+      storageService.captures.setAll([...otherCaptures, ...adjustedPatternCaptures, newCapture])
+      storageService.patterns.update(pattern.id, (current) => ({
+        ...current,
+        captureCount: (current.captureCount ?? 0) + 1,
+        updatedAt: new Date().toISOString(),
+      }))
+      setActiveCaptureId(newCapture.id)
+    },
+    [pattern, setActiveCaptureId]
+  )
+
   if (!pattern) {
     return (
       <div className="text-muted-foreground flex flex-1 items-center justify-center rounded-md border border-dashed">
@@ -153,6 +215,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
         onSelectCapture={(id) => setActiveCaptureId(id)}
         onToggleAddMode={handleToggleAddMode}
         onUpdateInsightPosition={handleUpdateInsightPosition}
+        onUploadCapture={handleUploadCapture}
       />
       <aside className="flex h-full w-full max-w-[360px] flex-1 basis-0 min-h-0 flex-col gap-4 overflow-hidden">
         <PatternMetadataCard pattern={pattern} allTags={tags} />

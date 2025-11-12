@@ -5,9 +5,19 @@ import Image from "next/image"
 import { Layer, Stage, Image as KonvaImage } from "react-konva"
 import { Html } from "react-konva-utils"
 import useImage from "use-image"
-import { Camera, GalleryHorizontalEnd, ImageUpscale, Maximize2, MessageCircle, Plus, Share2, Trash2 } from "lucide-react"
+import { Camera, GalleryHorizontalEnd, ImageUpscale, Loader2, MessageCircle, Plus, Share2, Trash2, UploadCloud } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 import {
   Tooltip,
   TooltipContent,
@@ -24,6 +34,11 @@ import { cn } from "@/lib/utils"
 
 import { allowContextMenuProps, CanvasPoint, clampPercentage } from "./shared"
 
+export type CaptureUploadPayload = {
+  file: File
+  order: number
+}
+
 type CanvasSectionProps = {
   activeCapture?: Capture
   activeCaptureId?: string
@@ -39,6 +54,7 @@ type CanvasSectionProps = {
   onSelectCapture: (captureId: string) => void
   onToggleAddMode: () => void
   onUpdateInsightPosition: (insightId: string, point: CanvasPoint) => void
+  onUploadCapture: (payload: CaptureUploadPayload) => Promise<void> | void
 }
 
 export function CanvasSection({
@@ -56,6 +72,7 @@ export function CanvasSection({
   onSelectCapture,
   onToggleAddMode,
   onUpdateInsightPosition,
+  onUploadCapture,
 }: CanvasSectionProps) {
   return (
     <section className="flex flex-1 basis-0 min-h-0 flex-col rounded-xl border border-border/60 bg-gradient-to-b from-card to-muted/20 shadow-sm md:min-h-[640px]">
@@ -80,6 +97,7 @@ export function CanvasSection({
         captures={captures}
         activeId={activeCaptureId}
         onSelect={onSelectCapture}
+        onUploadCapture={onUploadCapture}
       />
     </section>
   )
@@ -573,14 +591,14 @@ function CaptureStrip({
   captures,
   activeId,
   onSelect,
+  onUploadCapture,
 }: {
   captures: Capture[]
   activeId?: string
   onSelect: (id: string) => void
+  onUploadCapture: (payload: CaptureUploadPayload) => Promise<void> | void
 }) {
-  if (!captures.length) {
-    return null
-  }
+  const hasCaptures = captures.length > 0
 
   return (
     <div className="border-t border-border/60 px-4 py-4">
@@ -592,44 +610,232 @@ function CaptureStrip({
           </div>
           <span className="text-xs text-muted-foreground">{captures.length}장</span>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => onSelect(captures[0].id)}
-          aria-label="캡쳐 이미지 업로드"
-        >
+        <CaptureUploadDialog
+          captureCount={captures.length}
+          onUploadCapture={onUploadCapture}
+        />
+      </div>
+      {hasCaptures ? (
+        <div className="flex gap-3 overflow-x-auto px-2">
+          {captures.map((capture) => {
+            const isActive = activeId === capture.id
+            return (
+              <button
+                type="button"
+                key={capture.id}
+                onClick={() => onSelect(capture.id)}
+                className={cn(
+                  "relative h-24 w-20 shrink-0 overflow-hidden rounded-xl border text-left transition-all focus-visible:ring-2 focus-visible:ring-ring",
+                  isActive
+                    ? "border-primary/70 shadow-md"
+                    : "border-border/60 hover:border-primary/60"
+                )}
+              >
+                <Image
+                  src={capture.imageUrl}
+                  alt="캡처 썸네일"
+                  fill
+                  sizes="80px"
+                  className="object-cover"
+                />
+                <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-1.5 text-[10px] font-medium text-white">
+                  {capture.order}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="flex min-h-[120px] flex-col items-center justify-center rounded-lg border border-dashed border-border/60 px-4 text-sm text-muted-foreground">
+          아직 업로드된 캡처가 없습니다.
+          <span className="mt-1 text-xs text-muted-foreground/80">
+            새 캡처 이미지를 추가해보세요.
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CaptureUploadDialog({
+  captureCount,
+  onUploadCapture,
+}: {
+  captureCount: number
+  onUploadCapture: (payload: CaptureUploadPayload) => Promise<void> | void
+}) {
+  const [open, setOpen] = React.useState(false)
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null)
+  const [order, setOrder] = React.useState(captureCount + 1)
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const objectUrlRef = React.useRef<string | null>(null)
+  const fileInputId = React.useId()
+
+  const resetState = React.useCallback(() => {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current)
+      objectUrlRef.current = null
+    }
+    setSelectedFile(null)
+    setPreviewUrl(null)
+    setOrder(captureCount + 1)
+    setErrorMessage(null)
+    setIsSubmitting(false)
+  }, [captureCount])
+
+  React.useEffect(() => {
+    if (!open) {
+      resetState()
+    }
+  }, [open, resetState])
+
+  React.useEffect(() => {
+    setOrder((current) => {
+      const maxOrder = captureCount + 1
+      const normalized = Math.min(Math.max(current, 1), maxOrder)
+      return Number.isNaN(normalized) ? maxOrder : normalized
+    })
+  }, [captureCount])
+
+  React.useEffect(() => {
+    return () => {
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current)
+      }
+    }
+  }, [])
+
+  const updatePreview = React.useCallback((file: File | null) => {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current)
+      objectUrlRef.current = null
+    }
+    if (!file) {
+      setSelectedFile(null)
+      setPreviewUrl(null)
+      return
+    }
+    const nextUrl = URL.createObjectURL(file)
+    objectUrlRef.current = nextUrl
+    setSelectedFile(file)
+    setPreviewUrl(nextUrl)
+  }, [])
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null
+    updatePreview(file)
+  }
+
+  const handleDrop = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault()
+    const file = event.dataTransfer.files?.[0] ?? null
+    updatePreview(file)
+  }
+
+  const handleDragOver = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault()
+    event.dataTransfer.dropEffect = "copy"
+  }
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!selectedFile) {
+      setErrorMessage("업로드할 이미지를 선택해주세요.")
+      return
+    }
+    setIsSubmitting(true)
+    setErrorMessage(null)
+    try {
+      const maxOrder = captureCount + 1
+      const normalizedOrder = Math.min(Math.max(order, 1), maxOrder)
+      await onUploadCapture({ file: selectedFile, order: normalizedOrder })
+      setOpen(false)
+    } catch (error) {
+      console.error("capture upload preparation failed", error)
+      setErrorMessage("업로드를 준비하는 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="캡쳐 이미지 업로드">
           <Plus className="size-4" />
         </Button>
-      </div>
-      <div className="flex gap-3 overflow-x-auto px-2">
-        {captures.map((capture) => {
-          const isActive = activeId === capture.id
-          return (
-            <button
-              type="button"
-              key={capture.id}
-              onClick={() => onSelect(capture.id)}
-              className={cn(
-                "relative h-24 w-20 shrink-0 overflow-hidden rounded-xl border text-left transition-all focus-visible:ring-2 focus-visible:ring-ring",
-                isActive
-                  ? "border-primary/70 shadow-md"
-                  : "border-border/60 hover:border-primary/60"
-              )}
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>캡처 이미지 업로드</DialogTitle>
+          <DialogDescription>
+            파일을 선택하고 순서를 지정하면 추후 서버 업로드 API와 연결할 준비가 완료됩니다.
+          </DialogDescription>
+        </DialogHeader>
+        <form className="space-y-5" onSubmit={handleSubmit}>
+          <div className="space-y-2">
+            <label
+              htmlFor={fileInputId}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-border/70 bg-muted/40 px-6 py-8 text-center text-sm text-muted-foreground transition hover:border-primary/60 hover:bg-primary/5"
             >
-              <Image
-                src={capture.imageUrl}
-                alt="캡처 썸네일"
-                fill
-                sizes="80px"
-                className="object-cover"
-              />
-              <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-1.5 text-[10px] font-medium text-white">
-                {capture.order}
-              </span>
-            </button>
-          )
-        })}
-      </div>
-    </div>
+              <UploadCloud className="size-6 text-primary" />
+              <div className="space-y-1">
+                <p className="font-medium text-foreground">이미지를 드래그하거나 클릭해서 선택하세요</p>
+                <p className="text-xs text-muted-foreground/80">PNG, JPG, SVG 등 이미지 파일 지원</p>
+              </div>
+              <p className="text-xs text-muted-foreground/70">파일은 아직 서버에 저장되지 않으며 검토 후 업로드됩니다.</p>
+            </label>
+            <input
+              id={fileInputId}
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={handleFileChange}
+            />
+          </div>
+
+          {previewUrl && (
+            <div className="space-y-2 rounded-lg border border-border/70 bg-muted/20 p-3">
+              <div className="relative aspect-video w-full overflow-hidden rounded-md bg-background">
+                <Image
+                  src={previewUrl}
+                  alt="업로드 미리보기"
+                  fill
+                  sizes="380px"
+                  className="object-contain"
+                  unoptimized
+                />
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {selectedFile?.name} ({Math.round((selectedFile?.size ?? 0) / 1024)} KB)
+              </div>
+            </div>
+          )}
+
+          {errorMessage && (
+            <p className="text-sm font-medium text-destructive">{errorMessage}</p>
+          )}
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setOpen(false)}
+              disabled={isSubmitting}
+            >
+              취소
+            </Button>
+            <Button type="submit" disabled={!selectedFile || isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
+              업로드 준비
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
