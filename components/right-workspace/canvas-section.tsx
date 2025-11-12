@@ -4,6 +4,7 @@ import * as React from "react"
 import Image from "next/image"
 import { Layer, Stage, Image as KonvaImage } from "react-konva"
 import { Html } from "react-konva-utils"
+import useImage from "use-image"
 import { Camera, Maximize2, MessageCircle, Share2, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -156,7 +157,7 @@ function CaptureCanvas({
   const fitScaleRef = React.useRef(0.5)
   const hasUserAdjustedRef = React.useRef(false)
   const [imageDimensions, setImageDimensions] = React.useState<{ width: number; height: number } | null>(null)
-  const [imageElement, setImageElement] = React.useState<HTMLImageElement | null>(null)
+  const [imageElement] = useImage(capture?.imageUrl ?? null, "anonymous")
   const [canvasSize, setCanvasSize] = React.useState<{ width: number; height: number }>({ width: 0, height: 0 })
 
   React.useEffect(() => {
@@ -191,13 +192,13 @@ function CaptureCanvas({
     })
     observer.observe(element)
     return () => observer.disconnect()
-  }, [])
+  }, [capture?.id])
 
   React.useEffect(() => {
     if (!canvasRef.current) return
     const rect = canvasRef.current.getBoundingClientRect()
     setCanvasSize({ width: rect.width, height: rect.height })
-  }, [])
+  }, [capture?.id])
 
   const handleCanvasClick = React.useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
@@ -262,33 +263,15 @@ function CaptureCanvas({
   }, [])
 
   React.useEffect(() => {
-    if (typeof window === "undefined") return
-    if (!capture?.imageUrl) {
+    if (!imageElement) {
       setImageDimensions(null)
-      setImageElement(null)
       return
     }
-    let isCancelled = false
-    const preloadImage = new window.Image()
-    preloadImage.crossOrigin = "anonymous"
-    preloadImage.src = capture.imageUrl
-    preloadImage.onload = () => {
-      if (isCancelled) return
-      const width = preloadImage.naturalWidth || preloadImage.width
-      const height = preloadImage.naturalHeight || preloadImage.height
-      if (!width || !height) return
-      setImageDimensions({ width, height })
-      setImageElement(preloadImage)
-    }
-    preloadImage.onerror = () => {
-      if (isCancelled) return
-      setImageDimensions(null)
-      setImageElement(null)
-    }
-    return () => {
-      isCancelled = true
-    }
-  }, [capture?.imageUrl])
+    const width = imageElement.naturalWidth || imageElement.width
+    const height = imageElement.naturalHeight || imageElement.height
+    if (!width || !height) return
+    setImageDimensions({ width, height })
+  }, [imageElement])
 
   const calculateFitTransform = React.useCallback(() => {
     if (!imageDimensions || canvasSize.width === 0 || canvasSize.height === 0) {
@@ -430,7 +413,6 @@ function CaptureCanvas({
     setIsPanning(false)
     panCleanupRef.current?.()
     setImageDimensions(null)
-    setImageElement(null)
     hasUserAdjustedRef.current = false
   }, [capture?.id])
 
@@ -442,6 +424,9 @@ function CaptureCanvas({
       </div>
     )
   }
+
+  const contentWidth = Math.max(imageDimensions?.width ?? canvasSize.width, 1)
+  const contentHeight = Math.max(imageDimensions?.height ?? canvasSize.height, 1)
 
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden">
@@ -473,96 +458,96 @@ function CaptureCanvas({
             <Maximize2 className="size-4" />
           </Button>
           {canvasSize.width > 0 && canvasSize.height > 0 ? (
-            <Stage
-              width={Math.max(canvasSize.width, 1)}
-              height={Math.max(canvasSize.height, 1)}
-              scaleX={canvasTransform.scale}
-              scaleY={canvasTransform.scale}
-              x={canvasTransform.x}
-              y={canvasTransform.y}
-              className="block"
-              style={{ width: "100%", height: "100%" }}
+            <div
+              className="absolute left-0 top-0 origin-top-left"
+              style={{
+                width: contentWidth,
+                height: contentHeight,
+                transform: `translate(${canvasTransform.x}px, ${canvasTransform.y}px) scale(${canvasTransform.scale})`,
+              }}
             >
-              <Layer listening={false}>
-                {imageElement && imageDimensions ? (
-                  <KonvaImage
-                    image={imageElement}
-                    width={imageDimensions.width}
-                    height={imageDimensions.height}
-                    listening={false}
-                  />
-                ) : null}
-              </Layer>
-              {imageDimensions && (
-                <Layer>
-                  {insights.map((insight, index) => {
-                    const isDragging = dragging?.id === insight.id
-                    const position = isDragging ? dragging : { x: insight.x, y: insight.y }
-                    const isActive = highlightedInsightId === insight.id || isDragging
-                    const markerScale = canvasTransform.scale ? 1 / canvasTransform.scale : 1
-                    const normalizedX = (position.x / 100) * imageDimensions.width
-                    const normalizedY = (position.y / 100) * imageDimensions.height
-                    return (
-                      <Html
-                        key={insight.id}
-                        groupProps={{
-                          x: normalizedX,
-                          y: normalizedY,
-                          scaleX: markerScale,
-                          scaleY: markerScale,
-                        }}
-                        divProps={{ style: { pointerEvents: "auto" } }}
-                      >
-                        <ContextMenu>
-                          <Tooltip>
-                            <ContextMenuTrigger asChild>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  data-insight-marker
-                                  {...allowContextMenuProps}
-                                  onPointerDown={(event) => startDragging(event, insight.id)}
-                                  onMouseEnter={() => onHighlight(insight.id)}
-                                  onMouseLeave={() => onHighlight(null)}
-                                  onFocus={() => onHighlight(insight.id)}
-                                  onBlur={() => onHighlight(null)}
-                                  className={cn(
-                                    "flex size-9 items-center justify-center rounded-full border-2 border-white font-semibold text-xs text-white shadow-lg transition-colors",
-                                    isActive ? "bg-primary" : "bg-black/70",
-                                    "cursor-grab active:cursor-grabbing"
-                                  )}
-                                  style={{
-                                    transform: "translate(-50%, -50%)",
-                                    transformOrigin: "center",
-                                  }}
-                                >
-                                  {index + 1}
-                                </button>
-                              </TooltipTrigger>
-                            </ContextMenuTrigger>
-                            <TooltipContent side="top">
-                              <p className="max-w-[220px] text-xs">{insight.note}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                          <ContextMenuContent align="start">
-                            <ContextMenuItem
-                              variant="destructive"
-                              onSelect={(event) => {
-                                event.preventDefault()
-                                onDeleteInsight(insight.id)
-                              }}
-                            >
-                              <Trash2 className="size-3.5" />
-                              인사이트 삭제
-                            </ContextMenuItem>
-                          </ContextMenuContent>
-                        </ContextMenu>
-                      </Html>
-                    )
-                  })}
+              <Stage width={contentWidth} height={contentHeight} className="block">
+                <Layer listening={false}>
+                  {imageElement && imageDimensions ? (
+                    <KonvaImage
+                      image={imageElement}
+                      width={imageDimensions.width}
+                      height={imageDimensions.height}
+                      listening={false}
+                    />
+                  ) : null}
                 </Layer>
-              )}
-            </Stage>
+                {imageDimensions && (
+                  <Layer>
+                    {insights.map((insight, index) => {
+                      const isDragging = dragging?.id === insight.id
+                      const position = isDragging ? dragging : { x: insight.x, y: insight.y }
+                      const isActive = highlightedInsightId === insight.id || isDragging
+                      const markerScale = canvasTransform.scale ? 1 / canvasTransform.scale : 1
+                      const normalizedX = (position.x / 100) * imageDimensions.width
+                      const normalizedY = (position.y / 100) * imageDimensions.height
+                      return (
+                        <Html
+                          key={insight.id}
+                          groupProps={{
+                            x: normalizedX,
+                            y: normalizedY,
+                            scaleX: markerScale,
+                            scaleY: markerScale,
+                          }}
+                          divProps={{ style: { pointerEvents: "auto" } }}
+                        >
+                          <ContextMenu>
+                            <Tooltip>
+                              <ContextMenuTrigger asChild>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    data-insight-marker
+                                    {...allowContextMenuProps}
+                                    onPointerDown={(event) => startDragging(event, insight.id)}
+                                    onMouseEnter={() => onHighlight(insight.id)}
+                                    onMouseLeave={() => onHighlight(null)}
+                                    onFocus={() => onHighlight(insight.id)}
+                                    onBlur={() => onHighlight(null)}
+                                    className={cn(
+                                      "flex size-9 items-center justify-center rounded-full border-2 border-white font-semibold text-xs text-white shadow-lg transition-colors",
+                                      isActive ? "bg-primary" : "bg-black/70",
+                                      "cursor-grab active:cursor-grabbing"
+                                    )}
+                                    style={{
+                                      transform: "translate(-50%, -50%)",
+                                      transformOrigin: "center",
+                                    }}
+                                  >
+                                    {index + 1}
+                                  </button>
+                                </TooltipTrigger>
+                              </ContextMenuTrigger>
+                              <TooltipContent side="top">
+                                <p className="max-w-[220px] text-xs">{insight.note}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            <ContextMenuContent align="start">
+                              <ContextMenuItem
+                                variant="destructive"
+                                onSelect={(event) => {
+                                  event.preventDefault()
+                                  onDeleteInsight(insight.id)
+                                }}
+                              >
+                                <Trash2 className="size-3.5" />
+                                인사이트 삭제
+                              </ContextMenuItem>
+                            </ContextMenuContent>
+                          </ContextMenu>
+                        </Html>
+                      )
+                    })}
+                  </Layer>
+                )}
+              </Stage>
+            </div>
           ) : (
             <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
               캔버스를 준비하는 중...

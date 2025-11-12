@@ -30,7 +30,8 @@
     "react-dom": "19.2.0",
     "react-konva": "^19.2.0",
     "react-konva-utils": "^2.0.0",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "use-image": "^1.1.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
