@@ -6,6 +6,7 @@ import { Camera, Pin, Share2, Star } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { TagBadge } from "@/components/tag-badge"
 import {
   Tooltip,
   TooltipContent,
@@ -246,7 +247,7 @@ function CaptureStrip({
           캡처 스트립
         </div>
         <span className="text-xs text-muted-foreground">
-          {captures.length}개
+          {captures.length}장
         </span>
       </div>
       <div className="flex gap-3 overflow-x-auto px-2">
@@ -308,16 +309,7 @@ function PatternMetadata({
       </div>
       <div className="flex flex-wrap gap-2">
         {pattern.tags.map((tag) => (
-          <span
-            key={tag.id}
-            className="rounded-full border px-2.5 py-0.5 text-[11px] font-medium"
-            style={{
-              borderColor: tag.color,
-              color: tag.color,
-            }}
-          >
-            {tag.label}
-          </span>
+          <TagBadge key={tag.id} tag={tag} />
         ))}
       </div>
       <dl className="grid grid-cols-2 gap-4 text-sm">

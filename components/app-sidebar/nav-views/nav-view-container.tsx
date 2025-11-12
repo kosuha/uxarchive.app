@@ -7,11 +7,12 @@ import { Compass } from "lucide-react"
 import { EmptyPlaceholder } from "@/components/app-sidebar/nav-views/empty-placeholder"
 import { FavoritesView } from "@/components/app-sidebar/nav-views/favorites-view"
 import { RecentUpdatesView } from "@/components/app-sidebar/nav-views/recent-updates-view"
-import { SearchView } from "@/components/app-sidebar/nav-views/search-view"
+import { SearchView, type SearchViewProps } from "@/components/app-sidebar/nav-views/search-view"
 
 type NavViewContainerProps = {
   activeNavId: string
   exploreView: ReactNode
+  searchViewProps?: SearchViewProps
 }
 
 const NAV_VIEW_COMPONENTS: Record<string, React.ComponentType | undefined> = {
@@ -20,9 +21,13 @@ const NAV_VIEW_COMPONENTS: Record<string, React.ComponentType | undefined> = {
   favorites: FavoritesView,
 }
 
-export function NavViewContainer({ activeNavId, exploreView }: NavViewContainerProps) {
+export function NavViewContainer({ activeNavId, exploreView, searchViewProps }: NavViewContainerProps) {
   if (activeNavId === "explore") {
     return <>{exploreView}</>
+  }
+
+  if (activeNavId === "search") {
+    return <SearchView {...searchViewProps} />
   }
 
   const ViewComponent = NAV_VIEW_COMPONENTS[activeNavId]

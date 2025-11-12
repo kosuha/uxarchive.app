@@ -43,7 +43,7 @@ export default function Page() {
         className="p-0 pr-2"
       />
       <SidebarInset>
-        <header className="flex h-10 shrink-0 items-center gap-2">
+        <header className="flex h-12 shrink-0 items-center gap-2">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator

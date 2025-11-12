@@ -437,7 +437,11 @@ export function AppSidebar({
             )}
           </SidebarHeader>
           <SidebarContent className="flex flex-1 flex-col">
-            <NavViewContainer activeNavId={resolvedActiveNavId} exploreView={exploreView} />
+            <NavViewContainer
+              activeNavId={resolvedActiveNavId}
+              exploreView={exploreView}
+              searchViewProps={{ onPatternSelect: handlePatternSelect }}
+            />
           </SidebarContent>
         </div>
       </Sidebar>
