@@ -12,7 +12,7 @@ import { SearchView, type SearchViewProps } from "@/components/app-sidebar/nav-v
 type NavViewContainerProps = {
   activeNavId: string
   exploreView: ReactNode
-  searchViewProps?: SearchViewProps
+  searchViewProps: SearchViewProps
 }
 
 const NAV_VIEW_COMPONENTS: Record<string, React.ComponentType | undefined> = {

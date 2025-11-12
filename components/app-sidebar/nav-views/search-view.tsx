@@ -20,12 +20,20 @@ import { cn } from "@/lib/utils"
 
 export type SearchViewProps = {
   onPatternSelect?: (patternId: string) => void
+  query: string
+  setQuery: React.Dispatch<React.SetStateAction<string>>
+  selectedTagIds: string[]
+  setSelectedTagIds: React.Dispatch<React.SetStateAction<string[]>>
 }
 
-export function SearchView({ onPatternSelect }: SearchViewProps) {
+export function SearchView({
+  onPatternSelect,
+  query,
+  setQuery,
+  selectedTagIds,
+  setSelectedTagIds,
+}: SearchViewProps) {
   const { patterns, tags } = useStorageCollections()
-  const [query, setQuery] = React.useState("")
-  const [selectedTagIds, setSelectedTagIds] = React.useState<string[]>([])
   const [isInputFocused, setIsInputFocused] = React.useState(false)
   const blurTimeoutRef = React.useRef<number | null>(null)
 
@@ -39,16 +47,19 @@ export function SearchView({ onPatternSelect }: SearchViewProps) {
     [tags]
   )
 
-  const toggleTag = React.useCallback((tagId: string) => {
-    setSelectedTagIds((prev) =>
-      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
-    )
-  }, [])
+  const toggleTag = React.useCallback(
+    (tagId: string) => {
+      setSelectedTagIds((prev) =>
+        prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
+      )
+    },
+    [setSelectedTagIds]
+  )
 
   const clearTagFilters = React.useCallback(() => {
     setSelectedTagIds([])
     setQuery("")
-  }, [])
+  }, [setQuery, setSelectedTagIds])
 
   const handleInputFocus = React.useCallback(() => {
     if (blurTimeoutRef.current) {

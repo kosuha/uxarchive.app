@@ -83,6 +83,8 @@ export function AppSidebar({
   const [selectedFolderId, setSelectedFolderId] = React.useState<string | null>(null)
   const [uiSelectedPatternId, setUiSelectedPatternId] = React.useState<string | null>(null)
   const [activeNavId, setActiveNavId] = React.useState(PRIMARY_NAV_ITEMS[0]?.id ?? "")
+  const [searchQuery, setSearchQuery] = React.useState("")
+  const [searchSelectedTagIds, setSearchSelectedTagIds] = React.useState<string[]>([])
   const isSidebarCollapsed = sidebarState === "collapsed"
 
   const navOffsetValue = React.useMemo(
@@ -440,7 +442,13 @@ export function AppSidebar({
             <NavViewContainer
               activeNavId={resolvedActiveNavId}
               exploreView={exploreView}
-              searchViewProps={{ onPatternSelect: handlePatternSelect }}
+              searchViewProps={{
+                onPatternSelect: handlePatternSelect,
+                query: searchQuery,
+                setQuery: setSearchQuery,
+                selectedTagIds: searchSelectedTagIds,
+                setSelectedTagIds: setSearchSelectedTagIds,
+              }}
             />
           </SidebarContent>
         </div>
