@@ -322,11 +322,6 @@ function PatternMetadata({
       </div>
       <dl className="grid grid-cols-2 gap-4 text-sm">
         <MetadataItem label="작성자" value={pattern.author} />
-        <MetadataItem
-          label="최종 수정"
-          value={formatDate(pattern.updatedAt)}
-        />
-        <MetadataItem label="캡처 수" value={`${captureCount}개`} />
         <MetadataItem label="생성일" value={formatDate(pattern.createdAt)} />
       </dl>
       <p className="text-sm text-muted-foreground">{pattern.summary}</p>

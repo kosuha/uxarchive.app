@@ -59,7 +59,7 @@ type FolderTreeNode = {
 }
 
 type PendingPatternInput = {
-  folderId: string
+  folderId: string | null
   token: string
 }
 
@@ -97,6 +97,7 @@ const buildFolderTree = (folders: Folder[], patterns: Pattern[]): FolderTreeNode
   })
 
   patterns.forEach((pattern) => {
+    if (!pattern.folderId) return
     const node = nodeMap.get(pattern.folderId)
     if (node) {
       node.patterns.push(pattern)
@@ -151,20 +152,25 @@ function FolderTree({
   onPatternSelect?: (patternId?: string) => void
   pendingPatternInput?: PendingPatternInput | null
   pendingFolderInput?: PendingFolderInput | null
-  onPatternInputSubmit?: (name: string, folderId: string) => void
+  onPatternInputSubmit?: (name: string, folderId: string | null) => void
   onPatternInputCancel?: () => void
   onFolderInputSubmit?: (name: string, parentId: string | null) => void
   onFolderInputCancel?: () => void
   selectedFolderId?: string | null
   onFolderSelect?: (folderId: string | null) => void
-  onPatternCreateRequest?: (folderId: string) => void
+  onPatternCreateRequest?: (folderId: string | null) => void
   onFolderCreateRequest?: (parentId: string | null) => void
   onPatternDelete?: (patternId: string) => void
   onFolderDelete?: (folderId: string) => void
 }) {
   const tree = React.useMemo(() => buildFolderTree(folders, patterns), [folders, patterns])
+  const rootPatterns = React.useMemo(
+    () => patterns.filter((pattern) => !pattern.folderId || !folders.some((folder) => folder.id === pattern.folderId)),
+    [folders, patterns]
+  )
+  const shouldShowRootPatterns = rootPatterns.length > 0 || pendingPatternInput?.folderId === null
 
-  if (!tree.length && !pendingFolderInput) {
+  if (!tree.length && !pendingFolderInput && !shouldShowRootPatterns) {
     return (
       <div className="text-sidebar-foreground/70 rounded-md border border-dashed border-border/60 px-3 py-4 text-xs">
         폴더 데이터가 없습니다.
@@ -173,6 +179,23 @@ function FolderTree({
   }
 
   return (
+    <div className="flex flex-col gap-2">
+      {shouldShowRootPatterns && (
+        <PatternList
+          folderId={null}
+          patterns={rootPatterns}
+          showEmpty
+          nested={false}
+          selectedPatternId={selectedPatternId}
+          onPatternSelect={onPatternSelect}
+          pendingPatternInput={pendingPatternInput}
+          onPatternInputSubmit={onPatternInputSubmit}
+          onPatternInputCancel={onPatternInputCancel}
+          onPatternCreateRequest={onPatternCreateRequest}
+          onPatternDelete={onPatternDelete}
+          onFolderCreateRequest={onFolderCreateRequest}
+        />
+      )}
       <FolderMenuList
         nodes={tree}
         parentId={null}
@@ -191,6 +214,7 @@ function FolderTree({
         onPatternDelete={onPatternDelete}
         onFolderDelete={onFolderDelete}
       />
+    </div>
   )
 }
 
@@ -220,13 +244,13 @@ function FolderMenuList({
   onPatternSelect?: (patternId?: string) => void
   pendingPatternInput?: PendingPatternInput | null
   pendingFolderInput?: PendingFolderInput | null
-  onPatternInputSubmit?: (name: string, folderId: string) => void
+  onPatternInputSubmit?: (name: string, folderId: string | null) => void
   onPatternInputCancel?: () => void
   onFolderInputSubmit?: (name: string, parentId: string | null) => void
   onFolderInputCancel?: () => void
   selectedFolderId?: string | null
   onFolderSelect?: (folderId: string | null) => void
-  onPatternCreateRequest?: (folderId: string) => void
+  onPatternCreateRequest?: (folderId: string | null) => void
   onFolderCreateRequest?: (parentId: string | null) => void
   onPatternDelete?: (patternId: string) => void
   onFolderDelete?: (folderId: string) => void
@@ -303,13 +327,13 @@ function FolderNodeItem({
   onPatternSelect?: (patternId?: string) => void
   pendingPatternInput?: PendingPatternInput | null
   pendingFolderInput?: PendingFolderInput | null
-  onPatternInputSubmit?: (name: string, folderId: string) => void
+  onPatternInputSubmit?: (name: string, folderId: string | null) => void
   onPatternInputCancel?: () => void
   onFolderInputSubmit?: (name: string, parentId: string | null) => void
   onFolderInputCancel?: () => void
   selectedFolderId?: string | null
   onFolderSelect?: (folderId: string | null) => void
-  onPatternCreateRequest?: (folderId: string) => void
+  onPatternCreateRequest?: (folderId: string | null) => void
   onFolderCreateRequest?: (parentId: string | null) => void
   onPatternDelete?: (patternId: string) => void
   onFolderDelete?: (folderId: string) => void
@@ -345,6 +369,12 @@ function FolderNodeItem({
                 isSelected && "text-primary bg-primary/10 ring-1 ring-primary/40"
               )}
               onClick={() => onFolderSelect?.(node.folder.id)}
+              onPointerDown={(event) => {
+                if (event.button === 2) {
+                  onFolderSelect?.(node.folder.id)
+                }
+              }}
+              onContextMenu={() => onFolderSelect?.(node.folder.id)}
             >
               <span className="flex flex-1 items-center gap-2">
                 <ChevronDown className="size-3.5 text-muted-foreground transition-transform group-data-[state=closed]/collapsible:-rotate-90" />
@@ -355,11 +385,17 @@ function FolderNodeItem({
             </SidebarMenuButton>
           </CollapsibleTrigger>
         </ContextMenuTrigger>
-        <ContextMenuContent align="start" className="w-44">
+        <ContextMenuContent
+          align="start"
+          className="w-44"
+          onCloseAutoFocus={(event) => event.preventDefault()} // 새 입력창 포커스 유지
+        >
           <ContextMenuItem onSelect={() => onPatternCreateRequest?.(node.folder.id)}>
             새 패턴
           </ContextMenuItem>
-          <ContextMenuItem onSelect={() => onFolderCreateRequest?.(node.folder.id)}>
+          <ContextMenuItem
+            onSelect={() => onFolderCreateRequest?.(node.folder.id)}
+          >
             새 폴더
           </ContextMenuItem>
           <ContextMenuSeparator />
@@ -406,7 +442,7 @@ function FolderNodeItem({
             onPatternCreateRequest={onPatternCreateRequest}
             onPatternDelete={onPatternDelete}
             onFolderCreateRequest={onFolderCreateRequest}
-            parentFolderId={node.folder.parentId ?? null}
+            nested
           />
         </div>
       </CollapsibleContent>
@@ -426,20 +462,20 @@ function PatternList({
   onPatternCreateRequest,
   onPatternDelete,
   onFolderCreateRequest,
-  parentFolderId,
+  nested = true,
 }: {
-  folderId: string
+  folderId: string | null
   patterns: Pattern[]
   showEmpty?: boolean
   selectedPatternId?: string
   onPatternSelect?: (patternId?: string) => void
   pendingPatternInput?: PendingPatternInput | null
-  onPatternInputSubmit?: (name: string, folderId: string) => void
+  onPatternInputSubmit?: (name: string, folderId: string | null) => void
   onPatternInputCancel?: () => void
-  onPatternCreateRequest?: (folderId: string) => void
+  onPatternCreateRequest?: (folderId: string | null) => void
   onPatternDelete?: (patternId: string) => void
   onFolderCreateRequest?: (parentId: string | null) => void
-  parentFolderId?: string | null
+  nested?: boolean
 }) {
   const showCreationRow = pendingPatternInput?.folderId === folderId
   const hasPatterns = patterns.length > 0
@@ -448,14 +484,17 @@ function PatternList({
   return (
     <>
       {shouldRenderMenu && (
-        <SidebarMenu className="gap-1 mt-1">
+        <SidebarMenu className={cn("gap-1", nested ? "mt-1" : "mt-0 px-1")}>
           {showCreationRow && pendingPatternInput && (
             <SidebarMenuItem
               key={`pattern-input-${pendingPatternInput.token}`}
-              className="px-0"
+              className={cn("px-0", !nested && "px-1")}
             >
               <div
-                className="ml-4 mr-2 rounded-md border border-dashed border-border/60 bg-muted/40 px-2 py-1.5"
+                className={cn(
+                  "rounded-md border border-dashed border-border/60 bg-muted/40 px-2 py-1.5",
+                  nested ? "ml-4 mr-2" : "mx-0"
+                )}
                 data-tree-interactive="true"
               >
                 <InlineCreateInput
@@ -475,7 +514,6 @@ function PatternList({
                   pattern={pattern}
                   isSelected={isSelected}
                   folderId={folderId}
-                  parentFolderId={parentFolderId ?? null}
                   onPatternSelect={onPatternSelect}
                   onPatternCreateRequest={onPatternCreateRequest}
                   onFolderCreateRequest={onFolderCreateRequest}
@@ -487,7 +525,12 @@ function PatternList({
         </SidebarMenu>
       )}
       {!hasPatterns && showEmpty && !showCreationRow && (
-        <div className="text-muted-foreground/80 ml-3 border-l border-dashed border-border/50 pl-3 text-xs">
+        <div
+          className={cn(
+            "text-muted-foreground/80 text-xs",
+            nested ? "ml-3 border-l border-dashed border-border/50 pl-3" : "px-2 py-2"
+          )}
+        >
           아직 패턴이 없습니다.
         </div>
       )}
@@ -498,10 +541,9 @@ function PatternList({
 type PatternMenuItemProps = {
   pattern: Pattern
   isSelected: boolean
-  folderId: string
-  parentFolderId?: string | null
+  folderId: string | null
   onPatternSelect?: (patternId?: string) => void
-  onPatternCreateRequest?: (folderId: string) => void
+  onPatternCreateRequest?: (folderId: string | null) => void
   onFolderCreateRequest?: (parentId: string | null) => void
   onPatternDelete?: (patternId: string) => void
 }
@@ -510,7 +552,6 @@ function PatternMenuItem({
   pattern,
   isSelected,
   folderId,
-  parentFolderId,
   onPatternSelect,
   onPatternCreateRequest,
   onFolderCreateRequest,
@@ -528,6 +569,12 @@ function PatternMenuItem({
           isActive={isSelected}
           type="button"
           onClick={() => onPatternSelect?.(pattern.id)}
+          onPointerDown={(event) => {
+            if (event.button === 2) {
+              onPatternSelect?.(pattern.id)
+            }
+          }}
+          onContextMenu={() => onPatternSelect?.(pattern.id)}
         >
           <div className="flex flex-col">
             <span className="text-sm font-medium">{pattern.name}</span>
@@ -535,11 +582,15 @@ function PatternMenuItem({
           </div>
         </SidebarMenuButton>
       </ContextMenuTrigger>
-      <ContextMenuContent align="start" className="w-44">
+      <ContextMenuContent
+        align="start"
+        className="w-44"
+        onCloseAutoFocus={(event) => event.preventDefault()} // 새 입력창 포커스 유지
+      >
         <ContextMenuItem onSelect={() => onPatternCreateRequest?.(folderId)}>
           새 패턴
         </ContextMenuItem>
-        <ContextMenuItem onSelect={() => onFolderCreateRequest?.(parentFolderId ?? null)}>
+        <ContextMenuItem onSelect={() => onFolderCreateRequest?.(folderId)}>
           새 폴더
         </ContextMenuItem>
         <ContextMenuSeparator />
@@ -634,11 +685,18 @@ export function AppSidebar({
   )
 
   const workspaceId = folders[0]?.workspaceId ?? "workspace-default"
-  const selectedPattern = React.useMemo(
-    () => patterns.find((pattern) => pattern.id === selectedPatternId),
-    [patterns, selectedPatternId]
-  )
-  const canCreatePattern = folders.length > 0
+  const uiInteractionPattern = React.useMemo(() => {
+    if (!uiSelectedPatternId) return null
+    return patterns.find((pattern) => pattern.id === uiSelectedPatternId) ?? null
+  }, [patterns, uiSelectedPatternId])
+  const resolvedSelectedPatternId = uiSelectedPatternId ?? selectedPatternId ?? null
+  const selectedPattern = React.useMemo(() => {
+    if (!resolvedSelectedPatternId) return null
+    return patterns.find((pattern) => pattern.id === resolvedSelectedPatternId) ?? null
+  }, [patterns, resolvedSelectedPatternId])
+  const interactionSelectedPattern = uiInteractionPattern ?? selectedPattern ?? null
+  const interactionSelectedFolderId = interactionSelectedPattern?.folderId ?? null
+  const canCreatePattern = true
 
   React.useEffect(() => {
     if (selectedFolderId && !folders.some((folder) => folder.id === selectedFolderId)) {
@@ -647,7 +705,11 @@ export function AppSidebar({
   }, [selectedFolderId, folders])
 
   React.useEffect(() => {
-    if (pendingPatternInput && !folders.some((folder) => folder.id === pendingPatternInput.folderId)) {
+    if (
+      pendingPatternInput &&
+      pendingPatternInput.folderId &&
+      !folders.some((folder) => folder.id === pendingPatternInput.folderId)
+    ) {
       setPendingPatternInput(null)
     }
   }, [pendingPatternInput, folders])
@@ -662,11 +724,14 @@ export function AppSidebar({
     }
   }, [pendingFolderInput, folders])
 
-  const beginPatternCreation = React.useCallback((folderId: string) => {
-    if (!folderId) return
+  const beginPatternCreation = React.useCallback((folderId: string | null) => {
     setPendingFolderInput(null)
     setPendingPatternInput({ folderId, token: createId() })
-    setSelectedFolderId(folderId)
+    if (folderId) {
+      setSelectedFolderId(folderId)
+    } else {
+      setSelectedFolderId(null)
+    }
   }, [])
 
   const beginFolderCreation = React.useCallback((parentId: string | null) => {
@@ -677,16 +742,28 @@ export function AppSidebar({
     }
   }, [])
 
-  const openPatternInput = React.useCallback(() => {
-    if (!canCreatePattern) return
-    const targetFolderId = selectedFolderId ?? selectedPattern?.folderId ?? folders[0]?.id
-    if (!targetFolderId) return
-    beginPatternCreation(targetFolderId)
-  }, [beginPatternCreation, canCreatePattern, selectedFolderId, selectedPattern?.folderId, folders])
+  const openPatternInput = React.useCallback(
+    (targetFolderId?: string | null) => {
+      if (!canCreatePattern) return
+      if (typeof targetFolderId === "undefined") {
+        beginPatternCreation(selectedFolderId ?? interactionSelectedFolderId ?? null)
+        return
+      }
+      beginPatternCreation(targetFolderId)
+    },
+    [beginPatternCreation, canCreatePattern, interactionSelectedFolderId, selectedFolderId]
+  )
 
-  const openFolderInput = React.useCallback(() => {
-    beginFolderCreation(selectedFolderId ?? selectedPattern?.folderId ?? null)
-  }, [beginFolderCreation, selectedFolderId, selectedPattern?.folderId])
+  const openFolderInput = React.useCallback(
+    (parentId?: string | null) => {
+      if (typeof parentId === "undefined") {
+        beginFolderCreation(selectedFolderId ?? interactionSelectedFolderId ?? null)
+        return
+      }
+      beginFolderCreation(parentId)
+    },
+    [beginFolderCreation, interactionSelectedFolderId, selectedFolderId]
+  )
 
   const handlePatternSelect = React.useCallback(
     (patternId: string) => {
@@ -710,6 +787,16 @@ export function AppSidebar({
   }, [])
 
   const handleTreeBackgroundClick = React.useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('[data-tree-interactive="true"]')) {
+        clearSelection()
+      }
+    },
+    [clearSelection]
+  )
+
+  const handleTreeBackgroundContextMenu = React.useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
       const target = event.target as HTMLElement
       if (!target.closest('[data-tree-interactive="true"]')) {
@@ -846,7 +933,7 @@ export function AppSidebar({
   }, [applyWidthStyles, isResizing, sideProp])
 
   const handlePatternInputSubmit = React.useCallback(
-    (rawName: string, folderId: string) => {
+    (rawName: string, folderId: string | null) => {
       const trimmed = rawName.trim()
       if (!trimmed) {
         setPendingPatternInput(null)
@@ -928,7 +1015,11 @@ export function AppSidebar({
       <SidebarContent className="flex flex-1 flex-col">
         <ContextMenu>
           <ContextMenuTrigger asChild>
-            <div className="flex flex-1 flex-col" onClick={handleTreeBackgroundClick}>
+            <div
+              className="flex flex-1 flex-col"
+              onClick={handleTreeBackgroundClick}
+              onContextMenu={handleTreeBackgroundContextMenu}
+            >
               <SidebarGroup>
                 <SidebarGroupLabel className="flex items-center justify-between gap-2">
                   <span
@@ -954,8 +1045,7 @@ export function AppSidebar({
                           variant="ghost"
                           className="size-7 text-muted-foreground"
                           aria-label="새 패턴 추가"
-                          onClick={openPatternInput}
-                          disabled={!canCreatePattern}
+                          onClick={() => openPatternInput()}
                         >
                           <FilePlus className="size-4" />
                         </Button>
@@ -970,7 +1060,7 @@ export function AppSidebar({
                           variant="ghost"
                           className="size-7 text-muted-foreground"
                           aria-label="새 폴더 추가"
-                          onClick={openFolderInput}
+                          onClick={() => openFolderInput()}
                         >
                           <FolderPlus className="size-4" />
                         </Button>
@@ -1002,14 +1092,23 @@ export function AppSidebar({
                   </div>
                 </SidebarGroupContent>
               </SidebarGroup>
-              <div className="flex-1" />
+              <div
+                className="flex-1"
+                onClick={handleTreeBackgroundClick}
+                onContextMenu={handleTreeBackgroundContextMenu}
+                data-tree-interactive="false"
+              />
             </div>
           </ContextMenuTrigger>
-          <ContextMenuContent align="start" className="w-48">
-            <ContextMenuItem disabled={!canCreatePattern} onSelect={openPatternInput}>
+          <ContextMenuContent
+            align="start"
+            className="w-48"
+            onCloseAutoFocus={(event) => event.preventDefault()} // 새 입력창 포커스 유지
+          >
+            <ContextMenuItem onSelect={() => openPatternInput(null)}>
               새 패턴
             </ContextMenuItem>
-            <ContextMenuItem onSelect={openFolderInput}>새 폴더</ContextMenuItem>
+            <ContextMenuItem onSelect={() => openFolderInput(null)}>새 폴더</ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
       </SidebarContent>

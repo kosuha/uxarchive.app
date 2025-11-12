@@ -17,7 +17,7 @@ export interface Folder {
 
 export interface Pattern {
   id: string
-  folderId: string
+  folderId: string | null
   name: string
   serviceName: string
   summary: string
@@ -59,4 +59,3 @@ export interface StorageCollections {
 }
 
 export type StorageCollectionKey = keyof StorageCollections
-
