@@ -128,6 +128,20 @@ const getPatternCount = (node: FolderTreeNode): number => {
   )
 }
 
+const nodeContainsFolder = (node: FolderTreeNode, folderId: string): boolean => {
+  if (node.folder.id === folderId) {
+    return true
+  }
+  return node.children.some((child) => nodeContainsFolder(child, folderId))
+}
+
+const nodeContainsPattern = (node: FolderTreeNode, patternId: string): boolean => {
+  if (node.patterns.some((pattern) => pattern.id === patternId)) {
+    return true
+  }
+  return node.children.some((child) => nodeContainsPattern(child, patternId))
+}
+
 function FolderTree({
   folders,
   patterns,
@@ -169,6 +183,7 @@ function FolderTree({
     [folders, patterns]
   )
   const shouldShowRootPatterns = rootPatterns.length > 0 || pendingPatternInput?.folderId === null
+  const shouldShowRootFolders = tree.length > 0 || pendingFolderInput?.parentId === null
 
   if (!tree.length && !pendingFolderInput && !shouldShowRootPatterns) {
     return (
@@ -179,7 +194,27 @@ function FolderTree({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1">
+      {shouldShowRootFolders && (
+        <FolderMenuList
+          nodes={tree}
+          parentId={null}
+          selectedPatternId={selectedPatternId}
+          onPatternSelect={onPatternSelect}
+          pendingPatternInput={pendingPatternInput}
+          pendingFolderInput={pendingFolderInput}
+          onPatternInputSubmit={onPatternInputSubmit}
+          onPatternInputCancel={onPatternInputCancel}
+          onFolderInputSubmit={onFolderInputSubmit}
+          onFolderInputCancel={onFolderInputCancel}
+          selectedFolderId={selectedFolderId}
+          onFolderSelect={onFolderSelect}
+          onPatternCreateRequest={onPatternCreateRequest}
+          onFolderCreateRequest={onFolderCreateRequest}
+          onPatternDelete={onPatternDelete}
+          onFolderDelete={onFolderDelete}
+        />
+      )}
       {shouldShowRootPatterns && (
         <PatternList
           folderId={null}
@@ -196,24 +231,6 @@ function FolderTree({
           onFolderCreateRequest={onFolderCreateRequest}
         />
       )}
-      <FolderMenuList
-        nodes={tree}
-        parentId={null}
-        selectedPatternId={selectedPatternId}
-        onPatternSelect={onPatternSelect}
-        pendingPatternInput={pendingPatternInput}
-        pendingFolderInput={pendingFolderInput}
-        onPatternInputSubmit={onPatternInputSubmit}
-        onPatternInputCancel={onPatternInputCancel}
-        onFolderInputSubmit={onFolderInputSubmit}
-        onFolderInputCancel={onFolderInputCancel}
-        selectedFolderId={selectedFolderId}
-        onFolderSelect={onFolderSelect}
-        onPatternCreateRequest={onPatternCreateRequest}
-        onFolderCreateRequest={onFolderCreateRequest}
-        onPatternDelete={onPatternDelete}
-        onFolderDelete={onFolderDelete}
-      />
     </div>
   )
 }
@@ -346,19 +363,57 @@ function FolderNodeItem({
   const shouldRenderChildList = hasChildren || shouldShowChildFolderInput
   const totalPatterns = getPatternCount(node)
   const isSelected = node.folder.id === selectedFolderId
-  const [isOpen, setIsOpen] = React.useState(true)
+  const [isOpen, setIsOpen] = React.useState(() => {
+    if (pendingFolderInput?.parentId && nodeContainsFolder(node, pendingFolderInput.parentId)) {
+      return true
+    }
+    if (pendingPatternInput?.folderId && nodeContainsFolder(node, pendingPatternInput.folderId)) {
+      return true
+    }
+    if (selectedFolderId && nodeContainsFolder(node, selectedFolderId)) {
+      return true
+    }
+    if (selectedPatternId && nodeContainsPattern(node, selectedPatternId)) {
+      return true
+    }
+    return false
+  })
+  const isOpenRef = React.useRef(isOpen)
 
   React.useEffect(() => {
-    if (pendingFolderInput?.parentId === node.folder.id) {
-      setIsOpen(true)
-    }
-  }, [pendingFolderInput, node.folder.id])
+    isOpenRef.current = isOpen
+  }, [isOpen])
 
   React.useEffect(() => {
-    if (pendingPatternInput?.folderId === node.folder.id) {
+    const parentId = pendingFolderInput?.parentId
+    if (!parentId) return
+    if (!isOpenRef.current && nodeContainsFolder(node, parentId)) {
       setIsOpen(true)
     }
-  }, [pendingPatternInput, node.folder.id])
+  }, [node, pendingFolderInput])
+
+  React.useEffect(() => {
+    const folderId = pendingPatternInput?.folderId
+    if (!folderId) return
+    if (!isOpenRef.current && nodeContainsFolder(node, folderId)) {
+      setIsOpen(true)
+    }
+  }, [node, pendingPatternInput])
+
+  React.useEffect(() => {
+    if (isOpenRef.current) return
+    if (
+      selectedFolderId &&
+      selectedFolderId !== node.folder.id &&
+      nodeContainsFolder(node, selectedFolderId)
+    ) {
+      setIsOpen(true)
+      return
+    }
+    if (selectedPatternId && nodeContainsPattern(node, selectedPatternId)) {
+      setIsOpen(true)
+    }
+  }, [node, selectedFolderId, selectedPatternId])
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="group/collapsible">
@@ -411,7 +466,7 @@ function FolderNodeItem({
         </ContextMenuContent>
       </ContextMenu>
       <CollapsibleContent>
-        <div className="border-l border-border pl-3 mt-1">
+        <div className="relative mt-1 pl-5 before:absolute before:left-3.5 before:top-0 before:bottom-0 before:w-px before:bg-border">
           {shouldRenderChildList && (
             <FolderMenuList
               nodes={node.children}
@@ -487,7 +542,7 @@ function PatternList({
   return (
     <>
       {shouldRenderMenu && (
-        <SidebarMenu className={cn("gap-1", nested ? "mt-1" : "mt-0 px-1")}>
+        <SidebarMenu className={cn("gap-1", nested ? "mt-1" : "mt-0 px-0")}>
           {patterns.map((pattern) => {
             const isSelected = pattern.id === selectedPatternId
 
@@ -565,7 +620,7 @@ function PatternMenuItem({
         <SidebarMenuButton
           data-tree-interactive="true"
           className={cn(
-            "h-auto items-start gap-2 py-1 transition-colors",
+            "h-auto items-start gap-2 py-2 px-3 transition-colors",
             isSelected && "bg-primary/10 text-primary ring-1 ring-primary/40"
           )}
           type="button"
@@ -1046,7 +1101,7 @@ export function AppSidebar({
                           variant="ghost"
                           className="size-7 text-muted-foreground"
                           aria-label="새 패턴 추가"
-                          onClick={() => openPatternInput()}
+                          onClick={() => openPatternInput(null)}
                         >
                           <FilePlus className="size-4" />
                         </Button>
@@ -1061,7 +1116,7 @@ export function AppSidebar({
                           variant="ghost"
                           className="size-7 text-muted-foreground"
                           aria-label="새 폴더 추가"
-                          onClick={() => openFolderInput()}
+                          onClick={() => openFolderInput(null)}
                         >
                           <FolderPlus className="size-4" />
                         </Button>
