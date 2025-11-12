@@ -19,9 +19,11 @@ import {
 } from "@/components/ui/sidebar"
 import { RightWorkspace } from "@/components/right-workspace"
 import { useStorageCollections } from "@/lib/use-storage-collections"
+import type { Folder, Pattern } from "@/lib/types"
+import { FolderIcon, LibraryBig } from "lucide-react"
 
 export default function Page() {
-  const { patterns } = useStorageCollections()
+  const { patterns, folders } = useStorageCollections()
   const [selectedPatternId, setSelectedPatternId] = React.useState<string | undefined>(undefined)
 
   React.useEffect(() => {
@@ -34,6 +36,22 @@ export default function Page() {
         : patterns[0].id
     })
   }, [patterns])
+
+  const selectedPattern = React.useMemo<Pattern | undefined>(() => {
+    if (!selectedPatternId) return undefined
+    return patterns.find((pattern) => pattern.id === selectedPatternId)
+  }, [patterns, selectedPatternId])
+
+  const foldersById = React.useMemo(() => {
+    return folders.reduce<Map<string, Folder>>((map, folder) => {
+      map.set(folder.id, folder)
+      return map
+    }, new Map())
+  }, [folders])
+
+  const folderPath = React.useMemo(() => {
+    return buildFolderPath(selectedPattern?.folderId, foldersById)
+  }, [selectedPattern?.folderId, foldersById])
 
   return (
     <SidebarProvider>
@@ -52,12 +70,24 @@ export default function Page() {
             />
             <Breadcrumb>
               <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="#">UX Archive</BreadcrumbLink>
+                <BreadcrumbItem className="flex justify-center items-center">
+                  <LibraryBig className="h-4 w-4" />
+                  <span>내 아카이브</span>
                 </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
+                {folderPath.map((folder) => (
+                  <React.Fragment key={folder.id}>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem className="flex justify-center items-center">
+                      <FolderIcon className="h-4 w-4" />
+                      <span>{folder.name}</span>
+                    </BreadcrumbItem>
+                  </React.Fragment>
+                ))}
+                <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>패턴 라이브러리</BreadcrumbPage>
+                  <BreadcrumbPage>
+                    {selectedPattern?.name ?? "선택된 패턴 없음"}
+                  </BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
@@ -69,4 +99,23 @@ export default function Page() {
       </SidebarInset>
     </SidebarProvider>
   )
+}
+
+const buildFolderPath = (
+  folderId: string | null | undefined,
+  folderMap: Map<string, Folder>
+) => {
+  if (!folderId) return []
+
+  const path: Folder[] = []
+  let currentId: string | null | undefined = folderId
+
+  while (currentId) {
+    const folder = folderMap.get(currentId)
+    if (!folder) break
+    path.unshift(folder)
+    currentId = folder.parentId ?? null
+  }
+
+  return path
 }

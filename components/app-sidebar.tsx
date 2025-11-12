@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Clock, Folder as FolderIcon, Search, Star } from "lucide-react"
+import { Clock, Folder as FolderIcon, LibraryBig, Search, Star } from "lucide-react"
 
 import { ExploreView } from "@/components/app-sidebar/nav-views/explore-view"
 import type { PendingFolderInput, PendingPatternInput } from "@/components/app-sidebar/folder-tree"
@@ -33,7 +33,7 @@ const PRIMARY_NAV_ITEMS: NavItem[] = [
     id: "explore",
     title: "EXPLORE",
     description: "",
-    icon: FolderIcon,
+    icon: LibraryBig,
   },
   {
     id: "search",

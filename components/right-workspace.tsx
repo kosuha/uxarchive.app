@@ -2,9 +2,10 @@
 
 import * as React from "react"
 import Image from "next/image"
-import { Camera, Pin, Share2, Star } from "lucide-react"
+import { Camera, MessageCircle, Pin, Share2, Star } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { TagBadge } from "@/components/tag-badge"
 import {
@@ -12,12 +13,27 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { storageService } from "@/lib/storage"
 import type { Capture, Insight, Pattern } from "@/lib/types"
 import { useStorageCollections } from "@/lib/use-storage-collections"
 import { cn } from "@/lib/utils"
 
 type RightWorkspaceProps = {
   patternId?: string
+}
+
+type CanvasPoint = {
+  x: number
+  y: number
+}
+
+const clampPercentage = (value: number) => Math.min(100, Math.max(0, value))
+
+const generateInsightId = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID()
+  }
+  return `insight-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
 export function RightWorkspace({ patternId }: RightWorkspaceProps) {
@@ -75,6 +91,80 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
     string | null
   >(null)
 
+  const [isPlacingInsight, setIsPlacingInsight] = React.useState(false)
+  const [draftPosition, setDraftPosition] = React.useState<CanvasPoint | null>(null)
+  const [draftNote, setDraftNote] = React.useState("")
+
+  const resetDraftState = React.useCallback(() => {
+    setIsPlacingInsight(false)
+    setDraftPosition(null)
+    setDraftNote("")
+  }, [])
+
+  React.useEffect(() => {
+    resetDraftState()
+  }, [activeCapture?.id, resetDraftState])
+
+  const isAddingInsight = isPlacingInsight || Boolean(draftPosition)
+
+  const handleToggleAddMode = React.useCallback(() => {
+    if (!activeCapture) return
+    if (isAddingInsight) {
+      resetDraftState()
+      return
+    }
+    setDraftNote("")
+    setIsPlacingInsight(true)
+  }, [activeCapture, isAddingInsight, resetDraftState])
+
+  const handleCanvasPlacement = React.useCallback(
+    (point: CanvasPoint) => {
+      if (!activeCapture) return
+      setDraftPosition(point)
+      setIsPlacingInsight(false)
+      setDraftNote("")
+    },
+    [activeCapture]
+  )
+
+  const handleDraftCancel = React.useCallback(() => {
+    resetDraftState()
+  }, [resetDraftState])
+
+  const handleDraftSubmit = React.useCallback(() => {
+    if (!draftPosition || !activeCapture) {
+      resetDraftState()
+      return
+    }
+
+    const nextNote = draftNote.trim()
+    if (!nextNote) {
+      resetDraftState()
+      return
+    }
+
+    const newInsight: Insight = {
+      id: generateInsightId(),
+      captureId: activeCapture.id,
+      x: draftPosition.x,
+      y: draftPosition.y,
+      note: nextNote,
+      createdAt: new Date().toISOString(),
+    }
+
+    storageService.insights.create(newInsight)
+    setHighlightedInsightId(newInsight.id)
+    resetDraftState()
+  }, [draftPosition, activeCapture, draftNote, resetDraftState])
+
+  const handleUpdateInsightPosition = React.useCallback((insightId: string, point: CanvasPoint) => {
+    storageService.insights.update(insightId, (current) => ({
+      ...current,
+      x: point.x,
+      y: point.y,
+    }))
+  }, [])
+
   if (!pattern) {
     return (
       <div className="text-muted-foreground flex flex-1 items-center justify-center rounded-md border border-dashed">
@@ -94,12 +184,20 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
         <CanvasHeader
           captureOrder={captureIndex}
           totalCount={patternCaptures.length}
+          isAddingInsight={isAddingInsight}
+          onAddInsight={handleToggleAddMode}
+          canAddInsight={Boolean(activeCapture)}
         />
         <CaptureCanvas
           capture={activeCapture}
           insights={captureInsights}
           highlightedInsightId={highlightedInsightId}
           onHighlight={setHighlightedInsightId}
+          isPlacingInsight={isPlacingInsight}
+          draftInsightPosition={draftPosition}
+          draftIndex={captureInsights.length + 1}
+          onCanvasPlace={handleCanvasPlacement}
+          onUpdateInsightPosition={handleUpdateInsightPosition}
         />
         <CaptureStrip
           captures={patternCaptures}
@@ -113,6 +211,12 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
           insights={captureInsights}
           highlightedInsightId={highlightedInsightId}
           onHighlight={setHighlightedInsightId}
+          showDraftInput={Boolean(draftPosition)}
+          draftNote={draftNote}
+          draftIndex={captureInsights.length + 1}
+          onDraftChange={setDraftNote}
+          onDraftSubmit={handleDraftSubmit}
+          onDraftCancel={handleDraftCancel}
         />
       </aside>
     </div>
@@ -122,9 +226,15 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
 function CanvasHeader({
   captureOrder,
   totalCount,
+  isAddingInsight,
+  onAddInsight,
+  canAddInsight,
 }: {
   captureOrder: number
   totalCount: number
+  isAddingInsight: boolean
+  onAddInsight: () => void
+  canAddInsight: boolean
 }) {
   return (
     <div className="flex items-center justify-between border-b border-border/60 px-6 py-4">
@@ -138,11 +248,14 @@ function CanvasHeader({
       </div>
       <div className="flex items-center gap-2">
         <Button
-          variant="outline"
+          variant={isAddingInsight ? "default" : "outline"}
           size="sm"
+          onClick={onAddInsight}
+          disabled={!canAddInsight}
+          aria-pressed={isAddingInsight}
         >
-          <Pin className="size-3.5 mr-2" />
-          핀 추가
+          <MessageCircle className="size-3.5 mr-2" />
+          {isAddingInsight ? "추가 취소" : "인사이트 추가"}
         </Button>
         <Button
           variant="outline"
@@ -161,12 +274,96 @@ function CaptureCanvas({
   insights,
   highlightedInsightId,
   onHighlight,
+  isPlacingInsight,
+  draftInsightPosition,
+  draftIndex,
+  onCanvasPlace,
+  onUpdateInsightPosition,
 }: {
   capture?: Capture
   insights: Insight[]
   highlightedInsightId: string | null
   onHighlight: (id: string | null) => void
+  isPlacingInsight: boolean
+  draftInsightPosition: CanvasPoint | null
+  draftIndex: number
+  onCanvasPlace: (point: CanvasPoint) => void
+  onUpdateInsightPosition: (insightId: string, point: CanvasPoint) => void
 }) {
+  const canvasRef = React.useRef<HTMLDivElement>(null)
+  const [dragging, setDragging] = React.useState<{ id: string; x: number; y: number } | null>(null)
+
+  React.useEffect(() => {
+    setDragging(null)
+  }, [capture?.id])
+
+  const getRelativePosition = React.useCallback(
+    (clientX: number, clientY: number) => {
+      const rect = canvasRef.current?.getBoundingClientRect()
+      if (!rect || rect.width === 0 || rect.height === 0) return null
+      const x = clampPercentage(((clientX - rect.left) / rect.width) * 100)
+      const y = clampPercentage(((clientY - rect.top) / rect.height) * 100)
+      return { x, y }
+    },
+    []
+  )
+
+  const handleCanvasClick = React.useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!isPlacingInsight) return
+      const target = event.target as HTMLElement
+      if (target.closest("[data-insight-marker]")) return
+      const coords = getRelativePosition(event.clientX, event.clientY)
+      if (!coords) return
+      onCanvasPlace(coords)
+    },
+    [isPlacingInsight, getRelativePosition, onCanvasPlace]
+  )
+
+  const startDragging = React.useCallback(
+    (event: React.PointerEvent<HTMLButtonElement>, insightId: string) => {
+      if (event.button !== 0) return
+      event.preventDefault()
+      event.stopPropagation()
+      const initial = getRelativePosition(event.clientX, event.clientY)
+      if (!initial) return
+      setDragging({ id: insightId, ...initial })
+
+      const handleMove = (moveEvent: PointerEvent) => {
+        moveEvent.preventDefault()
+        const coords = getRelativePosition(moveEvent.clientX, moveEvent.clientY)
+        if (!coords) return
+        setDragging({ id: insightId, ...coords })
+      }
+
+      const finishDrag = (point?: CanvasPoint | null, persist = false) => {
+        window.removeEventListener("pointermove", handleMove)
+        window.removeEventListener("pointerup", handleUp)
+        window.removeEventListener("pointercancel", handleCancel)
+        setDragging(null)
+        if (persist && point) {
+          onUpdateInsightPosition(insightId, point)
+        }
+      }
+
+      const handleUp = (upEvent: PointerEvent) => {
+        upEvent.preventDefault()
+        const coords = getRelativePosition(upEvent.clientX, upEvent.clientY)
+        finishDrag(coords ?? initial, true)
+      }
+
+      const handleCancel = (cancelEvent: PointerEvent) => {
+        cancelEvent.preventDefault()
+        finishDrag(null, false)
+      }
+
+      window.addEventListener("pointermove", handleMove)
+      window.addEventListener("pointerup", handleUp)
+      window.addEventListener("pointercancel", handleCancel)
+    },
+    [getRelativePosition, onUpdateInsightPosition]
+  )
+
   if (!capture) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center text-sm text-muted-foreground">
@@ -181,7 +378,14 @@ function CaptureCanvas({
       <div className="absolute inset-x-0 -z-10 h-[25%] bg-gradient-to-b from-primary/10 to-transparent" />
       <div className="relative flex flex-1 items-center justify-center rounded-xl border border-border/60 bg-muted/30 p-4">
         <div className="relative flex h-full w-full max-w-[960px] items-center justify-center">
-          <div className="relative h-full min-h-[420px] w-full overflow-hidden rounded-xl border bg-white shadow-xl">
+          <div
+            ref={canvasRef}
+            className={cn(
+              "relative h-full min-h-[420px] w-full overflow-hidden rounded-xl border bg-white shadow-xl",
+              isPlacingInsight && "cursor-crosshair"
+            )}
+            onClick={handleCanvasClick}
+          >
             <Image
               src={capture.imageUrl}
               alt="패턴 캡처"
@@ -191,34 +395,57 @@ function CaptureCanvas({
               priority
             />
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0)_0%,_rgba(15,23,42,0.08)_100%)]" />
-            {insights.map((insight, index) => (
-              <Tooltip key={insight.id}>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onMouseEnter={() => onHighlight(insight.id)}
-                    onMouseLeave={() => onHighlight(null)}
-                    onFocus={() => onHighlight(insight.id)}
-                    onBlur={() => onHighlight(null)}
-                    className={cn(
-                      "absolute flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white font-semibold text-xs text-white shadow-lg transition-all",
-                      highlightedInsightId === insight.id
-                        ? "bg-primary"
-                        : "bg-black/70"
-                    )}
-                    style={{
-                      left: `${insight.x}%`,
-                      top: `${insight.y}%`,
-                    }}
-                  >
-                    {index + 1}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  <p className="max-w-[220px] text-xs">{insight.note}</p>
-                </TooltipContent>
-              </Tooltip>
-            ))}
+            {isPlacingInsight && (
+              <div className="pointer-events-none absolute left-4 top-4 rounded-full bg-black/70 px-3 py-1 text-xs font-medium text-white shadow-lg">
+                캔버스를 클릭해 위치를 지정하세요
+              </div>
+            )}
+            {insights.map((insight, index) => {
+              const isDragging = dragging?.id === insight.id
+              const position = isDragging ? dragging : { x: insight.x, y: insight.y }
+              const isActive = highlightedInsightId === insight.id || isDragging
+              return (
+                <Tooltip key={insight.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      data-insight-marker
+                      onPointerDown={(event) => startDragging(event, insight.id)}
+                      onMouseEnter={() => onHighlight(insight.id)}
+                      onMouseLeave={() => onHighlight(null)}
+                      onFocus={() => onHighlight(insight.id)}
+                      onBlur={() => onHighlight(null)}
+                      className={cn(
+                        "absolute flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white font-semibold text-xs text-white shadow-lg",
+                        isDragging ? "transition-none" : "transition-all",
+                        isActive ? "bg-primary" : "bg-black/70",
+                        "cursor-grab active:cursor-grabbing"
+                      )}
+                      style={{
+                        left: `${position.x}%`,
+                        top: `${position.y}%`,
+                      }}
+                    >
+                      {index + 1}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p className="max-w-[220px] text-xs">{insight.note}</p>
+                  </TooltipContent>
+                </Tooltip>
+              )
+            })}
+            {draftInsightPosition && (
+              <div
+                className="absolute flex size-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-dashed border-primary/60 bg-primary/20 text-xs font-semibold text-primary"
+                style={{
+                  left: `${draftInsightPosition.x}%`,
+                  top: `${draftInsightPosition.y}%`,
+                }}
+              >
+                {draftIndex}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -334,24 +561,43 @@ function InsightsPanel({
   insights,
   highlightedInsightId,
   onHighlight,
+  showDraftInput,
+  draftNote,
+  draftIndex,
+  onDraftChange,
+  onDraftSubmit,
+  onDraftCancel,
 }: {
   insights: Insight[]
   highlightedInsightId: string | null
   onHighlight: (id: string | null) => void
+  showDraftInput: boolean
+  draftNote: string
+  draftIndex: number
+  onDraftChange: (value: string) => void
+  onDraftSubmit: () => void
+  onDraftCancel: () => void
 }) {
+  const hasContent = insights.length > 0 || showDraftInput
   return (
     <section className="flex flex-1 flex-col rounded-xl border border-border/60 bg-card shadow-sm">
       <header className="flex items-center justify-between border-b border-border/60 px-6 py-4">
         <div>
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            인사이트
-          </p>
-          <p className="text-md font-semibold">핀 노트</p>
+          <p className="text-md font-semibold">인사이트 노트</p>
         </div>
       </header>
-      {insights.length ? (
+      {hasContent ? (
         <ScrollArea className="flex-1 px-2">
           <div className="space-y-3 py-4 pr-2">
+            {showDraftInput && (
+              <DraftInsightCard
+                index={draftIndex}
+                value={draftNote}
+                onChange={onDraftChange}
+                onSubmit={onDraftSubmit}
+                onCancel={onDraftCancel}
+              />
+            )}
             {insights.map((insight, index) => (
               <InsightCard
                 key={insight.id}
@@ -399,10 +645,72 @@ function InsightCard({
       onBlur={() => onHighlight(null)}
     >
       <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        <span>핀 #{index}</span>
+        <span>Insight #{index}</span>
       </div>
       <p className="mt-2 text-sm leading-relaxed text-foreground">
         {insight.note}
+      </p>
+    </article>
+  )
+}
+
+function DraftInsightCard({
+  index,
+  value,
+  onChange,
+  onSubmit,
+  onCancel,
+}: {
+  index: number
+  value: string
+  onChange: (value: string) => void
+  onSubmit: () => void
+  onCancel: () => void
+}) {
+  const inputRef = React.useRef<HTMLInputElement>(null)
+  const cancelNextBlurRef = React.useRef(false)
+
+  React.useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      cancelNextBlurRef.current = true
+      onCancel()
+      return
+    }
+    if (event.key === "Enter") {
+      event.preventDefault()
+      onSubmit()
+    }
+  }
+
+  const handleBlur = () => {
+    if (cancelNextBlurRef.current) {
+      cancelNextBlurRef.current = false
+      return
+    }
+    onSubmit()
+  }
+
+  return (
+    <article className="rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-3 text-sm">
+      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-primary">
+        <span>Insight #{index}</span>
+        <span className="text-[11px]">작성 중</span>
+      </div>
+      <Input
+        ref={inputRef}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
+        placeholder="인사이트를 입력하세요"
+        className="mt-3 bg-white/70"
+      />
+      <p className="mt-2 text-xs text-muted-foreground">
+        엔터 또는 포커스 아웃으로 저장, ESC로 취소됩니다.
       </p>
     </article>
   )

@@ -184,7 +184,7 @@ export function SearchView({
   return (
     <div className="flex flex-1 flex-col gap-4 p-4">
       <div className="">
-        <div className="flex flex-wrap items-center justify-between text-xs">
+        <div className="flex flex-wrap justify-between text-xs gap-2 mb-2 items-center">
           <span>
             아카이브 내 검색
           </span>
@@ -194,7 +194,7 @@ export function SearchView({
             size="sm"
             onClick={clearTagFilters}
             disabled={!hasSelectedTags}
-            className="text-xs text-muted-foreground"
+            className="text-xs text-muted-foreground p-0 m-0 h-auto"
           >
             초기화
           </Button>
