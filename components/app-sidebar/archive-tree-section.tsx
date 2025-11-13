@@ -39,6 +39,8 @@ type ArchiveTreeSectionHandlers = {
   onFolderCreateRequest: (parentId: string | null) => void
   onPatternDelete: (patternId: string) => void
   onFolderDelete: (folderId: string) => void
+  onPatternMove?: (patternId: string, destinationFolderId: string | null) => void
+  onFolderMove?: (folderId: string, destinationFolderId: string | null) => void
   onBackgroundClick: (event: React.MouseEvent<HTMLDivElement>) => void
   onBackgroundContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void
   onRootPatternClick: () => void
@@ -72,6 +74,8 @@ export function ArchiveTreeSection({ title, state, handlers }: ArchiveTreeSectio
     onFolderCreateRequest,
     onPatternDelete,
     onFolderDelete,
+    onPatternMove,
+    onFolderMove,
     onBackgroundClick,
     onBackgroundContextMenu,
     onRootPatternClick,
@@ -146,6 +150,8 @@ export function ArchiveTreeSection({ title, state, handlers }: ArchiveTreeSectio
                   onFolderCreateRequest={onFolderCreateRequest}
                   onPatternDelete={onPatternDelete}
                   onFolderDelete={onFolderDelete}
+                  onPatternMove={onPatternMove}
+                  onFolderMove={onFolderMove}
                 />
               </div>
             </SidebarGroupContent>

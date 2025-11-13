@@ -1,8 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { ChevronDown, Folder as FolderIcon } from "lucide-react"
+import { Check, ChevronDown, ChevronRight, Folder as FolderIcon, LibraryBig } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import {
   Collapsible,
   CollapsibleContent,
@@ -19,6 +20,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -30,6 +39,14 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
 import { Input } from "@/components/ui/input"
 import type { Folder, Pattern } from "@/lib/types"
 import { allowContextMenuProps } from "@/lib/context-menu"
@@ -51,6 +68,10 @@ export type PendingFolderInput = {
   token: string
 }
 
+type MoveDialogTarget =
+  | { type: "pattern"; pattern: Pattern }
+  | { type: "folder"; folder: Folder }
+
 type FolderTreeProps = {
   folders: Folder[]
   patterns: Pattern[]
@@ -68,6 +89,8 @@ type FolderTreeProps = {
   onFolderCreateRequest?: (parentId: string | null) => void
   onPatternDelete?: (patternId: string) => void
   onFolderDelete?: (folderId: string) => void
+  onPatternMove?: (patternId: string, destinationFolderId: string | null) => void
+  onFolderMove?: (folderId: string, destinationFolderId: string | null) => void
 }
 
 export function FolderTree({
@@ -87,8 +110,12 @@ export function FolderTree({
   onFolderCreateRequest,
   onPatternDelete,
   onFolderDelete,
+  onPatternMove,
+  onFolderMove,
 }: FolderTreeProps) {
   const [pendingFolderDelete, setPendingFolderDelete] = React.useState<Folder | null>(null)
+  const [moveDialogTarget, setMoveDialogTarget] = React.useState<MoveDialogTarget | null>(null)
+  const [moveDestinationId, setMoveDestinationId] = React.useState<string | null>(null)
 
   const handleFolderDeleteRequest = React.useCallback((folder: Folder) => {
     setPendingFolderDelete(folder)
@@ -100,7 +127,24 @@ export function FolderTree({
     setPendingFolderDelete(null)
   }, [onFolderDelete, pendingFolderDelete])
 
+  const openPatternMoveDialog = React.useCallback((pattern: Pattern) => {
+    setMoveDialogTarget({ type: "pattern", pattern })
+    setMoveDestinationId(pattern.folderId ?? null)
+  }, [])
+
+  const openFolderMoveDialog = React.useCallback((folder: Folder) => {
+    setMoveDialogTarget({ type: "folder", folder })
+    setMoveDestinationId(folder.parentId ?? null)
+  }, [])
+
+  const closeMoveDialog = React.useCallback(() => {
+    setMoveDialogTarget(null)
+    setMoveDestinationId(null)
+  }, [])
+
   const tree = React.useMemo(() => buildFolderTree(folders, patterns), [folders, patterns])
+  const folderOptions = React.useMemo(() => flattenFolderTreeNodes(tree), [tree])
+  const folderChildrenMap = React.useMemo(() => buildFolderChildrenMap(folders), [folders])
   const rootPatterns = React.useMemo(
     () =>
       patterns.filter(
@@ -110,6 +154,68 @@ export function FolderTree({
   )
   const shouldShowRootPatterns = rootPatterns.length > 0 || pendingPatternInput?.folderId === null
   const shouldShowRootFolders = tree.length > 0 || pendingFolderInput?.parentId === null
+  const excludedFolderIds = React.useMemo(() => {
+    if (!moveDialogTarget || moveDialogTarget.type !== "folder") {
+      return new Set<string>()
+    }
+    return collectDescendantFolderIds(folderChildrenMap, moveDialogTarget.folder.id)
+  }, [folderChildrenMap, moveDialogTarget])
+  const isMoveConfirmDisabled = React.useMemo(() => {
+    if (!moveDialogTarget) return true
+    const destinationId = moveDestinationId ?? null
+    if (moveDialogTarget.type === "folder") {
+      if (destinationId === moveDialogTarget.folder.id) {
+        return true
+      }
+      if (destinationId && excludedFolderIds.has(destinationId)) {
+        return true
+      }
+      const currentParentId = moveDialogTarget.folder.parentId ?? null
+      return currentParentId === destinationId
+    }
+    const currentFolderId = moveDialogTarget.pattern.folderId ?? null
+    return currentFolderId === destinationId
+  }, [excludedFolderIds, moveDestinationId, moveDialogTarget])
+  const moveDialogTitle = moveDialogTarget
+    ? moveDialogTarget.type === "pattern"
+      ? "패턴 이동"
+      : "폴더 이동"
+    : ""
+  const moveDialogEntityName = moveDialogTarget
+    ? moveDialogTarget.type === "pattern"
+      ? moveDialogTarget.pattern.name
+      : moveDialogTarget.folder.name
+    : ""
+  const moveDialogDescription = moveDialogTarget
+    ? `"${moveDialogEntityName}" 항목을 옮길 폴더를 선택하세요.`
+    : ""
+  const handleMoveConfirm = React.useCallback(() => {
+    if (!moveDialogTarget) return
+    const destinationId = moveDestinationId ?? null
+    if (moveDialogTarget.type === "pattern") {
+      const currentFolderId = moveDialogTarget.pattern.folderId ?? null
+      if (currentFolderId === destinationId) {
+        closeMoveDialog()
+        return
+      }
+      onPatternMove?.(moveDialogTarget.pattern.id, destinationId)
+      closeMoveDialog()
+      return
+    }
+    if (destinationId === moveDialogTarget.folder.id) {
+      return
+    }
+    if (destinationId && excludedFolderIds.has(destinationId)) {
+      return
+    }
+    const currentParentId = moveDialogTarget.folder.parentId ?? null
+    if (currentParentId === destinationId) {
+      closeMoveDialog()
+      return
+    }
+    onFolderMove?.(moveDialogTarget.folder.id, destinationId)
+    closeMoveDialog()
+  }, [closeMoveDialog, excludedFolderIds, moveDestinationId, moveDialogTarget, onFolderMove, onPatternMove])
 
   if (!tree.length && !pendingFolderInput && !shouldShowRootPatterns) {
     return (
@@ -141,6 +247,8 @@ export function FolderTree({
             onPatternDelete={onPatternDelete}
             onFolderDelete={onFolderDelete}
             onFolderDeleteRequest={handleFolderDeleteRequest}
+            onPatternMoveRequest={openPatternMoveDialog}
+            onFolderMoveRequest={openFolderMoveDialog}
           />
         )}
       {shouldShowRootPatterns && (
@@ -157,6 +265,7 @@ export function FolderTree({
           onPatternCreateRequest={onPatternCreateRequest}
           onPatternDelete={onPatternDelete}
           onFolderCreateRequest={onFolderCreateRequest}
+          onPatternMoveRequest={openPatternMoveDialog}
         />
       )}
       </div>
@@ -188,6 +297,92 @@ export function FolderTree({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog
+        open={Boolean(moveDialogTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeMoveDialog()
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{moveDialogTitle || "항목 이동"}</DialogTitle>
+            {moveDialogDescription && <DialogDescription>{moveDialogDescription}</DialogDescription>}
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-md border">
+              <Command className="max-h-[320px] bg-transparent">
+                <CommandInput placeholder="폴더 검색" />
+                <CommandList>
+                  <CommandEmpty>일치하는 폴더가 없습니다.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value="내 아카이브"
+                      onSelect={() => setMoveDestinationId(null)}
+                    >
+                      <LibraryBig className="mr-2 size-4 text-muted-foreground" />
+                      <span className="flex-1 truncate">내 아카이브</span>
+                      <Check
+                        className={cn(
+                          "size-4 text-primary opacity-0",
+                          moveDialogTarget && moveDestinationId === null && "opacity-100"
+                        )}
+                      />
+                    </CommandItem>
+                    {folderOptions.map((option) => {
+                      const isSelected = moveDestinationId === option.folder.id
+                      const isDisabled = excludedFolderIds.has(option.folder.id)
+                      return (
+                        <CommandItem
+                          key={option.folder.id}
+                          value={option.pathLabel}
+                          disabled={isDisabled}
+                          onSelect={() => {
+                            if (isDisabled) return
+                            setMoveDestinationId(option.folder.id)
+                          }}
+                        >
+                          <FolderIcon className="mr-2 size-4 text-muted-foreground" />
+                          <span
+                            className="flex flex-1 items-center gap-1 truncate"
+                          >
+                            {option.pathSegments.map((segment, index) => (
+                              <React.Fragment key={`${option.folder.id}-${index}`}>
+                                <span className="truncate text-left">{segment}</span>
+                                {index < option.pathSegments.length - 1 && (
+                                  <ChevronRight className="size-3 text-muted-foreground" />
+                                )}
+                              </React.Fragment>
+                            ))}
+                          </span>
+                          {isDisabled && (
+                            <span className="text-xs text-muted-foreground/70">하위 폴더</span>
+                          )}
+                          <Check
+                            className={cn(
+                              "size-4 text-primary opacity-0",
+                              isSelected && "opacity-100"
+                            )}
+                          />
+                        </CommandItem>
+                      )
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeMoveDialog}>
+              취소
+            </Button>
+            <Button onClick={handleMoveConfirm} disabled={isMoveConfirmDisabled}>
+              이동
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
@@ -249,6 +444,61 @@ const nodeContainsPattern = (node: FolderTreeNode, patternId: string): boolean =
   return node.children.some((child) => nodeContainsPattern(child, patternId))
 }
 
+type FolderOption = {
+  folder: Folder
+  depth: number
+  pathLabel: string
+  pathSegments: string[]
+}
+
+const flattenFolderTreeNodes = (
+  nodes: FolderTreeNode[],
+  depth = 0,
+  ancestors: string[] = [],
+): FolderOption[] => {
+  return nodes.flatMap((node) => {
+    const currentPath = [...ancestors, node.folder.name]
+    const option: FolderOption = {
+      folder: node.folder,
+      depth,
+      pathLabel: currentPath.join(" > "),
+      pathSegments: currentPath,
+    }
+    return [option, ...flattenFolderTreeNodes(node.children, depth + 1, currentPath)]
+  })
+}
+
+const buildFolderChildrenMap = (folders: Folder[]): Map<string, string[]> => {
+  const map = new Map<string, string[]>()
+  folders.forEach((folder) => {
+    const parentId = folder.parentId ?? null
+    if (!parentId) return
+    const current = map.get(parentId) ?? []
+    current.push(folder.id)
+    map.set(parentId, current)
+  })
+  return map
+}
+
+const collectDescendantFolderIds = (childrenMap: Map<string, string[]>, folderId: string) => {
+  const collected = new Set<string>()
+  const stack = [folderId]
+  while (stack.length) {
+    const current = stack.pop()
+    if (!current || collected.has(current)) continue
+    collected.add(current)
+    const children = childrenMap.get(current)
+    if (children?.length) {
+      children.forEach((childId) => {
+        if (!collected.has(childId)) {
+          stack.push(childId)
+        }
+      })
+    }
+  }
+  return collected
+}
+
 type FolderMenuListProps = {
   nodes: FolderTreeNode[]
   parentId?: string | null
@@ -268,6 +518,8 @@ type FolderMenuListProps = {
   onPatternDelete?: (patternId: string) => void
   onFolderDelete?: (folderId: string) => void
   onFolderDeleteRequest?: (folder: Folder) => void
+  onPatternMoveRequest?: (pattern: Pattern) => void
+  onFolderMoveRequest?: (folder: Folder) => void
 }
 
 function FolderMenuList({
@@ -289,6 +541,8 @@ function FolderMenuList({
   onPatternDelete,
   onFolderDelete,
   onFolderDeleteRequest,
+  onPatternMoveRequest,
+  onFolderMoveRequest,
 }: FolderMenuListProps) {
   const showFolderInput =
     pendingFolderInput && pendingFolderInput.parentId === (parentId ?? null)
@@ -314,6 +568,8 @@ function FolderMenuList({
             onPatternDelete={onPatternDelete}
             onFolderDelete={onFolderDelete}
             onFolderDeleteRequest={onFolderDeleteRequest}
+            onPatternMoveRequest={onPatternMoveRequest}
+            onFolderMoveRequest={onFolderMoveRequest}
           />
         </SidebarMenuItem>
       ))}
@@ -361,6 +617,8 @@ type FolderNodeItemProps = {
   onPatternDelete?: (patternId: string) => void
   onFolderDelete?: (folderId: string) => void
   onFolderDeleteRequest?: (folder: Folder) => void
+  onPatternMoveRequest?: (pattern: Pattern) => void
+  onFolderMoveRequest?: (folder: Folder) => void
 }
 
 function FolderNodeItem({
@@ -380,6 +638,8 @@ function FolderNodeItem({
   onPatternDelete,
   onFolderDelete,
   onFolderDeleteRequest,
+  onPatternMoveRequest,
+  onFolderMoveRequest,
 }: FolderNodeItemProps) {
   const hasChildren = node.children.length > 0
   const shouldShowChildFolderInput = pendingFolderInput?.parentId === node.folder.id
@@ -477,6 +737,9 @@ function FolderNodeItem({
           <ContextMenuItem onSelect={() => onFolderCreateRequest?.(node.folder.id)}>
             새 폴더
           </ContextMenuItem>
+          <ContextMenuItem onSelect={() => onFolderMoveRequest?.(node.folder)}>
+            이동
+          </ContextMenuItem>
           <ContextMenuSeparator />
         <ContextMenuItem
           className="text-destructive focus:text-destructive"
@@ -515,6 +778,8 @@ function FolderNodeItem({
               onPatternDelete={onPatternDelete}
               onFolderDelete={onFolderDelete}
               onFolderDeleteRequest={onFolderDeleteRequest}
+              onPatternMoveRequest={onPatternMoveRequest}
+              onFolderMoveRequest={onFolderMoveRequest}
             />
           )}
           <PatternList
@@ -529,6 +794,7 @@ function FolderNodeItem({
             onPatternCreateRequest={onPatternCreateRequest}
             onPatternDelete={onPatternDelete}
             onFolderCreateRequest={onFolderCreateRequest}
+            onPatternMoveRequest={onPatternMoveRequest}
             nested
           />
         </div>
@@ -549,6 +815,7 @@ type PatternListProps = {
   onPatternCreateRequest?: (folderId: string | null) => void
   onPatternDelete?: (patternId: string) => void
   onFolderCreateRequest?: (parentId: string | null) => void
+  onPatternMoveRequest?: (pattern: Pattern) => void
   nested?: boolean
 }
 
@@ -564,6 +831,7 @@ function PatternList({
   onPatternCreateRequest,
   onPatternDelete,
   onFolderCreateRequest,
+  onPatternMoveRequest,
   nested = true,
 }: PatternListProps) {
   const showCreationRow = pendingPatternInput?.folderId === folderId
@@ -587,6 +855,7 @@ function PatternList({
                   onPatternCreateRequest={onPatternCreateRequest}
                   onFolderCreateRequest={onFolderCreateRequest}
                   onPatternDelete={onPatternDelete}
+                  onPatternMoveRequest={onPatternMoveRequest}
                 />
               </SidebarMenuItem>
             )
@@ -634,6 +903,7 @@ type PatternMenuItemProps = {
   onPatternCreateRequest?: (folderId: string | null) => void
   onFolderCreateRequest?: (parentId: string | null) => void
   onPatternDelete?: (patternId: string) => void
+  onPatternMoveRequest?: (pattern: Pattern) => void
 }
 
 function PatternMenuItem({
@@ -644,6 +914,7 @@ function PatternMenuItem({
   onPatternCreateRequest,
   onFolderCreateRequest,
   onPatternDelete,
+  onPatternMoveRequest,
 }: PatternMenuItemProps) {
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
 
@@ -692,6 +963,9 @@ function PatternMenuItem({
           </ContextMenuItem>
           <ContextMenuItem onSelect={() => onFolderCreateRequest?.(folderId)}>
             새 폴더
+          </ContextMenuItem>
+          <ContextMenuItem onSelect={() => onPatternMoveRequest?.(pattern)}>
+            이동
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem

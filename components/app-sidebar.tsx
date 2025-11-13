@@ -336,6 +336,34 @@ export function AppSidebar({
     ]
   )
 
+  const handlePatternMove = React.useCallback((patternId: string, destinationFolderId: string | null) => {
+    storageService.patterns.update(patternId, (pattern) => ({
+      ...pattern,
+      folderId: destinationFolderId,
+      updatedAt: new Date().toISOString(),
+    }))
+  }, [])
+
+  const handleFolderMove = React.useCallback(
+    (folderId: string, destinationFolderId: string | null) => {
+      const branch = new Set(collectFolderBranch(folderId))
+      if (destinationFolderId && branch.has(destinationFolderId)) {
+        return
+      }
+      storageService.folders.update(folderId, (folder) => {
+        const parentFolder = destinationFolderId
+          ? folders.find((item) => item.id === destinationFolderId)
+          : undefined
+        return {
+          ...folder,
+          parentId: destinationFolderId ?? undefined,
+          workspaceId: parentFolder?.workspaceId ?? folder.workspaceId,
+        }
+      })
+    },
+    [collectFolderBranch, folders]
+  )
+
   const handlePatternInputSubmit = React.useCallback(
     (rawName: string, folderId: string | null) => {
       const trimmed = rawName.trim()
@@ -415,6 +443,8 @@ export function AppSidebar({
         onFolderCreateRequest: beginFolderCreation,
         onPatternDelete: handlePatternDelete,
         onFolderDelete: handleFolderDelete,
+        onPatternMove: handlePatternMove,
+        onFolderMove: handleFolderMove,
         onBackgroundClick: handleTreeBackgroundClick,
         onBackgroundContextMenu: handleTreeBackgroundContextMenu,
         onRootPatternClick: () => openPatternInput(null),
