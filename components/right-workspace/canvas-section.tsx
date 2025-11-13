@@ -28,6 +28,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import type { Capture, Insight } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -709,7 +710,7 @@ function CaptureStrip({
   )
 
   return (
-    <div className="w-full border-t border-border/60 px-4 py-4">
+    <div className="w-full min-w-0 border-t border-border/60 px-4 py-4">
       <div className="w-full mb-3 flex items-center justify-between px-2">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -724,70 +725,74 @@ function CaptureStrip({
         />
       </div>
       {hasCaptures ? (
-        <div
-          className="flex gap-3 w-full overflow-x-auto px-2"
-          onDragOver={handleContainerDragOver}
-          onDrop={handleContainerDrop}
-          onDragLeave={handleContainerDragLeave}
-        >
-          {captures.map((capture) => {
-            const isActive = activeId === capture.id
-            const isDragging = draggingId === capture.id
-            const isDropBefore =
-              dropHint?.targetId === capture.id && dropHint.position === "before"
-            const isDropAfter =
-              dropHint?.targetId === capture.id && dropHint.position === "after"
-            return (
-              <div className="flex flex-none items-center gap-1" key={capture.id}>
-                {isDropBefore && <DropIndicator position="before" />}
-                <div className="group relative shrink-0">
-                  <button
-                    type="button"
-                    draggable
-                    aria-grabbed={isDragging}
-                    onClick={() => onSelect(capture.id)}
-                    onDragStart={(event) => handleDragStart(event, capture.id)}
-                    onDragEnd={resetDragState}
-                    onDragOver={(event) => handleDragOver(event, capture.id)}
-                    onDrop={(event) => handleDrop(event, capture.id)}
-                    className={cn(
-                      "relative h-24 w-20 shrink-0 overflow-hidden rounded-xl border text-left transition-all focus-visible:ring-2 focus-visible:ring-ring",
-                      isActive
-                        ? "border-primary/70 shadow-md"
-                        : "border-border/60 hover:border-primary/60",
-                      isDragging && "opacity-70 ring-2 ring-primary"
-                    )}
-                  >
-                    <Image
-                      src={capture.imageUrl}
-                      alt="캡처 썸네일"
-                      fill
-                      sizes="80px"
-                      className="object-cover"
-                    />
-                    <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-1.5 text-[10px] font-medium text-white">
-                      {capture.order}
-                    </span>
-                  </button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="default"
-                    onClick={(event) => handleDeleteClick(event, capture.id)}
-                    aria-label="캡처 삭제"
-                    draggable={false}
-                    className={cn(
-                      "absolute right-1 top-1 size-6 rounded-full bg-destructive p-0 text-white opacity-0 transition-opacity pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto hover:bg-destructive/80",
-                      isDragging && "pointer-events-none opacity-0"
-                    )}
-                  >
-                    <Minus className="size-3.5" />
-                  </Button>
-                </div>
-                {isDropAfter && <DropIndicator position="after" />}
-              </div>
-            )
-          })}
+        <div className="relative w-full min-w-0 h-28">
+          <div
+            className="absolute inset-0 overflow-y-hidden overflow-x-auto"
+            onDragOver={handleContainerDragOver}
+            onDrop={handleContainerDrop}
+            onDragLeave={handleContainerDragLeave}
+          >
+            <div className="flex w-max max-w-none gap-2 px-2 pb-2">
+              {captures.map((capture) => {
+                const isActive = activeId === capture.id
+                const isDragging = draggingId === capture.id
+                const isDropBefore =
+                  dropHint?.targetId === capture.id && dropHint.position === "before"
+                const isDropAfter =
+                  dropHint?.targetId === capture.id && dropHint.position === "after"
+                return (
+                  <div className="flex flex-none items-center gap-1" key={capture.id}>
+                    {isDropBefore && <DropIndicator position="before" />}
+                    <div className="group relative shrink-0">
+                      <button
+                        type="button"
+                        draggable
+                        aria-grabbed={isDragging}
+                        onClick={() => onSelect(capture.id)}
+                        onDragStart={(event) => handleDragStart(event, capture.id)}
+                        onDragEnd={resetDragState}
+                        onDragOver={(event) => handleDragOver(event, capture.id)}
+                        onDrop={(event) => handleDrop(event, capture.id)}
+                        className={cn(
+                          "relative h-24 w-20 shrink-0 overflow-hidden rounded-xl border text-left transition-all focus-visible:ring-2 focus-visible:ring-ring",
+                          isActive
+                            ? "border-primary/70 shadow-md"
+                            : "border-border/60 hover:border-primary/60",
+                          isDragging && "opacity-70 ring-2 ring-primary"
+                        )}
+                      >
+                        <Image
+                          src={capture.imageUrl}
+                          alt="캡처 썸네일"
+                          fill
+                          sizes="80px"
+                          className="object-cover"
+                        />
+                        <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-1.5 text-[10px] font-medium text-white">
+                          {capture.order}
+                        </span>
+                      </button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="default"
+                        onClick={(event) => handleDeleteClick(event, capture.id)}
+                        aria-label="캡처 삭제"
+                        draggable={false}
+                        className={cn(
+                          "absolute right-1 top-1 size-6 rounded-full bg-destructive p-0 text-white opacity-0 transition-opacity pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto hover:bg-destructive/80",
+                          isDragging && "pointer-events-none opacity-0"
+                        )}
+                      >
+                        <Minus className="size-3.5" />
+                      </Button>
+                    </div>
+                    {isDropAfter && <DropIndicator position="after" />}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
       ) : (
         <div className="flex min-h-[120px] flex-col items-center justify-center rounded-lg border border-dashed border-border/60 px-4 text-sm text-muted-foreground">
