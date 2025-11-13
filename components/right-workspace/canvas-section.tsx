@@ -80,7 +80,7 @@ export function CanvasSection({
   onDeleteCapture,
 }: CanvasSectionProps) {
   return (
-    <section className="flex flex-1 basis-0 min-h-0 flex-col rounded-xl border border-border/60 bg-gradient-to-b from-card to-muted/20 shadow-sm md:min-h-[640px]">
+    <section className="flex flex-1 basis-0 min-h-0 min-w-0 flex-col rounded-xl border border-border/60 bg-gradient-to-b from-card to-muted/20 shadow-sm md:min-h-[640px]">
       <CanvasHeader
         captureOrder={captureOrder}
         totalCount={captures.length}
@@ -709,8 +709,8 @@ function CaptureStrip({
   )
 
   return (
-    <div className="border-t border-border/60 px-4 py-4">
-      <div className="mb-3 flex items-center justify-between px-2">
+    <div className="w-full border-t border-border/60 px-4 py-4">
+      <div className="w-full mb-3 flex items-center justify-between px-2">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <GalleryHorizontalEnd className="size-3.5" />
@@ -725,7 +725,7 @@ function CaptureStrip({
       </div>
       {hasCaptures ? (
         <div
-          className="flex gap-3 overflow-x-auto px-2"
+          className="flex gap-3 w-full overflow-x-auto px-2"
           onDragOver={handleContainerDragOver}
           onDrop={handleContainerDrop}
           onDragLeave={handleContainerDragLeave}
@@ -738,7 +738,7 @@ function CaptureStrip({
             const isDropAfter =
               dropHint?.targetId === capture.id && dropHint.position === "after"
             return (
-              <div className="flex items-center gap-1" key={capture.id}>
+              <div className="flex flex-none items-center gap-1" key={capture.id}>
                 {isDropBefore && <DropIndicator position="before" />}
                 <div className="group relative shrink-0">
                   <button
@@ -820,26 +820,31 @@ function CaptureUploadDialog({
   captureCount: number
   onUploadCapture: (payload: CaptureUploadPayload) => Promise<void> | void
 }) {
+  type SelectedPreview = { file: File; previewUrl: string }
   const [open, setOpen] = React.useState(false)
-  const [selectedFile, setSelectedFile] = React.useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null)
+  const [selectedFiles, setSelectedFiles] = React.useState<SelectedPreview[]>([])
   const [order, setOrder] = React.useState(captureCount + 1)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const objectUrlRef = React.useRef<string | null>(null)
+  const objectUrlsRef = React.useRef<string[]>([])
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null)
   const fileInputId = React.useId()
 
+  const revokeAllObjectUrls = React.useCallback(() => {
+    objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
+    objectUrlsRef.current = []
+  }, [])
+
   const resetState = React.useCallback(() => {
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current)
-      objectUrlRef.current = null
-    }
-    setSelectedFile(null)
-    setPreviewUrl(null)
+    revokeAllObjectUrls()
+    setSelectedFiles([])
     setOrder(captureCount + 1)
     setErrorMessage(null)
     setIsSubmitting(false)
-  }, [captureCount])
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }, [captureCount, revokeAllObjectUrls])
 
   React.useEffect(() => {
     if (!open) {
@@ -857,37 +862,37 @@ function CaptureUploadDialog({
 
   React.useEffect(() => {
     return () => {
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current)
-      }
+      revokeAllObjectUrls()
     }
-  }, [])
+  }, [revokeAllObjectUrls])
 
-  const updatePreview = React.useCallback((file: File | null) => {
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current)
-      objectUrlRef.current = null
-    }
-    if (!file) {
-      setSelectedFile(null)
-      setPreviewUrl(null)
-      return
-    }
-    const nextUrl = URL.createObjectURL(file)
-    objectUrlRef.current = nextUrl
-    setSelectedFile(file)
-    setPreviewUrl(nextUrl)
-  }, [])
+  const updatePreviews = React.useCallback(
+    (files: File[]) => {
+      if (!files.length) {
+        revokeAllObjectUrls()
+        setSelectedFiles([])
+        return
+      }
+      revokeAllObjectUrls()
+      const nextSelections = files.map((file) => {
+        const previewUrl = URL.createObjectURL(file)
+        objectUrlsRef.current.push(previewUrl)
+        return { file, previewUrl }
+      })
+      setSelectedFiles(nextSelections)
+    },
+    [revokeAllObjectUrls]
+  )
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] ?? null
-    updatePreview(file)
+    const files = event.target.files ? Array.from(event.target.files) : []
+    updatePreviews(files)
   }
 
   const handleDrop = (event: React.DragEvent<HTMLLabelElement>) => {
     event.preventDefault()
-    const file = event.dataTransfer.files?.[0] ?? null
-    updatePreview(file)
+    const files = event.dataTransfer.files ? Array.from(event.dataTransfer.files) : []
+    updatePreviews(files)
   }
 
   const handleDragOver = (event: React.DragEvent<HTMLLabelElement>) => {
@@ -895,9 +900,21 @@ function CaptureUploadDialog({
     event.dataTransfer.dropEffect = "copy"
   }
 
+  const handleRemoveFile = React.useCallback((previewUrl: string) => {
+    URL.revokeObjectURL(previewUrl)
+    objectUrlsRef.current = objectUrlsRef.current.filter((url) => url !== previewUrl)
+    setSelectedFiles((current) => {
+      const next = current.filter((item) => item.previewUrl !== previewUrl)
+      if (!next.length && fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
+      return next
+    })
+  }, [])
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!selectedFile) {
+    if (!selectedFiles.length) {
       setErrorMessage("업로드할 이미지를 선택해주세요.")
       return
     }
@@ -905,8 +922,10 @@ function CaptureUploadDialog({
     setErrorMessage(null)
     try {
       const maxOrder = captureCount + 1
-      const normalizedOrder = Math.min(Math.max(order, 1), maxOrder)
-      await onUploadCapture({ file: selectedFile, order: normalizedOrder })
+      const baseOrder = Math.min(Math.max(order, 1), maxOrder)
+      for (const [index, item] of selectedFiles.entries()) {
+        await onUploadCapture({ file: item.file, order: baseOrder + index })
+      }
       setOpen(false)
     } catch (error) {
       console.error("capture upload preparation failed", error)
@@ -940,34 +959,59 @@ function CaptureUploadDialog({
             >
               <UploadCloud className="size-6 text-primary" />
               <div className="space-y-1">
-                <p className="font-medium text-foreground">이미지를 드래그하거나 클릭해서 선택하세요</p>
+                <p className="font-medium text-foreground">여러 이미지를 드래그하거나 클릭해서 선택할 수 있습니다</p>
                 <p className="text-xs text-muted-foreground/80">PNG, JPG, SVG 등 이미지 파일 지원</p>
               </div>
               <p className="text-xs text-muted-foreground/70">파일은 아직 서버에 저장되지 않으며 검토 후 업로드됩니다.</p>
             </label>
             <input
               id={fileInputId}
+              ref={fileInputRef}
               type="file"
               accept="image/*"
+              multiple
               className="sr-only"
               onChange={handleFileChange}
             />
           </div>
 
-          {previewUrl && (
-            <div className="space-y-2 rounded-lg border border-border/70 bg-muted/20 p-3">
-              <div className="relative aspect-video w-full overflow-hidden rounded-md bg-background">
-                <Image
-                  src={previewUrl}
-                  alt="업로드 미리보기"
-                  fill
-                  sizes="380px"
-                  className="object-contain"
-                  unoptimized
-                />
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {selectedFile?.name} ({Math.round((selectedFile?.size ?? 0) / 1024)} KB)
+          {Boolean(selectedFiles.length) && (
+            <div className="space-y-3 rounded-lg border border-border/70 bg-muted/20 p-3">
+              <p className="text-xs font-medium text-muted-foreground">
+                선택된 파일 {selectedFiles.length}개
+              </p>
+              <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                {selectedFiles.map(({ file, previewUrl }) => (
+                  <div
+                    key={previewUrl}
+                    className="flex items-center gap-3 rounded-md border border-border/50 bg-background p-2"
+                  >
+                    <div className="relative h-16 w-16 overflow-hidden rounded-sm bg-muted/30">
+                      <Image
+                        src={previewUrl}
+                        alt={`${file.name} 미리보기`}
+                        fill
+                        sizes="64px"
+                        className="object-contain"
+                        unoptimized
+                      />
+                    </div>
+                    <div className="flex min-w-0 flex-1 flex-col text-xs">
+                      <p className="truncate font-medium text-foreground">{file.name}</p>
+                      <p className="text-muted-foreground">{Math.round(file.size / 1024)} KB</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => handleRemoveFile(previewUrl)}
+                    >
+                      <Trash2 className="size-4" />
+                      <span className="sr-only">{file.name} 제거</span>
+                    </Button>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -985,7 +1029,7 @@ function CaptureUploadDialog({
             >
               취소
             </Button>
-            <Button type="submit" disabled={!selectedFile || isSubmitting}>
+            <Button type="submit" disabled={!selectedFiles.length || isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
               업로드
             </Button>

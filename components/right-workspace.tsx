@@ -341,7 +341,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
       : 0
 
   return (
-    <div className="flex h-full min-h-0 flex-1 basis-0 gap-4 overflow-hidden">
+    <div className="flex h-full min-h-0 min-w-0 flex-1 basis-0 gap-4 overflow-hidden">
       <CanvasSection
         activeCapture={activeCapture}
         activeCaptureId={activeCaptureId}
