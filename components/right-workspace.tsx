@@ -28,13 +28,35 @@ const generateCaptureId = () => {
   return `capture-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
-const readFileAsDataUrl = (file: File) =>
+const SMALL_FILE_THRESHOLD = 200 * 1024 // 200KB
+const MAX_CAPTURE_DIMENSION = 1600
+const JPEG_QUALITY = 0.82
+
+const readFileAsDataUrl = async (file: File): Promise<string> => {
+  if (!shouldCompressFile(file)) {
+    return readBlobAsDataUrl(file)
+  }
+  try {
+    return await compressImageFile(file)
+  } catch (error) {
+    console.warn("[capture] 이미지 압축에 실패하여 원본 데이터를 사용합니다.", error)
+    return readBlobAsDataUrl(file)
+  }
+}
+
+const shouldCompressFile = (file: File) => {
+  if (!file.type.startsWith("image/")) return false
+  if (file.type === "image/svg+xml") return false
+  if (file.type === "image/gif") return file.size > SMALL_FILE_THRESHOLD
+  return file.size > SMALL_FILE_THRESHOLD
+}
+
+const readBlobAsDataUrl = (blob: Blob) =>
   new Promise<string>((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => {
-      const result = reader.result
-      if (typeof result === "string") {
-        resolve(result)
+      if (typeof reader.result === "string") {
+        resolve(reader.result)
         return
       }
       reject(new Error("이미지 데이터를 변환할 수 없습니다."))
@@ -42,7 +64,56 @@ const readFileAsDataUrl = (file: File) =>
     reader.onerror = () => {
       reject(reader.error ?? new Error("이미지 파일을 읽는 중 오류가 발생했습니다."))
     }
-    reader.readAsDataURL(file)
+    reader.readAsDataURL(blob)
+  })
+
+const compressImageFile = async (file: File) => {
+  const image = await loadImageElement(file)
+  const longestSide = Math.max(image.width, image.height)
+  const scale = longestSide > MAX_CAPTURE_DIMENSION ? MAX_CAPTURE_DIMENSION / longestSide : 1
+  const targetWidth = Math.max(1, Math.round(image.width * scale))
+  const targetHeight = Math.max(1, Math.round(image.height * scale))
+
+  const canvas = document.createElement("canvas")
+  canvas.width = targetWidth
+  canvas.height = targetHeight
+  const context = canvas.getContext("2d")
+  if (!context) {
+    throw new Error("이미지 캔버스를 초기화할 수 없습니다.")
+  }
+  context.fillStyle = "#ffffff"
+  context.fillRect(0, 0, targetWidth, targetHeight)
+  context.drawImage(image, 0, 0, targetWidth, targetHeight)
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (result) => {
+        if (result) {
+          resolve(result)
+          return
+        }
+        reject(new Error("이미지 압축 결과를 생성할 수 없습니다."))
+      },
+      "image/jpeg",
+      JPEG_QUALITY
+    )
+  })
+  return readBlobAsDataUrl(blob)
+}
+
+const loadImageElement = (file: File) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const image = new Image()
+    image.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve(image)
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error("이미지 파일을 불러올 수 없습니다."))
+    }
+    image.src = url
   })
 
 export function RightWorkspace({ patternId }: RightWorkspaceProps) {
@@ -218,6 +289,44 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
     [pattern]
   )
 
+  const handleDeleteCapture = React.useCallback(
+    (captureId: string) => {
+      if (!pattern) return
+      const allCaptures = storageService.captures.getAll()
+      const captureToDelete = allCaptures.find(
+        (capture) => capture.id === captureId && capture.patternId === pattern.id
+      )
+      if (!captureToDelete) return
+
+      const remainingPatternCaptures = allCaptures
+        .filter((capture) => capture.patternId === pattern.id && capture.id !== captureId)
+        .sort((a, b) => a.order - b.order)
+        .map((capture, index) => ({ ...capture, order: index + 1 }))
+      const otherCaptures = allCaptures.filter((capture) => capture.patternId !== pattern.id)
+
+      storageService.captures.setAll([...otherCaptures, ...remainingPatternCaptures])
+
+      const relatedInsights = storageService.insights
+        .getAll()
+        .filter((insight) => insight.captureId === captureId)
+      relatedInsights.forEach((insight) => storageService.insights.remove(insight.id))
+
+      storageService.patterns.update(pattern.id, (current) => ({
+        ...current,
+        captureCount: Math.max((current.captureCount ?? 1) - 1, 0),
+        updatedAt: new Date().toISOString(),
+      }))
+
+      setActiveCaptureId((current) => {
+        if (current === captureId) {
+          return remainingPatternCaptures[0]?.id
+        }
+        return current
+      })
+    },
+    [pattern]
+  )
+
   if (!pattern) {
     return (
       <div className="text-muted-foreground flex flex-1 items-center justify-center rounded-md border border-dashed">
@@ -250,6 +359,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
         onUpdateInsightPosition={handleUpdateInsightPosition}
         onUploadCapture={handleUploadCapture}
         onReorderCapture={handleReorderCapture}
+        onDeleteCapture={handleDeleteCapture}
       />
       <aside className="flex h-full w-full max-w-[360px] flex-1 basis-0 min-h-0 flex-col gap-4 overflow-hidden">
         <PatternMetadataCard pattern={pattern} allTags={tags} />

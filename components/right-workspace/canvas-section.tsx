@@ -5,7 +5,7 @@ import Image from "next/image"
 import { Layer, Stage, Image as KonvaImage } from "react-konva"
 import { Html } from "react-konva-utils"
 import useImage from "use-image"
-import { Camera, GalleryHorizontalEnd, ImageUpscale, Loader2, MessageCircle, Plus, Share2, Trash2, UploadCloud } from "lucide-react"
+import { Camera, GalleryHorizontalEnd, ImageUpscale, Loader2, MessageCircle, Minus, Plus, Share2, Trash2, UploadCloud } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -55,6 +55,7 @@ type CanvasSectionProps = {
   onUpdateInsightPosition: (insightId: string, point: CanvasPoint) => void
   onUploadCapture: (payload: CaptureUploadPayload) => Promise<void> | void
   onReorderCapture: (sourceId: string, targetId: string, position: CaptureReorderPosition) => void
+  onDeleteCapture: (captureId: string) => void
 }
 
 type CaptureReorderPosition = "before" | "after"
@@ -76,6 +77,7 @@ export function CanvasSection({
   onUpdateInsightPosition,
   onUploadCapture,
   onReorderCapture,
+  onDeleteCapture,
 }: CanvasSectionProps) {
   return (
     <section className="flex flex-1 basis-0 min-h-0 flex-col rounded-xl border border-border/60 bg-gradient-to-b from-card to-muted/20 shadow-sm md:min-h-[640px]">
@@ -102,6 +104,7 @@ export function CanvasSection({
         onSelect={onSelectCapture}
         onUploadCapture={onUploadCapture}
         onReorderCapture={onReorderCapture}
+        onDeleteCapture={onDeleteCapture}
       />
     </section>
   )
@@ -597,12 +600,14 @@ function CaptureStrip({
   onSelect,
   onUploadCapture,
   onReorderCapture,
+  onDeleteCapture,
 }: {
   captures: Capture[]
   activeId?: string
   onSelect: (id: string) => void
   onUploadCapture: (payload: CaptureUploadPayload) => Promise<void> | void
   onReorderCapture: (sourceId: string, targetId: string, position: CaptureReorderPosition) => void
+  onDeleteCapture: (captureId: string) => void
 }) {
   const hasCaptures = captures.length > 0
   const [draggingId, setDraggingId] = React.useState<string | null>(null)
@@ -694,6 +699,15 @@ function CaptureStrip({
     }
   }, [])
 
+  const handleDeleteClick = React.useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>, captureId: string) => {
+      event.preventDefault()
+      event.stopPropagation()
+      onDeleteCapture(captureId)
+    },
+    [onDeleteCapture]
+  )
+
   return (
     <div className="border-t border-border/60 px-4 py-4">
       <div className="mb-3 flex items-center justify-between px-2">
@@ -726,34 +740,50 @@ function CaptureStrip({
             return (
               <div className="flex items-center gap-1" key={capture.id}>
                 {isDropBefore && <DropIndicator position="before" />}
-                <button
-                  type="button"
-                  draggable
-                  aria-grabbed={isDragging}
-                  onClick={() => onSelect(capture.id)}
-                  onDragStart={(event) => handleDragStart(event, capture.id)}
-                  onDragEnd={resetDragState}
-                  onDragOver={(event) => handleDragOver(event, capture.id)}
-                  onDrop={(event) => handleDrop(event, capture.id)}
-                  className={cn(
-                    "relative h-24 w-20 shrink-0 overflow-hidden rounded-xl border text-left transition-all focus-visible:ring-2 focus-visible:ring-ring",
-                    isActive
-                      ? "border-primary/70 shadow-md"
-                      : "border-border/60 hover:border-primary/60",
-                    isDragging && "opacity-70 ring-2 ring-primary"
-                  )}
-                >
-                  <Image
-                    src={capture.imageUrl}
-                    alt="캡처 썸네일"
-                    fill
-                    sizes="80px"
-                    className="object-cover"
-                  />
-                  <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-1.5 text-[10px] font-medium text-white">
-                    {capture.order}
-                  </span>
-                </button>
+                <div className="group relative shrink-0">
+                  <button
+                    type="button"
+                    draggable
+                    aria-grabbed={isDragging}
+                    onClick={() => onSelect(capture.id)}
+                    onDragStart={(event) => handleDragStart(event, capture.id)}
+                    onDragEnd={resetDragState}
+                    onDragOver={(event) => handleDragOver(event, capture.id)}
+                    onDrop={(event) => handleDrop(event, capture.id)}
+                    className={cn(
+                      "relative h-24 w-20 shrink-0 overflow-hidden rounded-xl border text-left transition-all focus-visible:ring-2 focus-visible:ring-ring",
+                      isActive
+                        ? "border-primary/70 shadow-md"
+                        : "border-border/60 hover:border-primary/60",
+                      isDragging && "opacity-70 ring-2 ring-primary"
+                    )}
+                  >
+                    <Image
+                      src={capture.imageUrl}
+                      alt="캡처 썸네일"
+                      fill
+                      sizes="80px"
+                      className="object-cover"
+                    />
+                    <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-1.5 text-[10px] font-medium text-white">
+                      {capture.order}
+                    </span>
+                  </button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="default"
+                    onClick={(event) => handleDeleteClick(event, capture.id)}
+                    aria-label="캡처 삭제"
+                    draggable={false}
+                    className={cn(
+                      "absolute right-1 top-1 size-6 rounded-full bg-destructive p-0 text-white opacity-0 transition-opacity pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto hover:bg-destructive/80",
+                      isDragging && "pointer-events-none opacity-0"
+                    )}
+                  >
+                    <Minus className="size-3.5" />
+                  </Button>
+                </div>
                 {isDropAfter && <DropIndicator position="after" />}
               </div>
             )
