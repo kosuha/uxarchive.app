@@ -6,6 +6,16 @@ import { CanvasSection, type CaptureUploadPayload } from "@/components/right-wor
 import { InsightsPanel } from "@/components/right-workspace/insights-panel"
 import { PatternMetadataCard } from "@/components/right-workspace/pattern-metadata-card"
 import type { CanvasPoint } from "@/components/right-workspace/shared"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { storageService } from "@/lib/storage"
 import type { Capture, Insight } from "@/lib/types"
 import { useStorageCollections } from "@/lib/use-storage-collections"
@@ -168,6 +178,12 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
 
   const [highlightedInsightId, setHighlightedInsightId] = React.useState<string | null>(null)
   const [isPlacingInsight, setIsPlacingInsight] = React.useState(false)
+  const [pendingInsightDeleteId, setPendingInsightDeleteId] = React.useState<string | null>(null)
+
+  const insightDeleteTarget = React.useMemo(() => {
+    if (!pendingInsightDeleteId) return null
+    return insights.find((insight) => insight.id === pendingInsightDeleteId) ?? null
+  }, [insights, pendingInsightDeleteId])
 
   React.useEffect(() => {
     setIsPlacingInsight(false)
@@ -207,15 +223,25 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
   }, [])
 
   const handleDeleteInsight = React.useCallback((insightId: string) => {
-    storageService.insights.remove(insightId)
-    setHighlightedInsightId((current) => (current === insightId ? null : current))
+    setPendingInsightDeleteId(insightId)
   }, [])
+
+  const handleConfirmDeleteInsight = React.useCallback(() => {
+    if (!pendingInsightDeleteId) return
+    storageService.insights.remove(pendingInsightDeleteId)
+    setHighlightedInsightId((current) => (current === pendingInsightDeleteId ? null : current))
+    setPendingInsightDeleteId(null)
+  }, [pendingInsightDeleteId])
 
   const handleUpdateInsightNote = React.useCallback((insightId: string, note: string) => {
     storageService.insights.update(insightId, (current) => ({
       ...current,
       note,
     }))
+  }, [])
+
+  const handleCancelDeleteInsight = React.useCallback(() => {
+    setPendingInsightDeleteId(null)
   }, [])
 
   const handleUploadCapture = React.useCallback(
@@ -341,37 +367,70 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
       : 0
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-1 basis-0 gap-4 overflow-hidden">
-      <CanvasSection
-        activeCapture={activeCapture}
-        activeCaptureId={activeCaptureId}
-        captureInsights={captureInsights}
-        captureOrder={captureIndex}
-        captures={patternCaptures}
-        highlightedInsightId={highlightedInsightId}
-        isAddingInsight={isAddingInsight}
-        isPlacingInsight={isPlacingInsight}
-        onCanvasPlace={handleCanvasPlacement}
-        onDeleteInsight={handleDeleteInsight}
-        onHighlight={setHighlightedInsightId}
-        onSelectCapture={(id) => setActiveCaptureId(id)}
-        onToggleAddMode={handleToggleAddMode}
-        onUpdateInsightPosition={handleUpdateInsightPosition}
-        onUploadCapture={handleUploadCapture}
-        onReorderCapture={handleReorderCapture}
-        onDeleteCapture={handleDeleteCapture}
-      />
-      <aside className="flex h-full w-full max-w-[360px] flex-1 basis-0 min-h-0 flex-col gap-4 overflow-hidden">
-        <PatternMetadataCard pattern={pattern} allTags={tags} />
-        <InsightsPanel
-          pattern={pattern}
-          insights={captureInsights}
+    <>
+      <div className="flex h-full min-h-0 min-w-0 flex-1 basis-0 gap-4 overflow-hidden">
+        <CanvasSection
+          activeCapture={activeCapture}
+          activeCaptureId={activeCaptureId}
+          captureInsights={captureInsights}
+          captureOrder={captureIndex}
+          captures={patternCaptures}
           highlightedInsightId={highlightedInsightId}
-          onHighlight={setHighlightedInsightId}
+          isAddingInsight={isAddingInsight}
+          isPlacingInsight={isPlacingInsight}
+          onCanvasPlace={handleCanvasPlacement}
           onDeleteInsight={handleDeleteInsight}
-          onUpdateInsightNote={handleUpdateInsightNote}
+          onHighlight={setHighlightedInsightId}
+          onSelectCapture={(id) => setActiveCaptureId(id)}
+          onToggleAddMode={handleToggleAddMode}
+          onUpdateInsightPosition={handleUpdateInsightPosition}
+          onUploadCapture={handleUploadCapture}
+          onReorderCapture={handleReorderCapture}
+          onDeleteCapture={handleDeleteCapture}
         />
-      </aside>
-    </div>
+        <aside className="flex h-full w-full max-w-[360px] flex-1 basis-0 min-h-0 flex-col gap-4 overflow-hidden">
+          <PatternMetadataCard pattern={pattern} allTags={tags} />
+          <InsightsPanel
+            pattern={pattern}
+            insights={captureInsights}
+            highlightedInsightId={highlightedInsightId}
+            onHighlight={setHighlightedInsightId}
+            onDeleteInsight={handleDeleteInsight}
+            onUpdateInsightNote={handleUpdateInsightNote}
+          />
+        </aside>
+      </div>
+      <AlertDialog
+        open={Boolean(pendingInsightDeleteId)}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCancelDeleteInsight()
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>인사이트를 삭제할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              삭제하면 복구할 수 없습니다.
+              {insightDeleteTarget?.note ? (
+                <span className="mt-2 block truncate text-muted-foreground">
+                  {`"${insightDeleteTarget.note}"`}
+                </span>
+              ) : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelDeleteInsight}>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteInsight}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

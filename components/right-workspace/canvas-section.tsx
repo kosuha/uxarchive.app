@@ -9,6 +9,16 @@ import { Camera, GalleryHorizontalEnd, ImageUpscale, Loader2, MessageCircle, Min
 
 import { Button } from "@/components/ui/button"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -616,11 +626,27 @@ function CaptureStrip({
     targetId: string
     position: CaptureReorderPosition
   } | null>(null)
+  const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null)
+  const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
 
   const resetDragState = React.useCallback(() => {
     setDraggingId(null)
     setDropHint(null)
   }, [])
+
+  const handleDialogOpenChange = React.useCallback((open: boolean) => {
+    setDeleteDialogOpen(open)
+    if (!open) {
+      setDeleteTargetId(null)
+    }
+  }, [])
+
+  const handleConfirmDelete = React.useCallback(() => {
+    if (!deleteTargetId) return
+    onDeleteCapture(deleteTargetId)
+    setDeleteTargetId(null)
+    setDeleteDialogOpen(false)
+  }, [deleteTargetId, onDeleteCapture])
 
   const handleDragStart = React.useCallback(
     (event: React.DragEvent<HTMLButtonElement>, captureId: string) => {
@@ -704,9 +730,10 @@ function CaptureStrip({
     (event: React.MouseEvent<HTMLButtonElement>, captureId: string) => {
       event.preventDefault()
       event.stopPropagation()
-      onDeleteCapture(captureId)
+      setDeleteTargetId(captureId)
+      setDeleteDialogOpen(true)
     },
-    [onDeleteCapture]
+    []
   )
 
   return (
@@ -802,6 +829,24 @@ function CaptureStrip({
           </span>
         </div>
       )}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={handleDialogOpenChange}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>캡처를 삭제할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              선택한 캡처와 연결된 인사이트는 복구할 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDelete} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

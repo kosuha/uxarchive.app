@@ -9,6 +9,16 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -78,6 +88,18 @@ export function FolderTree({
   onPatternDelete,
   onFolderDelete,
 }: FolderTreeProps) {
+  const [pendingFolderDelete, setPendingFolderDelete] = React.useState<Folder | null>(null)
+
+  const handleFolderDeleteRequest = React.useCallback((folder: Folder) => {
+    setPendingFolderDelete(folder)
+  }, [])
+
+  const handleFolderDeleteConfirm = React.useCallback(() => {
+    if (!pendingFolderDelete) return
+    onFolderDelete?.(pendingFolderDelete.id)
+    setPendingFolderDelete(null)
+  }, [onFolderDelete, pendingFolderDelete])
+
   const tree = React.useMemo(() => buildFolderTree(folders, patterns), [folders, patterns])
   const rootPatterns = React.useMemo(
     () =>
@@ -98,27 +120,29 @@ export function FolderTree({
   }
 
   return (
-    <div className="flex flex-col gap-1">
-      {shouldShowRootFolders && (
-        <FolderMenuList
-          nodes={tree}
-          parentId={null}
-          selectedPatternId={selectedPatternId}
+    <>
+      <div className="flex flex-col gap-1">
+        {shouldShowRootFolders && (
+          <FolderMenuList
+            nodes={tree}
+            parentId={null}
+            selectedPatternId={selectedPatternId}
           onPatternSelect={onPatternSelect}
           pendingPatternInput={pendingPatternInput}
           pendingFolderInput={pendingFolderInput}
           onPatternInputSubmit={onPatternInputSubmit}
           onPatternInputCancel={onPatternInputCancel}
           onFolderInputSubmit={onFolderInputSubmit}
-          onFolderInputCancel={onFolderInputCancel}
-          selectedFolderId={selectedFolderId}
-          onFolderSelect={onFolderSelect}
-          onPatternCreateRequest={onPatternCreateRequest}
-          onFolderCreateRequest={onFolderCreateRequest}
-          onPatternDelete={onPatternDelete}
-          onFolderDelete={onFolderDelete}
-        />
-      )}
+            onFolderInputCancel={onFolderInputCancel}
+            selectedFolderId={selectedFolderId}
+            onFolderSelect={onFolderSelect}
+            onPatternCreateRequest={onPatternCreateRequest}
+            onFolderCreateRequest={onFolderCreateRequest}
+            onPatternDelete={onPatternDelete}
+            onFolderDelete={onFolderDelete}
+            onFolderDeleteRequest={handleFolderDeleteRequest}
+          />
+        )}
       {shouldShowRootPatterns && (
         <PatternList
           folderId={null}
@@ -135,7 +159,36 @@ export function FolderTree({
           onFolderCreateRequest={onFolderCreateRequest}
         />
       )}
-    </div>
+      </div>
+      <AlertDialog
+        open={Boolean(pendingFolderDelete)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingFolderDelete(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>폴더를 삭제할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingFolderDelete
+                ? `"${pendingFolderDelete.name}" 폴더를 삭제하면 하위 폴더와 패턴도 함께 삭제됩니다.`
+                : "하위 항목도 모두 제거됩니다."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleFolderDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 
@@ -214,6 +267,7 @@ type FolderMenuListProps = {
   onFolderCreateRequest?: (parentId: string | null) => void
   onPatternDelete?: (patternId: string) => void
   onFolderDelete?: (folderId: string) => void
+  onFolderDeleteRequest?: (folder: Folder) => void
 }
 
 function FolderMenuList({
@@ -234,6 +288,7 @@ function FolderMenuList({
   onFolderCreateRequest,
   onPatternDelete,
   onFolderDelete,
+  onFolderDeleteRequest,
 }: FolderMenuListProps) {
   const showFolderInput =
     pendingFolderInput && pendingFolderInput.parentId === (parentId ?? null)
@@ -258,6 +313,7 @@ function FolderMenuList({
             onFolderCreateRequest={onFolderCreateRequest}
             onPatternDelete={onPatternDelete}
             onFolderDelete={onFolderDelete}
+            onFolderDeleteRequest={onFolderDeleteRequest}
           />
         </SidebarMenuItem>
       ))}
@@ -304,6 +360,7 @@ type FolderNodeItemProps = {
   onFolderCreateRequest?: (parentId: string | null) => void
   onPatternDelete?: (patternId: string) => void
   onFolderDelete?: (folderId: string) => void
+  onFolderDeleteRequest?: (folder: Folder) => void
 }
 
 function FolderNodeItem({
@@ -322,6 +379,7 @@ function FolderNodeItem({
   onFolderCreateRequest,
   onPatternDelete,
   onFolderDelete,
+  onFolderDeleteRequest,
 }: FolderNodeItemProps) {
   const hasChildren = node.children.length > 0
   const shouldShowChildFolderInput = pendingFolderInput?.parentId === node.folder.id
@@ -421,12 +479,19 @@ function FolderNodeItem({
             새 폴더
           </ContextMenuItem>
           <ContextMenuSeparator />
-          <ContextMenuItem
-            className="text-destructive focus:text-destructive"
-            onSelect={() => onFolderDelete?.(node.folder.id)}
-          >
-            삭제
-          </ContextMenuItem>
+        <ContextMenuItem
+          className="text-destructive focus:text-destructive"
+          onSelect={(event) => {
+            event.preventDefault()
+            if (onFolderDeleteRequest) {
+              onFolderDeleteRequest(node.folder)
+            } else {
+              onFolderDelete?.(node.folder.id)
+            }
+          }}
+        >
+          삭제
+        </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
       <CollapsibleContent>
@@ -450,6 +515,7 @@ function FolderNodeItem({
               onFolderCreateRequest={onFolderCreateRequest}
               onPatternDelete={onPatternDelete}
               onFolderDelete={onFolderDelete}
+              onFolderDeleteRequest={onFolderDeleteRequest}
             />
           )}
           <PatternList
@@ -580,51 +646,84 @@ function PatternMenuItem({
   onFolderCreateRequest,
   onPatternDelete,
 }: PatternMenuItemProps) {
+  const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
+
+  const handleDeleteSelect = React.useCallback((event: Event | React.SyntheticEvent) => {
+    event.preventDefault()
+    setDeleteDialogOpen(true)
+  }, [])
+
+  const handleConfirmDelete = React.useCallback(() => {
+    onPatternDelete?.(pattern.id)
+    setDeleteDialogOpen(false)
+  }, [onPatternDelete, pattern.id])
+
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
-        <SidebarMenuButton
-          {...allowContextMenuProps}
-          data-tree-interactive="true"
-          className={cn(
-            "h-auto items-start gap-2 py-2 px-3 transition-colors",
-            isSelected && "bg-primary/10 text-primary ring-1 ring-primary/40"
-          )}
-          type="button"
-          onClick={() => onPatternSelect?.(pattern.id)}
-          onPointerDown={(event) => {
-            if (event.button === 2) {
-              onPatternSelect?.(pattern.id)
-            }
-          }}
-          onContextMenu={() => onPatternSelect?.(pattern.id)}
+    <>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <SidebarMenuButton
+            {...allowContextMenuProps}
+            data-tree-interactive="true"
+            className={cn(
+              "h-auto items-start gap-2 py-2 px-3 transition-colors",
+              isSelected && "bg-primary/10 text-primary ring-1 ring-primary/40"
+            )}
+            type="button"
+            onClick={() => onPatternSelect?.(pattern.id)}
+            onPointerDown={(event) => {
+              if (event.button === 2) {
+                onPatternSelect?.(pattern.id)
+              }
+            }}
+            onContextMenu={() => onPatternSelect?.(pattern.id)}
+          >
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">{pattern.name}</span>
+              <span className="text-xs text-muted-foreground">{pattern.serviceName}</span>
+            </div>
+          </SidebarMenuButton>
+        </ContextMenuTrigger>
+        <ContextMenuContent
+          align="start"
+          className="w-44"
+          onCloseAutoFocus={(event) => event.preventDefault()}
         >
-          <div className="flex flex-col">
-            <span className="text-sm font-medium">{pattern.name}</span>
-            <span className="text-xs text-muted-foreground">{pattern.serviceName}</span>
-          </div>
-        </SidebarMenuButton>
-      </ContextMenuTrigger>
-      <ContextMenuContent
-        align="start"
-        className="w-44"
-        onCloseAutoFocus={(event) => event.preventDefault()}
-      >
-        <ContextMenuItem onSelect={() => onPatternCreateRequest?.(folderId)}>
-          새 패턴
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={() => onFolderCreateRequest?.(folderId)}>
-          새 폴더
-        </ContextMenuItem>
-        <ContextMenuSeparator />
-        <ContextMenuItem
-          className="text-destructive focus:text-destructive"
-          onSelect={() => onPatternDelete?.(pattern.id)}
-        >
-          삭제
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
+          <ContextMenuItem onSelect={() => onPatternCreateRequest?.(folderId)}>
+            새 패턴
+          </ContextMenuItem>
+          <ContextMenuItem onSelect={() => onFolderCreateRequest?.(folderId)}>
+            새 폴더
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            className="text-destructive focus:text-destructive"
+            onSelect={handleDeleteSelect}
+          >
+            삭제
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>패턴을 삭제할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`"${pattern.name}" 패턴을 삭제하면 연결된 캡처와 인사이트가 모두 삭제됩니다.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 

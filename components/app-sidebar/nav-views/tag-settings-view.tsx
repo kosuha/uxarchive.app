@@ -6,10 +6,26 @@ import { ChevronDown, Plus, Trash2 } from "lucide-react"
 import { TagBadge } from "@/components/tag-badge"
 import { TagColorPicker } from "@/components/tag-color-picker"
 import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { storageService } from "@/lib/storage"
 import type { Tag } from "@/lib/types"
 import { useStorageCollections } from "@/lib/use-storage-collections"
@@ -55,6 +71,7 @@ export function TagSettingsView() {
   const { tags, patterns } = useStorageCollections()
   const [activeTagId, setActiveTagId] = React.useState<string | null>(() => readTagSettingsState().activeTagId)
   const tagRefs = React.useRef(new Map<string, HTMLButtonElement | null>())
+  const [deleteDialogState, setDeleteDialogState] = React.useState<{ tagId: string; usageCount: number } | null>(null)
 
   const sortedTags = React.useMemo(() => {
     return [...tags].sort((a, b) => a.label.localeCompare(b.label, "ko"))
@@ -152,25 +169,32 @@ export function TagSettingsView() {
     })
   }
 
-  const handleDeleteTag = () => {
+  const handleRequestDeleteTag = () => {
     if (!activeTag) return
     const usageCount = usageCountByTag.get(activeTag.id) ?? 0
-    const message = usageCount
-      ? `이 태그는 ${usageCount}개의 패턴에서 사용 중입니다. 삭제할까요?`
-      : "이 태그를 삭제할까요?"
-    if (typeof window !== "undefined" && !window.confirm(message)) {
-      return
-    }
-    storageService.tags.remove(activeTag.id)
+    setDeleteDialogState({ tagId: activeTag.id, usageCount })
+  }
+
+  const removeTagById = React.useCallback(
+    (tagId: string) => {
+      storageService.tags.remove(tagId)
     storageService.patterns.getAll().forEach((pattern) => {
-      if (!pattern.tags.some((tag) => tag.id === activeTag.id)) return
+      if (!pattern.tags.some((tag) => tag.id === tagId)) return
       storageService.patterns.update(pattern.id, (current) => ({
         ...current,
-        tags: current.tags.filter((tag) => tag.id !== activeTag.id),
+        tags: current.tags.filter((tag) => tag.id !== tagId),
       }))
     })
-    setActiveTagId(null)
-  }
+      setActiveTagId((current) => (current === tagId ? null : current))
+    },
+    []
+  )
+
+  const handleConfirmDeleteTag = React.useCallback(() => {
+    if (!deleteDialogState) return
+    removeTagById(deleteDialogState.tagId)
+    setDeleteDialogState(null)
+  }, [deleteDialogState, removeTagById])
 
   return (
     <div className="flex h-full flex-col gap-4 p-4">
@@ -191,7 +215,7 @@ export function TagSettingsView() {
             <Button variant="ghost" size="icon" onClick={handleCreateTag}>
               <Plus className="size-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={handleDeleteTag} aria-label="태그 삭제">
+            <Button variant="ghost" size="icon" onClick={handleRequestDeleteTag} aria-label="태그 삭제">
               <Trash2 className="size-4" />
             </Button>
           </div>
@@ -226,6 +250,34 @@ export function TagSettingsView() {
           </ScrollArea>
         </div>
       </div>
+      <AlertDialog
+        open={Boolean(deleteDialogState)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteDialogState(null)
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>태그를 삭제할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteDialogState?.usageCount
+                ? `이 태그는 ${deleteDialogState.usageCount}개의 패턴에서 사용 중입니다.`
+                : "삭제하면 복구할 수 없습니다."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteTag}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
