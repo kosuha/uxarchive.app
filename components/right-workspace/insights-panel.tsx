@@ -154,7 +154,7 @@ function InsightCard({ insight, index, isActive, onHighlight, onDelete, onUpdate
           />
         </article>
       </ContextMenuTrigger>
-      <ContextMenuContent align="start">
+      <ContextMenuContent>
         <ContextMenuItem
           variant="destructive"
           onSelect={(event) => {

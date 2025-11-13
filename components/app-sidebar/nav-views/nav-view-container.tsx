@@ -17,7 +17,6 @@ type NavViewContainerProps = {
 }
 
 const NAV_VIEW_COMPONENTS: Record<string, React.ComponentType | undefined> = {
-  search: SearchView,
   "recent-updates": RecentUpdatesView,
   favorites: FavoritesView,
   "tag-settings": TagSettingsView,

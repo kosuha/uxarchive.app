@@ -193,7 +193,7 @@ function CaptureCanvas({
   const fitScaleRef = React.useRef(0.5)
   const hasUserAdjustedRef = React.useRef(false)
   const [imageDimensions, setImageDimensions] = React.useState<{ width: number; height: number } | null>(null)
-  const [imageElement] = useImage(capture?.imageUrl ?? null, "anonymous")
+  const [imageElement] = useImage(capture?.imageUrl ?? "", "anonymous")
   const [canvasSize, setCanvasSize] = React.useState<{ width: number; height: number }>({ width: 0, height: 0 })
 
   React.useEffect(() => {
@@ -564,7 +564,7 @@ function CaptureCanvas({
                                 <p className="max-w-[220px] text-xs">{insight.note}</p>
                               </TooltipContent>
                             </Tooltip>
-                            <ContextMenuContent align="start">
+                            <ContextMenuContent>
                               <ContextMenuItem
                                 variant="destructive"
                                 onSelect={(event) => {

@@ -468,7 +468,6 @@ function FolderNodeItem({
           </CollapsibleTrigger>
         </ContextMenuTrigger>
         <ContextMenuContent
-          align="start"
           className="w-44"
           onCloseAutoFocus={(event) => event.preventDefault()}
         >
@@ -685,7 +684,6 @@ function PatternMenuItem({
           </SidebarMenuButton>
         </ContextMenuTrigger>
         <ContextMenuContent
-          align="start"
           className="w-44"
           onCloseAutoFocus={(event) => event.preventDefault()}
         >
