@@ -3,10 +3,11 @@
 import * as React from "react"
 
 import { AppSidebar } from "@/components/app-sidebar"
+import { AuthGuard } from "@/components/auth/auth-guard"
+import { UserAccountMenu } from "@/components/auth/user-account-menu"
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
@@ -54,50 +55,55 @@ export default function Page() {
   }, [selectedPattern?.folderId, foldersById])
 
   return (
-    <SidebarProvider>
-      <AppSidebar
-        selectedPatternId={selectedPatternId}
-        onPatternSelect={setSelectedPatternId}
-        className="p-0 pr-2"
-      />
-      <SidebarInset>
-        <header className="flex h-12 shrink-0 items-center gap-2">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
-            />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="flex justify-center items-center">
-                  <LibraryBig className="h-4 w-4" />
-                  <span>내 아카이브</span>
-                </BreadcrumbItem>
-                {folderPath.map((folder) => (
-                  <React.Fragment key={folder.id}>
-                    <BreadcrumbSeparator />
-                    <BreadcrumbItem className="flex justify-center items-center">
-                      <FolderIcon className="h-4 w-4" />
-                      <span>{folder.name}</span>
-                    </BreadcrumbItem>
-                  </React.Fragment>
-                ))}
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>
-                    {selectedPattern?.name ?? "선택된 패턴 없음"}
-                  </BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
+    <AuthGuard>
+      <SidebarProvider>
+        <AppSidebar
+          selectedPatternId={selectedPatternId}
+          onPatternSelect={setSelectedPatternId}
+          className="p-0 pr-2"
+        />
+        <SidebarInset>
+          <header className="flex h-12 shrink-0 items-center justify-between gap-2">
+            <div className="flex items-center gap-2 px-4">
+              <SidebarTrigger className="-ml-1" />
+              <Separator
+                orientation="vertical"
+                className="mr-2 data-[orientation=vertical]:h-4"
+              />
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem className="flex justify-center items-center">
+                    <LibraryBig className="h-4 w-4" />
+                    <span>내 아카이브</span>
+                  </BreadcrumbItem>
+                  {folderPath.map((folder) => (
+                    <React.Fragment key={folder.id}>
+                      <BreadcrumbSeparator />
+                      <BreadcrumbItem className="flex justify-center items-center">
+                        <FolderIcon className="h-4 w-4" />
+                        <span>{folder.name}</span>
+                      </BreadcrumbItem>
+                    </React.Fragment>
+                  ))}
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>
+                      {selectedPattern?.name ?? "선택된 패턴 없음"}
+                    </BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
+            <div className="px-4">
+              <UserAccountMenu />
+            </div>
+          </header>
+          <div className="flex flex-1 basis-0 min-h-0 flex-col gap-4 overflow-hidden p-4 pt-0">
+            <RightWorkspace patternId={selectedPatternId} />
           </div>
-        </header>
-        <div className="flex flex-1 basis-0 min-h-0 flex-col gap-4 overflow-hidden p-4 pt-0">
-          <RightWorkspace patternId={selectedPatternId} />
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+        </SidebarInset>
+      </SidebarProvider>
+    </AuthGuard>
   )
 }
 
