@@ -537,7 +537,7 @@ function CaptureCanvas({
                                     onFocus={() => onHighlight(insight.id)}
                                     onBlur={() => onHighlight(null)}
                                     className={cn(
-                                      "flex size-9 items-center justify-center rounded-full border-2 border-white font-semibold text-xs text-white shadow-lg transition-colors",
+                                      "flex size-6 items-center justify-center rounded-full border-2 border-white font-semibold text-xs text-white shadow-lg transition-colors",
                                       isActive ? "bg-primary" : "bg-black/70",
                                       "cursor-grab active:cursor-grabbing"
                                     )}
