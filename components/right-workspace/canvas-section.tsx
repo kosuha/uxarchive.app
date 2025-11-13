@@ -17,7 +17,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import {
   Tooltip,
   TooltipContent,
@@ -55,7 +54,10 @@ type CanvasSectionProps = {
   onToggleAddMode: () => void
   onUpdateInsightPosition: (insightId: string, point: CanvasPoint) => void
   onUploadCapture: (payload: CaptureUploadPayload) => Promise<void> | void
+  onReorderCapture: (sourceId: string, targetId: string, position: CaptureReorderPosition) => void
 }
+
+type CaptureReorderPosition = "before" | "after"
 
 export function CanvasSection({
   activeCapture,
@@ -73,6 +75,7 @@ export function CanvasSection({
   onToggleAddMode,
   onUpdateInsightPosition,
   onUploadCapture,
+  onReorderCapture,
 }: CanvasSectionProps) {
   return (
     <section className="flex flex-1 basis-0 min-h-0 flex-col rounded-xl border border-border/60 bg-gradient-to-b from-card to-muted/20 shadow-sm md:min-h-[640px]">
@@ -98,6 +101,7 @@ export function CanvasSection({
         activeId={activeCaptureId}
         onSelect={onSelectCapture}
         onUploadCapture={onUploadCapture}
+        onReorderCapture={onReorderCapture}
       />
     </section>
   )
@@ -592,13 +596,103 @@ function CaptureStrip({
   activeId,
   onSelect,
   onUploadCapture,
+  onReorderCapture,
 }: {
   captures: Capture[]
   activeId?: string
   onSelect: (id: string) => void
   onUploadCapture: (payload: CaptureUploadPayload) => Promise<void> | void
+  onReorderCapture: (sourceId: string, targetId: string, position: CaptureReorderPosition) => void
 }) {
   const hasCaptures = captures.length > 0
+  const [draggingId, setDraggingId] = React.useState<string | null>(null)
+  const [dropHint, setDropHint] = React.useState<{
+    targetId: string
+    position: CaptureReorderPosition
+  } | null>(null)
+
+  const resetDragState = React.useCallback(() => {
+    setDraggingId(null)
+    setDropHint(null)
+  }, [])
+
+  const handleDragStart = React.useCallback(
+    (event: React.DragEvent<HTMLButtonElement>, captureId: string) => {
+      setDraggingId(captureId)
+      event.dataTransfer.effectAllowed = "move"
+      event.dataTransfer.setData("text/plain", captureId)
+    },
+    []
+  )
+
+  const handleDragOver = React.useCallback(
+    (event: React.DragEvent<HTMLButtonElement>, targetId: string) => {
+      if (!draggingId || draggingId === targetId) return
+      event.preventDefault()
+      const rect = event.currentTarget.getBoundingClientRect()
+      const isAfter = event.clientX - rect.left > rect.width / 2
+      setDropHint({
+        targetId,
+        position: isAfter ? "after" : "before",
+      })
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = "move"
+      }
+    },
+    [draggingId]
+  )
+
+  const handleDrop = React.useCallback(
+    (event: React.DragEvent<HTMLButtonElement>, targetId: string) => {
+      event.preventDefault()
+      event.stopPropagation()
+      const sourceId = event.dataTransfer?.getData("text/plain")
+      if (!sourceId || sourceId === targetId) {
+        resetDragState()
+        return
+      }
+      const rect = event.currentTarget.getBoundingClientRect()
+      const isAfter = event.clientX - rect.left > rect.width / 2
+      onReorderCapture(sourceId, targetId, isAfter ? "after" : "before")
+      resetDragState()
+    },
+    [onReorderCapture, resetDragState]
+  )
+
+  const handleContainerDrop = React.useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      if (!draggingId) return
+      event.preventDefault()
+      const sourceId = event.dataTransfer?.getData("text/plain")
+      if (!sourceId || captures.length === 0) {
+        resetDragState()
+        return
+      }
+      const lastCapture = captures[captures.length - 1]
+      if (!lastCapture || sourceId === lastCapture.id) {
+        resetDragState()
+        return
+      }
+      onReorderCapture(sourceId, lastCapture.id, "after")
+      resetDragState()
+    },
+    [captures, draggingId, onReorderCapture, resetDragState]
+  )
+
+  const handleContainerDragOver = React.useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      if (!draggingId) return
+      event.preventDefault()
+    },
+    [draggingId]
+  )
+
+  const handleContainerDragLeave = React.useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    const nextTarget = event.relatedTarget as Node | null
+    if (!nextTarget || !event.currentTarget.contains(nextTarget)) {
+      setDropHint(null)
+    }
+  }, [])
 
   return (
     <div className="border-t border-border/60 px-4 py-4">
@@ -616,32 +710,52 @@ function CaptureStrip({
         />
       </div>
       {hasCaptures ? (
-        <div className="flex gap-3 overflow-x-auto px-2">
+        <div
+          className="flex gap-3 overflow-x-auto px-2"
+          onDragOver={handleContainerDragOver}
+          onDrop={handleContainerDrop}
+          onDragLeave={handleContainerDragLeave}
+        >
           {captures.map((capture) => {
             const isActive = activeId === capture.id
+            const isDragging = draggingId === capture.id
+            const isDropBefore =
+              dropHint?.targetId === capture.id && dropHint.position === "before"
+            const isDropAfter =
+              dropHint?.targetId === capture.id && dropHint.position === "after"
             return (
-              <button
-                type="button"
-                key={capture.id}
-                onClick={() => onSelect(capture.id)}
-                className={cn(
-                  "relative h-24 w-20 shrink-0 overflow-hidden rounded-xl border text-left transition-all focus-visible:ring-2 focus-visible:ring-ring",
-                  isActive
-                    ? "border-primary/70 shadow-md"
-                    : "border-border/60 hover:border-primary/60"
-                )}
-              >
-                <Image
-                  src={capture.imageUrl}
-                  alt="캡처 썸네일"
-                  fill
-                  sizes="80px"
-                  className="object-cover"
-                />
-                <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-1.5 text-[10px] font-medium text-white">
-                  {capture.order}
-                </span>
-              </button>
+              <div className="flex items-center gap-1" key={capture.id}>
+                {isDropBefore && <DropIndicator position="before" />}
+                <button
+                  type="button"
+                  draggable
+                  aria-grabbed={isDragging}
+                  onClick={() => onSelect(capture.id)}
+                  onDragStart={(event) => handleDragStart(event, capture.id)}
+                  onDragEnd={resetDragState}
+                  onDragOver={(event) => handleDragOver(event, capture.id)}
+                  onDrop={(event) => handleDrop(event, capture.id)}
+                  className={cn(
+                    "relative h-24 w-20 shrink-0 overflow-hidden rounded-xl border text-left transition-all focus-visible:ring-2 focus-visible:ring-ring",
+                    isActive
+                      ? "border-primary/70 shadow-md"
+                      : "border-border/60 hover:border-primary/60",
+                    isDragging && "opacity-70 ring-2 ring-primary"
+                  )}
+                >
+                  <Image
+                    src={capture.imageUrl}
+                    alt="캡처 썸네일"
+                    fill
+                    sizes="80px"
+                    className="object-cover"
+                  />
+                  <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-1.5 text-[10px] font-medium text-white">
+                    {capture.order}
+                  </span>
+                </button>
+                {isDropAfter && <DropIndicator position="after" />}
+              </div>
             )
           })}
         </div>
@@ -654,6 +768,18 @@ function CaptureStrip({
         </div>
       )}
     </div>
+  )
+}
+
+function DropIndicator({ position }: { position: CaptureReorderPosition }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "h-24 w-0.5 rounded-full bg-primary shadow-[0_0_10px_rgba(59,130,246,0.45)]",
+        position === "before" ? "-ml-1" : "-mr-1"
+      )}
+    />
   )
 }
 
@@ -831,7 +957,7 @@ function CaptureUploadDialog({
             </Button>
             <Button type="submit" disabled={!selectedFile || isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
-              업로드 준비
+              업로드
             </Button>
           </DialogFooter>
         </form>

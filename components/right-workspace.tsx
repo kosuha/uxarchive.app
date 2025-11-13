@@ -185,6 +185,39 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
     [pattern, setActiveCaptureId]
   )
 
+  const handleReorderCapture = React.useCallback(
+    (sourceId: string, targetId: string, position: "before" | "after") => {
+      if (!pattern || sourceId === targetId) return
+      const allCaptures = storageService.captures.getAll()
+      const patternCaptures = allCaptures
+        .filter((capture) => capture.patternId === pattern.id)
+        .sort((a, b) => a.order - b.order)
+
+      const fromIndex = patternCaptures.findIndex((capture) => capture.id === sourceId)
+      const targetIndex = patternCaptures.findIndex((capture) => capture.id === targetId)
+      if (fromIndex === -1 || targetIndex === -1) return
+
+      let destinationIndex = targetIndex + (position === "after" ? 1 : 0)
+      if (fromIndex < destinationIndex) {
+        destinationIndex -= 1
+      }
+
+      const reordered = [...patternCaptures]
+      const [moved] = reordered.splice(fromIndex, 1)
+      if (!moved) return
+      reordered.splice(destinationIndex, 0, moved)
+
+      const normalized = reordered.map((capture, index) => ({
+        ...capture,
+        order: index + 1,
+      }))
+      const otherCaptures = allCaptures.filter((capture) => capture.patternId !== pattern.id)
+      storageService.captures.setAll([...otherCaptures, ...normalized])
+      setActiveCaptureId(moved.id)
+    },
+    [pattern]
+  )
+
   if (!pattern) {
     return (
       <div className="text-muted-foreground flex flex-1 items-center justify-center rounded-md border border-dashed">
@@ -216,6 +249,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
         onToggleAddMode={handleToggleAddMode}
         onUpdateInsightPosition={handleUpdateInsightPosition}
         onUploadCapture={handleUploadCapture}
+        onReorderCapture={handleReorderCapture}
       />
       <aside className="flex h-full w-full max-w-[360px] flex-1 basis-0 min-h-0 flex-col gap-4 overflow-hidden">
         <PatternMetadataCard pattern={pattern} allTags={tags} />
