@@ -9,10 +9,10 @@ UX Archive 웹앱은 Next.js 14 + shadcn/ui 기반으로 제작되며, Supabase 
 1. [Supabase 대시보드](https://supabase.com/dashboard)에 로그인 후 `New project`를 선택합니다.
 2. 조직과 프로젝트 이름(예: `ux-archive`)을 지정하고 지역은 이미지 업로드 지연을 고려해 가까운 리전을 선택합니다.
 3. 데이터베이스 비밀번호를 생성해 안전한 비밀 관리 도구(1Password, Bitwarden 등)에 보관합니다.
-4. 프로젝트가 준비되면 `Project Settings → API`에서 `Project URL`, `anon key`, `service_role key`를 확인해 둡니다.
+4. 프로젝트가 준비되면 `Project Settings → API`에서 `Project URL`, `publishable key`, `secret key`를 확인해 둡니다.
 5. `Storage → Buckets`에서 `ux-archive-captures`와 같이 앱에서 사용할 버킷을 하나 생성합니다.
 
-> ⚠️ `service_role key`와 DB 비밀번호는 서버 전용 시크릿입니다. Git, 클라이언트 번들, Issue 등에 절대 공유하지 마세요.
+> ⚠️ `secret key`와 DB 비밀번호는 서버 전용 시크릿입니다. Git, 클라이언트 번들, Issue 등에 절대 공유하지 마세요.
 
 ## 환경 변수 설정
 
@@ -23,9 +23,9 @@ UX Archive 웹앱은 Next.js 14 + shadcn/ui 기반으로 제작되며, Supabase 
 | 변수 | 설명 |
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase Project URL (`https://<project-ref>.supabase.co`) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 프론트엔드에서 사용할 익명 키 |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | 프론트엔드에서 사용할 공개 키 |
 | `SUPABASE_PROJECT_ID` | Supabase Project Reference (예: `abcd1234`) |
-| `SUPABASE_SERVICE_ROLE_KEY` | 서버에서만 사용하는 service_role 키 |
+| `SUPABASE_SECRET_KEY` | 서버에서만 사용하는 secret 키 |
 | `SUPABASE_DB_PASSWORD` | 프로젝트 생성 시 지정한 Postgres 비밀번호 |
 | `SUPABASE_STORAGE_BUCKET` | 업로드에 사용할 Storage 버킷 이름 |
 | `SUPABASE_STORAGE_REGION` | 선택 사항, 버킷이 위치한 리전(예: `ap-northeast-2`) |
