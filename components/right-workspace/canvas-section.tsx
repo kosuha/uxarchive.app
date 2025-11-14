@@ -792,6 +792,7 @@ function CaptureStrip({
                           alt="캡처 썸네일"
                           fill
                           sizes="80px"
+                          unoptimized
                           className="object-cover"
                         />
                         <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-1.5 text-[10px] font-medium text-white">

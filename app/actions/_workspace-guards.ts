@@ -1,15 +1,14 @@
 "use server"
 
-import { cookies } from "next/headers"
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
 import type { SupabaseClient, User } from "@supabase/supabase-js"
+import { createSupabaseServerActionClient } from "@/lib/supabase/server-clients"
 
 import { RepositoryError } from "@/lib/repositories/types"
 
 export type WorkspaceRole = "viewer" | "editor" | "owner"
 
-export const createActionSupabaseClient = (): SupabaseClient => {
-  return createServerActionClient({ cookies }) as SupabaseClient
+export const createActionSupabaseClient = async (): Promise<SupabaseClient> => {
+  return (await createSupabaseServerActionClient()) as SupabaseClient
 }
 
 export const requireAuthenticatedUser = async (client: SupabaseClient): Promise<User> => {

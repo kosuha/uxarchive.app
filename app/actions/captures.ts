@@ -1,8 +1,7 @@
 "use server"
 
-import { cookies } from "next/headers"
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
 import type { SupabaseClient, User } from "@supabase/supabase-js"
+import { createSupabaseServerActionClient } from "@/lib/supabase/server-clients"
 
 import type { CaptureRecord } from "@/lib/captures/types"
 
@@ -114,7 +113,7 @@ const sanitizeDimension = (value: number | null | undefined, field: "width" | "h
 export const finalizeCaptureUpload = async (
   input: FinalizeCaptureUploadInput,
 ): Promise<CaptureRecord> => {
-  const supabase = createServerActionClient({ cookies }) as ServerActionSupabaseClient
+  const supabase = (await createSupabaseServerActionClient()) as ServerActionSupabaseClient
   await requireAuthenticatedUser(supabase)
 
   const workspaceId = await fetchPatternWorkspaceId(supabase, input.patternId)

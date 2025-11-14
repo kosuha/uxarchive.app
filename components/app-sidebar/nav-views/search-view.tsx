@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, Search } from "lucide-react"
+import { Check } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/command"
 import { TagBadge } from "@/components/tag-badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { EmptyPlaceholder } from "@/components/app-sidebar/nav-views/empty-placeholder"
 import { useWorkspaceData } from "@/lib/workspace-data-context"
 import { cn } from "@/lib/utils"
 

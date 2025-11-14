@@ -1,9 +1,8 @@
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import type { SupabaseClient, User } from "@supabase/supabase-js"
 import { getServiceRoleSupabaseClient } from "@/lib/supabase/service-client"
 import type { CaptureRecord } from "@/lib/captures/types"
+import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server-clients"
 
 const SAFE_SEGMENT = /^[A-Za-z0-9_-]+$/
 const DEFAULT_VARIANT = "original"
@@ -126,6 +125,10 @@ const requireAuthenticatedUser = async (supabase: RouteSupabaseClient): Promise<
     error,
   } = await supabase.auth.getUser()
   if (error) {
+    const isMissingSession = /Auth session missing/i.test(error.message)
+    if (isMissingSession) {
+      throw new HttpError("로그인이 필요합니다.", 401)
+    }
     throw new Error(`Supabase 인증 정보를 확인할 수 없습니다: ${error.message}`)
   }
   if (!user) {
@@ -271,7 +274,7 @@ export const runtime = "nodejs"
 export async function POST(request: Request) {
   try {
     const payload = await parseRequest(request)
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = await createSupabaseRouteHandlerClient()
     const user = await requireAuthenticatedUser(supabase)
     const bucket = resolveBucketName()
     const objectPath = resolveObjectPath(payload)
@@ -319,7 +322,7 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const payload = await parseCancelRequest(request)
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = await createSupabaseRouteHandlerClient()
     await requireAuthenticatedUser(supabase)
     const bucket = resolveBucketName()
 

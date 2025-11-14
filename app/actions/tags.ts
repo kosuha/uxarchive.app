@@ -15,7 +15,7 @@ export const listWorkspaceTagsAction = async (workspaceId: string, onlyActive = 
     throw new RepositoryError("workspaceId가 필요합니다.")
   }
 
-  const supabase = createActionSupabaseClient()
+  const supabase = await createActionSupabaseClient()
   await requireAuthenticatedUser(supabase)
   await ensureWorkspaceRole(supabase, workspaceId, "viewer")
 
@@ -28,7 +28,7 @@ export const createTagAction = async (input: CreateTagInput) => {
     throw new RepositoryError("workspaceId가 필요합니다.")
   }
 
-  const supabase = createActionSupabaseClient()
+  const supabase = await createActionSupabaseClient()
   await requireAuthenticatedUser(supabase)
   await ensureWorkspaceRole(supabase, input.workspaceId, "editor")
 
@@ -41,7 +41,7 @@ export const updateTagAction = async (input: UpdateTagInput) => {
     throw new RepositoryError("workspaceId와 tagId가 필요합니다.")
   }
 
-  const supabase = createActionSupabaseClient()
+  const supabase = await createActionSupabaseClient()
   await requireAuthenticatedUser(supabase)
   await ensureWorkspaceRole(supabase, input.workspaceId, "editor")
 
@@ -54,7 +54,7 @@ export const deleteTagAction = async (workspaceId: string, tagId: string) => {
     throw new RepositoryError("workspaceId와 tagId가 필요합니다.")
   }
 
-  const supabase = createActionSupabaseClient()
+  const supabase = await createActionSupabaseClient()
   await requireAuthenticatedUser(supabase)
   await ensureWorkspaceRole(supabase, workspaceId, "editor")
 

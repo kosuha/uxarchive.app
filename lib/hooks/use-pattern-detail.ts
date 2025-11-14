@@ -14,6 +14,68 @@ type UploadCaptureInput = {
   desiredOrder: number
 }
 
+const STORAGE_OBJECT_ROUTE = "/api/storage/object"
+
+const normalizeObjectPath = (path: string) => path.replace(/^\/+/, "").trim()
+
+const buildStorageProxyUrl = (() => {
+  const bucketParam = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET?.trim()
+  return (path: string) => {
+    const params = new URLSearchParams()
+    params.set("path", normalizeObjectPath(path))
+    if (bucketParam) {
+      params.set("bucket", bucketParam)
+    }
+    return `${STORAGE_OBJECT_ROUTE}?${params.toString()}`
+  }
+})()
+
+const isAbsoluteUrl = (value: string | null | undefined) => {
+  if (!value || typeof value !== "string") return false
+  try {
+    const parsed = new URL(value)
+    return Boolean(parsed.protocol && parsed.host)
+  } catch {
+    return false
+  }
+}
+
+const resolveCaptureImageUrl = (record: CaptureRecord) => {
+  const storagePath = record.storagePath?.trim()
+  if (storagePath) {
+    if (isAbsoluteUrl(storagePath)) {
+      return storagePath
+    }
+    const proxyUrl = buildStorageProxyUrl(storagePath)
+    if (process.env.NODE_ENV === "development") {
+      console.log("[usePatternDetail] capture storage proxy url", {
+        captureId: record.id,
+        storagePath: record.storagePath,
+        proxyUrl,
+      })
+    }
+    return proxyUrl
+  }
+
+  const publicUrl = record.publicUrl?.trim()
+  if (publicUrl) {
+    if (isAbsoluteUrl(publicUrl)) {
+      return publicUrl
+    }
+    return `/${publicUrl}`
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    console.warn("[usePatternDetail] capture image url fallback", {
+      captureId: record.id,
+      storagePath: record.storagePath,
+      publicUrl: record.publicUrl,
+    })
+  }
+
+  return ""
+}
+
 export const usePatternDetail = (patternId?: string | null) => {
   const { supabase } = useSupabaseSession()
   const { workspaceId } = useWorkspaceData()
@@ -26,7 +88,7 @@ export const usePatternDetail = (patternId?: string | null) => {
     return {
       id: record.id,
       patternId: record.patternId,
-      imageUrl: record.publicUrl ?? record.storagePath,
+      imageUrl: resolveCaptureImageUrl(record),
       order: record.orderIndex ?? 0,
       createdAt: record.createdAt,
     } satisfies Capture
@@ -102,7 +164,7 @@ export const usePatternDetail = (patternId?: string | null) => {
     [patternId, supabase],
   )
 
-  const uploadCapture = React.useCallback(
+const uploadCapture = React.useCallback(
     async ({ file, desiredOrder }: UploadCaptureInput) => {
       if (!patternId || !workspaceId) {
         throw new Error("워크스페이스 또는 패턴 정보가 부족합니다.")
@@ -146,6 +208,19 @@ export const usePatternDetail = (patternId?: string | null) => {
           body: JSON.stringify({ workspaceId, patternId, captureId }),
         })
         throw new Error("캡처 파일 업로드에 실패했습니다.")
+      }
+
+      const { width, height } = await readImageDimensions(file)
+
+      const finalizeResponse = await fetch("/api/captures/finalize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId, patternId, captureId, width, height, refreshPublicUrl: true }),
+      })
+
+      if (!finalizeResponse.ok) {
+        const finalizePayload = await finalizeResponse.json().catch(() => null)
+        throw new Error(finalizePayload?.error ?? "캡처 정보를 갱신하지 못했습니다.")
       }
 
       const repo = createCapturesRepository(supabase)
@@ -247,4 +322,23 @@ export const usePatternDetail = (patternId?: string | null) => {
     updateInsight,
     deleteInsight,
   }
+}
+
+const readImageDimensions = async (file: File): Promise<{ width?: number; height?: number }> => {
+  if (!file.type.startsWith("image/")) {
+    return {}
+  }
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file)
+    const image = new Image()
+    image.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve({ width: Math.round(image.width), height: Math.round(image.height) })
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve({})
+    }
+    image.src = url
+  })
 }

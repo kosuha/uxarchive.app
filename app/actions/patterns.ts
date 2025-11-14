@@ -15,7 +15,7 @@ export const listWorkspacePatternsAction = async (workspaceId: string) => {
     throw new RepositoryError("workspaceId가 필요합니다.")
   }
 
-  const supabase = createActionSupabaseClient()
+  const supabase = await createActionSupabaseClient()
   await requireAuthenticatedUser(supabase)
   await ensureWorkspaceRole(supabase, workspaceId, "viewer")
 
@@ -32,7 +32,7 @@ export const createPatternAction = async (input: CreatePatternActionInput) => {
     throw new RepositoryError("workspaceId가 필요합니다.")
   }
 
-  const supabase = createActionSupabaseClient()
+  const supabase = await createActionSupabaseClient()
   const user = await requireAuthenticatedUser(supabase)
   await ensureWorkspaceRole(supabase, input.workspaceId, "editor")
 
@@ -57,7 +57,7 @@ export const updatePatternAction = async (input: UpdatePatternActionInput) => {
     throw new RepositoryError("workspaceId와 patternId가 필요합니다.")
   }
 
-  const supabase = createActionSupabaseClient()
+  const supabase = await createActionSupabaseClient()
   await requireAuthenticatedUser(supabase)
   await ensureWorkspaceRole(supabase, input.workspaceId, "editor")
 
@@ -70,7 +70,7 @@ export const deletePatternAction = async (workspaceId: string, patternId: string
     throw new RepositoryError("workspaceId와 patternId가 필요합니다.")
   }
 
-  const supabase = createActionSupabaseClient()
+  const supabase = await createActionSupabaseClient()
   await requireAuthenticatedUser(supabase)
   await ensureWorkspaceRole(supabase, workspaceId, "editor")
 
