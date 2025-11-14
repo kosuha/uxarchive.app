@@ -21,7 +21,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
-import { storageService } from "@/lib/storage"
 import type { Pattern, Tag } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -30,23 +29,16 @@ const MAX_PATTERN_TAGS = 7
 type PatternMetadataCardProps = {
   pattern: Pattern
   allTags: Tag[]
+  onUpdatePattern: (updates: Partial<Pick<Pattern, "name" | "serviceName" | "summary">>) => Promise<void> | void
+  onAssignTag: (tagId: string) => Promise<void> | void
+  onRemoveTag: (tagId: string) => Promise<void> | void
 }
 
-export function PatternMetadataCard({ pattern, allTags }: PatternMetadataCardProps) {
+export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssignTag, onRemoveTag }: PatternMetadataCardProps) {
   const [serviceNameValue, setServiceNameValue] = React.useState(pattern.serviceName)
   const [nameValue, setNameValue] = React.useState(pattern.name)
   const [isTagDialogOpen, setIsTagDialogOpen] = React.useState(false)
   const [tagSearch, setTagSearch] = React.useState("")
-
-  const updatePattern = React.useCallback(
-    (updates: Partial<Pattern>) => {
-      storageService.patterns.update(pattern.id, (current) => ({
-        ...current,
-        ...updates,
-      }))
-    },
-    [pattern.id]
-  )
 
   React.useEffect(() => {
     setServiceNameValue(pattern.serviceName)
@@ -78,33 +70,45 @@ export function PatternMetadataCard({ pattern, allTags }: PatternMetadataCardPro
   const isTagLimitReached = pattern.tags.length >= MAX_PATTERN_TAGS
 
   const handleToggleTag = React.useCallback(
-    (tagId: string) => {
-      const hasTag = pattern.tags.some((tag) => tag.id === tagId)
-      if (hasTag) {
-        updatePattern({ tags: pattern.tags.filter((tag) => tag.id !== tagId) })
-        return
+    async (tagId: string) => {
+      try {
+        const hasTag = pattern.tags.some((tag) => tag.id === tagId)
+        if (hasTag) {
+          await onRemoveTag(tagId)
+          return
+        }
+        if (pattern.tags.length >= MAX_PATTERN_TAGS) {
+          return
+        }
+        const tagToAdd = sortedTags.find((tag) => tag.id === tagId)
+        if (!tagToAdd) return
+        await onAssignTag(tagId)
+      } catch (error) {
+        console.error("태그 토글 실패", error)
       }
-      if (pattern.tags.length >= MAX_PATTERN_TAGS) {
-        return
-      }
-      const tagToAdd = sortedTags.find((tag) => tag.id === tagId)
-      if (!tagToAdd) return
-      updatePattern({ tags: [...pattern.tags, tagToAdd] })
     },
-    [pattern.tags, sortedTags, updatePattern]
+    [onAssignTag, onRemoveTag, pattern.tags, sortedTags]
   )
 
-  const commitServiceName = React.useCallback(() => {
+  const commitServiceName = React.useCallback(async () => {
     const next = serviceNameValue.trim()
     if (next === pattern.serviceName) return
-    updatePattern({ serviceName: next })
-  }, [serviceNameValue, pattern.serviceName, updatePattern])
+    try {
+      await onUpdatePattern({ serviceName: next })
+    } catch (error) {
+      console.error("서비스명 업데이트 실패", error)
+    }
+  }, [onUpdatePattern, pattern.serviceName, serviceNameValue])
 
-  const commitName = React.useCallback(() => {
+  const commitName = React.useCallback(async () => {
     const next = nameValue.trim()
     if (next === pattern.name) return
-    updatePattern({ name: next })
-  }, [nameValue, pattern.name, updatePattern])
+    try {
+      await onUpdatePattern({ name: next })
+    } catch (error) {
+      console.error("패턴 이름 업데이트 실패", error)
+    }
+  }, [nameValue, onUpdatePattern, pattern.name])
 
   const handleServiceKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Escape") {

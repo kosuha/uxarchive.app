@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/context-menu"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
-import { storageService } from "@/lib/storage"
 import type { Insight, Pattern } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -24,6 +23,7 @@ type InsightsPanelProps = {
   onHighlight: (id: string | null) => void
   onDeleteInsight: (insightId: string) => void
   onUpdateInsightNote: (insightId: string, note: string) => void
+  onUpdatePatternSummary: (summary: string) => Promise<void> | void
 }
 
 export function InsightsPanel({
@@ -33,6 +33,7 @@ export function InsightsPanel({
   onHighlight,
   onDeleteInsight,
   onUpdateInsightNote,
+  onUpdatePatternSummary,
 }: InsightsPanelProps) {
   return (
     <section className="flex h-full flex-1 basis-0 min-h-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
@@ -45,7 +46,7 @@ export function InsightsPanel({
         <div className="flex flex-1 basis-0 min-h-0 flex-col">
           <ScrollArea className="flex-1 basis-0 min-h-0">
             <div className="space-y-1 pb-2 pt-2">
-              <PatternSummaryCard pattern={pattern} />
+              <PatternSummaryCard pattern={pattern} onUpdateSummary={onUpdatePatternSummary} />
               {insights.length ? (
                 insights.map((insight, index) => (
                   <InsightCard
@@ -172,9 +173,10 @@ function InsightCard({ insight, index, isActive, onHighlight, onDelete, onUpdate
 
 type PatternSummaryCardProps = {
   pattern: Pattern
+  onUpdateSummary: (summary: string) => Promise<void> | void
 }
 
-function PatternSummaryCard({ pattern }: PatternSummaryCardProps) {
+function PatternSummaryCard({ pattern, onUpdateSummary }: PatternSummaryCardProps) {
   const [value, setValue] = React.useState(pattern.summary)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
 
@@ -193,14 +195,15 @@ function PatternSummaryCard({ pattern }: PatternSummaryCardProps) {
     resizeTextarea()
   }, [value, resizeTextarea])
 
-  const commitChange = React.useCallback(() => {
+  const commitChange = React.useCallback(async () => {
     const next = value.trim()
     if (next === pattern.summary) return
-    storageService.patterns.update(pattern.id, (current) => ({
-      ...current,
-      summary: next,
-    }))
-  }, [value, pattern.summary, pattern.id])
+    try {
+      await onUpdateSummary(next)
+    } catch (error) {
+      console.error("요약 업데이트 실패", error)
+    }
+  }, [onUpdateSummary, pattern.summary, value])
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Escape") {

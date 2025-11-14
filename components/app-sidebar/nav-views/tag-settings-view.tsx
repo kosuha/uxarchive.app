@@ -18,9 +18,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { storageService } from "@/lib/storage"
 import type { Tag } from "@/lib/types"
-import { useStorageCollections } from "@/lib/use-storage-collections"
+import { useWorkspaceData } from "@/lib/workspace-data-context"
 import { DEFAULT_TAG_COLOR } from "@/lib/tag-constants"
 import { cn } from "@/lib/utils"
 
@@ -52,15 +51,8 @@ const readTagSettingsState = (): TagSettingsViewState => {
   }
 }
 
-const createTagId = () => {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID()
-  }
-  return `tag-${Date.now()}-${Math.random().toString(16).slice(2)}`
-}
-
 export function TagSettingsView() {
-  const { tags, patterns } = useStorageCollections()
+  const { tags, patterns, loading, error, mutations } = useWorkspaceData()
   const [activeTagId, setActiveTagId] = React.useState<string | null>(() => readTagSettingsState().activeTagId)
   const tagRefs = React.useRef(new Map<string, HTMLButtonElement | null>())
   const [deleteDialogState, setDeleteDialogState] = React.useState<{ tagId: string; usageCount: number } | null>(null)
@@ -130,35 +122,21 @@ export function TagSettingsView() {
     return countMap
   }, [patterns])
 
-  const handleCreateTag = () => {
-    const newTag: Tag = {
-      id: createTagId(),
-      label: "새 태그",
-      type: "custom",
-      color: DEFAULT_TAG_COLOR,
+  const handleCreateTag = async () => {
+    try {
+      await mutations.createTag({ label: "새 태그", type: "custom", color: DEFAULT_TAG_COLOR })
+    } catch (mutationError) {
+      console.error("태그 생성 실패", mutationError)
     }
-    storageService.tags.create(newTag)
-    setActiveTagId(newTag.id)
   }
 
-  const handleUpdateTag = <K extends keyof Tag>(key: K, value: Tag[K]) => {
+  const handleUpdateTag = async <K extends keyof Tag>(key: K, value: Tag[K]) => {
     if (!activeTag) return
-
-    const updatedTag = storageService.tags.update(activeTag.id, (current) => ({
-      ...current,
-      [key]: value,
-    }))
-
-    if (!updatedTag) return
-
-    storageService.patterns.getAll().forEach((pattern) => {
-      if (!pattern.tags.some((tag) => tag.id === updatedTag.id)) return
-
-      storageService.patterns.update(pattern.id, (current) => ({
-        ...current,
-        tags: current.tags.map((tag) => (tag.id === updatedTag.id ? { ...tag, ...updatedTag } : tag)),
-      }))
-    })
+    try {
+      await mutations.updateTag(activeTag.id, { [key]: value } as Partial<Tag>)
+    } catch (mutationError) {
+      console.error("태그 업데이트 실패", mutationError)
+    }
   }
 
   const handleRequestDeleteTag = () => {
@@ -168,18 +146,15 @@ export function TagSettingsView() {
   }
 
   const removeTagById = React.useCallback(
-    (tagId: string) => {
-      storageService.tags.remove(tagId)
-    storageService.patterns.getAll().forEach((pattern) => {
-      if (!pattern.tags.some((tag) => tag.id === tagId)) return
-      storageService.patterns.update(pattern.id, (current) => ({
-        ...current,
-        tags: current.tags.filter((tag) => tag.id !== tagId),
-      }))
-    })
-      setActiveTagId((current) => (current === tagId ? null : current))
+    async (tagId: string) => {
+      try {
+        await mutations.deleteTag(tagId)
+        setActiveTagId((current) => (current === tagId ? null : current))
+      } catch (mutationError) {
+        console.error("태그 삭제 실패", mutationError)
+      }
     },
-    []
+    [mutations]
   )
 
   const handleConfirmDeleteTag = React.useCallback(() => {
@@ -187,6 +162,22 @@ export function TagSettingsView() {
     removeTagById(deleteDialogState.tagId)
     setDeleteDialogState(null)
   }, [deleteDialogState, removeTagById])
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+        태그 데이터를 불러오는 중입니다...
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-destructive">
+        {error}
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-full flex-col gap-4 p-4">

@@ -15,7 +15,7 @@ import {
 import { TagBadge } from "@/components/tag-badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { EmptyPlaceholder } from "@/components/app-sidebar/nav-views/empty-placeholder"
-import { useStorageCollections } from "@/lib/use-storage-collections"
+import { useWorkspaceData } from "@/lib/workspace-data-context"
 import { cn } from "@/lib/utils"
 
 export type SearchViewProps = {
@@ -33,7 +33,7 @@ export function SearchView({
   selectedTagIds,
   setSelectedTagIds,
 }: SearchViewProps) {
-  const { patterns, tags } = useStorageCollections()
+  const { patterns, tags, loading, error } = useWorkspaceData()
   const [isInputFocused, setIsInputFocused] = React.useState(false)
   const blurTimeoutRef = React.useRef<number | null>(null)
 
@@ -117,27 +117,30 @@ export function SearchView({
   )
 
   const renderResults = () => {
+    if (loading) {
+      return (
+        <div className="text-xs text-muted-foreground">패턴을 불러오는 중입니다...</div>
+      )
+    }
+
+    if (error) {
+      return <div className="text-xs text-destructive">{error}</div>
+    }
+
     if (!patterns.length) {
       return (
-        <EmptyPlaceholder
-          icon={Search}
-          title="아직 저장된 패턴이 없어요"
-          description="좌측 탐색 영역에서 패턴을 만들어 보세요."
-          className="border border-dashed border-border/70 bg-transparent"
-        />
+        <></>
       )
     }
 
     if (!hasKeyword && !hasSelectedTags) {
       return (
-        <></>
+        <p className="text-xs text-muted-foreground">검색어나 태그를 선택하면 결과가 표시됩니다.</p>
       )
     }
 
     if (!filteredPatterns.length) {
-      return (
-        <></>
-      )
+      return <p className="text-xs text-muted-foreground">조건에 맞는 패턴이 없습니다.</p>
     }
 
     return (

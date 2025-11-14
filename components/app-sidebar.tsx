@@ -14,20 +14,10 @@ import {
   SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar"
-import type { Folder, Pattern } from "@/lib/types"
-import { storageService } from "@/lib/storage"
-import { useStorageCollections } from "@/lib/use-storage-collections"
+import { useWorkspaceData } from "@/lib/workspace-data-context"
 import { cn } from "@/lib/utils"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { NAVIGATE_NAV_EVENT, type NavigateNavDetail } from "@/lib/navigation-events"
-
-const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-}
 
 const PRIMARY_NAV_ITEMS: NavItem[] = [
   {
@@ -84,7 +74,7 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const isMobile = useIsMobile()
   const { state: sidebarState } = useSidebar()
-  const { folders, patterns } = useStorageCollections()
+  const { folders, patterns, loading, error, mutations } = useWorkspaceData()
   const [pendingPatternInput, setPendingPatternInput] = React.useState<PendingPatternInput | null>(null)
   const [pendingFolderInput, setPendingFolderInput] = React.useState<PendingFolderInput | null>(null)
   const [selectedFolderId, setSelectedFolderId] = React.useState<string | null>(null)
@@ -106,7 +96,6 @@ export function AppSidebar({
     navOffsetValue,
   })
 
-  const workspaceId = folders[0]?.workspaceId ?? "workspace-default"
   const uiInteractionPattern = React.useMemo(() => {
     if (!uiSelectedPatternId) return null
     return patterns.find((pattern) => pattern.id === uiSelectedPatternId) ?? null
@@ -276,144 +265,117 @@ export function AppSidebar({
   )
 
   const handlePatternDelete = React.useCallback(
-    (patternId: string) => {
-      storageService.patterns.remove(patternId)
-      if (uiSelectedPatternId === patternId) {
-        setUiSelectedPatternId(null)
-        onPatternSelect?.()
-      }
-    },
-    [onPatternSelect, uiSelectedPatternId]
-  )
-
-  const handleFolderDelete = React.useCallback(
-    (folderId: string) => {
-      const folderIds = collectFolderBranch(folderId)
-      if (!folderIds.length) return
-      const folderIdSet = new Set(folderIds)
-      folderIds.forEach((id) => storageService.folders.remove(id))
-
-      const affectedPatterns = patterns.filter((pattern) => {
-        const folderId = pattern.folderId
-        if (!folderId) return false
-        return folderIdSet.has(folderId)
-      })
-      if (affectedPatterns.length) {
-        const deletedPatternIds = new Set(affectedPatterns.map((pattern) => pattern.id))
-        affectedPatterns.forEach((pattern) => storageService.patterns.remove(pattern.id))
-        if (uiSelectedPatternId && deletedPatternIds.has(uiSelectedPatternId)) {
+    async (patternId: string) => {
+      try {
+        await mutations.deletePattern(patternId)
+        if (uiSelectedPatternId === patternId) {
           setUiSelectedPatternId(null)
           onPatternSelect?.()
         }
-      }
-
-      if (selectedFolderId && folderIdSet.has(selectedFolderId)) {
-        setSelectedFolderId(null)
-      }
-      if (
-        pendingPatternInput &&
-        pendingPatternInput.folderId &&
-        folderIdSet.has(pendingPatternInput.folderId)
-      ) {
-        setPendingPatternInput(null)
-      }
-      if (
-        pendingFolderInput &&
-        pendingFolderInput.parentId &&
-        folderIdSet.has(pendingFolderInput.parentId)
-      ) {
-        setPendingFolderInput(null)
+      } catch (mutationError) {
+        console.error("패턴 삭제 실패", mutationError)
       }
     },
-    [
-      collectFolderBranch,
-      onPatternSelect,
-      patterns,
-      pendingFolderInput,
-      pendingPatternInput,
-      selectedFolderId,
-      uiSelectedPatternId,
-    ]
+    [mutations, onPatternSelect, uiSelectedPatternId]
   )
 
-  const handlePatternMove = React.useCallback((patternId: string, destinationFolderId: string | null) => {
-    storageService.patterns.update(patternId, (pattern) => ({
-      ...pattern,
-      folderId: destinationFolderId,
-      updatedAt: new Date().toISOString(),
-    }))
-  }, [])
+  const handleFolderDelete = React.useCallback(
+    async (folderId: string) => {
+      const folderIds = collectFolderBranch(folderId)
+      if (!folderIds.length) return
+      const folderIdSet = new Set(folderIds)
+      const affectedPatterns = patterns.filter((pattern) => pattern.folderId && folderIdSet.has(pattern.folderId))
+
+      try {
+        for (const pattern of affectedPatterns) {
+          await mutations.deletePattern(pattern.id)
+        }
+        for (const branchId of [...folderIds].reverse()) {
+          await mutations.deleteFolder(branchId)
+        }
+
+        if (selectedFolderId && folderIdSet.has(selectedFolderId)) {
+          setSelectedFolderId(null)
+        }
+        if (
+          pendingPatternInput &&
+          pendingPatternInput.folderId &&
+          folderIdSet.has(pendingPatternInput.folderId)
+        ) {
+          setPendingPatternInput(null)
+        }
+        if (
+          pendingFolderInput &&
+          pendingFolderInput.parentId &&
+          folderIdSet.has(pendingFolderInput.parentId)
+        ) {
+          setPendingFolderInput(null)
+        }
+      } catch (mutationError) {
+        console.error("폴더 삭제 실패", mutationError)
+      }
+    },
+    [collectFolderBranch, mutations, patterns, pendingFolderInput, pendingPatternInput, selectedFolderId]
+  )
+
+  const handlePatternMove = React.useCallback(
+    async (patternId: string, destinationFolderId: string | null) => {
+      try {
+        await mutations.updatePattern(patternId, { folderId: destinationFolderId })
+      } catch (mutationError) {
+        console.error("패턴 이동 실패", mutationError)
+      }
+    },
+    [mutations]
+  )
 
   const handleFolderMove = React.useCallback(
-    (folderId: string, destinationFolderId: string | null) => {
+    async (folderId: string, destinationFolderId: string | null) => {
       const branch = new Set(collectFolderBranch(folderId))
       if (destinationFolderId && branch.has(destinationFolderId)) {
         return
       }
-      storageService.folders.update(folderId, (folder) => {
-        const parentFolder = destinationFolderId
-          ? folders.find((item) => item.id === destinationFolderId)
-          : undefined
-        return {
-          ...folder,
-          parentId: destinationFolderId ?? undefined,
-          workspaceId: parentFolder?.workspaceId ?? folder.workspaceId,
-        }
-      })
+      try {
+        await mutations.updateFolder(folderId, { parentId: destinationFolderId ?? null })
+      } catch (mutationError) {
+        console.error("폴더 이동 실패", mutationError)
+      }
     },
-    [collectFolderBranch, folders]
+    [collectFolderBranch, mutations]
   )
 
   const handlePatternInputSubmit = React.useCallback(
-    (rawName: string, folderId: string | null) => {
+    async (rawName: string, folderId: string | null) => {
       const trimmed = rawName.trim()
       if (!trimmed) {
         setPendingPatternInput(null)
         return
       }
-      const timestamp = new Date().toISOString()
-      const pattern: Pattern = {
-        id: createId(),
-        folderId,
-        name: trimmed,
-        serviceName: trimmed,
-        summary: "",
-        tags: [],
-        author: data.user.name,
-        isFavorite: false,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        captureCount: 0,
+      try {
+        await mutations.createPattern({ name: trimmed, folderId })
+        setPendingPatternInput(null)
+      } catch (mutationError) {
+        console.error("패턴 생성 실패", mutationError)
       }
-      storageService.patterns.create(pattern)
-      setPendingPatternInput(null)
-      handlePatternSelect(pattern.id)
     },
-    [handlePatternSelect]
+    [mutations]
   )
 
   const handleFolderInputSubmit = React.useCallback(
-    (rawName: string, parentId: string | null) => {
+    async (rawName: string, parentId: string | null) => {
       const trimmed = rawName.trim()
       if (!trimmed) {
         setPendingFolderInput(null)
         return
       }
-      const parentWorkspaceId = parentId
-        ? folders.find((folder) => folder.id === parentId)?.workspaceId
-        : undefined
-      const folder: Folder = {
-        id: createId(),
-        workspaceId: parentWorkspaceId ?? workspaceId,
-        name: trimmed,
-        parentId: parentId ?? undefined,
-        createdAt: new Date().toISOString(),
+      try {
+        await mutations.createFolder({ name: trimmed, parentId })
+        setPendingFolderInput(null)
+      } catch (mutationError) {
+        console.error("폴더 생성 실패", mutationError)
       }
-      storageService.folders.create(folder)
-      setPendingFolderInput(null)
-      handleFolderSelect(folder.id)
     },
-    [folders, workspaceId, handleFolderSelect]
+    [mutations]
   )
 
   const mergedClassName = React.useMemo(
@@ -453,6 +415,22 @@ export function AppSidebar({
       }}
     />
   )
+
+  if (loading) {
+    return (
+      <div className="flex min-h-full flex-1 items-center justify-center text-sm text-muted-foreground">
+        워크스페이스를 불러오는 중입니다...
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-full flex-1 items-center justify-center text-sm text-destructive">
+        {error}
+      </div>
+    )
+  }
 
   return (
     <>
