@@ -1,9 +1,10 @@
 "use client"
 
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import type { SupabaseClient } from "@supabase/supabase-js"
 
-let browserClient: SupabaseClient | null = null
+type BrowserSupabaseClient = ReturnType<typeof createClientComponentClient>
+
+let browserClient: BrowserSupabaseClient | null = null
 
 const requireEnv = (value: string | undefined, key: string) => {
   if (!value) {
@@ -12,7 +13,7 @@ const requireEnv = (value: string | undefined, key: string) => {
   return value
 }
 
-export const getBrowserSupabaseClient = () => {
+export const getBrowserSupabaseClient = (): BrowserSupabaseClient => {
   if (browserClient) return browserClient
 
   const supabaseUrl = requireEnv(
@@ -30,3 +31,5 @@ export const getBrowserSupabaseClient = () => {
   })
   return browserClient
 }
+
+export type { BrowserSupabaseClient }

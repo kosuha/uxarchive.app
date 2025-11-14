@@ -4,7 +4,6 @@ import * as React from "react"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { AuthGuard } from "@/components/auth/auth-guard"
-import { UserAccountMenu } from "@/components/auth/user-account-menu"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -93,9 +92,6 @@ export default function Page() {
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>
-            </div>
-            <div className="px-4">
-              <UserAccountMenu />
             </div>
           </header>
           <div className="flex flex-1 basis-0 min-h-0 flex-col gap-4 overflow-hidden p-4 pt-0">

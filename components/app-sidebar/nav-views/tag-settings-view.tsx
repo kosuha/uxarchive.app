@@ -1,20 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { ChevronDown, Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 
 import { TagBadge } from "@/components/tag-badge"
 import { TagColorPicker } from "@/components/tag-color-picker"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   AlertDialog,
@@ -29,7 +21,7 @@ import {
 import { storageService } from "@/lib/storage"
 import type { Tag } from "@/lib/types"
 import { useStorageCollections } from "@/lib/use-storage-collections"
-import { DEFAULT_TAG_COLOR, TAG_TYPE_LABELS, TAG_TYPE_OPTIONS } from "@/lib/tag-constants"
+import { DEFAULT_TAG_COLOR } from "@/lib/tag-constants"
 import { cn } from "@/lib/utils"
 
 const TAG_SETTINGS_STATE_KEY = "uxarchive_tag_settings_view_state"

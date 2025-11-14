@@ -1,6 +1,7 @@
 import { cookies } from "next/headers"
-import { createServerClient } from "@supabase/auth-helpers-nextjs"
-import type { SupabaseClient } from "@supabase/supabase-js"
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
+
+type ServerSupabaseClient = ReturnType<typeof createServerComponentClient>
 
 const requireEnv = (key: string) => {
   const value = process.env[key]
@@ -10,14 +11,12 @@ const requireEnv = (key: string) => {
   return value
 }
 
-export const getServerSupabaseClient = (): SupabaseClient => {
-  const cookieStore = cookies()
-
-  return createServerClient(
-    requireEnv("NEXT_PUBLIC_SUPABASE_URL"),
-    requireEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"),
+export const getServerSupabaseClient = (): ServerSupabaseClient => {
+  return createServerComponentClient(
+    { cookies },
     {
-      cookies: () => cookieStore,
+      supabaseUrl: requireEnv("NEXT_PUBLIC_SUPABASE_URL"),
+      supabaseKey: requireEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"),
     }
   )
 }

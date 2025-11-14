@@ -1,13 +1,6 @@
 "use client"
 
-import {
-  BadgeCheck,
-  Bell,
-  ChevronsUpDown,
-  CreditCard,
-  LogOut,
-  Sparkles,
-} from "lucide-react"
+import { LogOut, UserRound } from "lucide-react"
 
 import {
   Avatar,
@@ -17,7 +10,6 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -29,17 +21,52 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { useSupabaseSession } from "@/lib/supabase/session-context"
 
-export function NavUser({
-  user,
-}: {
-  user: {
-    name: string
-    email: string
-    avatar: string
+const getInitials = (email?: string | null, fallback?: string) => {
+  if (email) {
+    const [name] = email.split("@")
+    if (name) {
+      const segments = name
+        .split(/[._-]/)
+        .filter(Boolean)
+        .map((segment) => segment[0])
+      if (segments.length) {
+        return segments.join("").slice(0, 2).toUpperCase()
+      }
+    }
   }
-}) {
+  if (fallback) {
+    return fallback
+      .split(" ")
+      .filter(Boolean)
+      .map((segment) => segment[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase()
+  }
+  return "UX"
+}
+
+export function NavUser() {
   const { isMobile } = useSidebar()
+  const { user, signOut, loading } = useSupabaseSession()
+
+  const metadata = (user?.user_metadata ?? {}) as {
+    avatar_url?: string
+    full_name?: string
+    name?: string
+  }
+
+  const avatarUrl = metadata.avatar_url ?? undefined
+  const email = user?.email ?? (loading ? "계정 정보를 불러오는 중" : "로그인이 필요합니다")
+  const displayName = metadata.full_name ?? metadata.name ?? email
+  const initials = getInitials(user?.email, displayName)
+
+  const handleSignOut = async () => {
+    if (!user) return
+    await signOut()
+  }
 
   return (
     <SidebarMenu>
@@ -51,8 +78,10 @@ export function NavUser({
               className="flex items-center justify-center data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground md:h-8 md:p-0"
             >
               <Avatar className="h-8 w-8 rounded-full">
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-full bg-gray-500">CN</AvatarFallback>
+                {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName} /> : null}
+                <AvatarFallback className="rounded-full bg-gray-500">
+                  {avatarUrl ? initials : <UserRound className="h-4 w-4" />}
+                </AvatarFallback>
               </Avatar>
             </SidebarMenuButton>
           </DropdownMenuTrigger>
@@ -65,42 +94,32 @@ export function NavUser({
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                  {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName} /> : null}
+                  <AvatarFallback className="rounded-lg">
+                    {avatarUrl ? initials : <UserRound className="h-4 w-4" />}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>
-                  <span className="truncate text-xs">{user.email}</span>
+                  <span className="truncate font-medium">{displayName}</span>
+                  <span className="truncate text-xs">{email}</span>
                 </div>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <Sparkles />
-                Upgrade to Pro
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <BadgeCheck />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCard />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Bell />
-                Notifications
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <LogOut />
-              Log out
-            </DropdownMenuItem>
+            {user ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  className="gap-2"
+                  onSelect={(event) => {
+                    event.preventDefault()
+                    void handleSignOut()
+                  }}
+                >
+                  <LogOut className="h-4 w-4" /> 로그아웃
+                </DropdownMenuItem>
+              </>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

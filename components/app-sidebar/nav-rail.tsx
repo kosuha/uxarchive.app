@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Archive, Command } from "lucide-react"
+import { Archive } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
 import { NavUser } from "@/components/nav-user"
@@ -25,14 +25,9 @@ type SidebarNavRailProps = {
   items: NavItem[]
   activeNavId: string
   onNavItemSelect: (itemId: string) => void
-  user: {
-    name: string
-    email: string
-    avatar: string
-  }
 }
 
-export function SidebarNavRail({ items, activeNavId, onNavItemSelect, user }: SidebarNavRailProps) {
+export function SidebarNavRail({ items, activeNavId, onNavItemSelect }: SidebarNavRailProps) {
   return (
     <aside
       className="fixed inset-y-0 z-30 hidden border-r border-border/60 bg-sidebar py-2 md:flex md:flex-col"
@@ -63,7 +58,7 @@ export function SidebarNavRail({ items, activeNavId, onNavItemSelect, user }: Si
         </SidebarMenu>
       </div>
       <div className="border-t border-border/60 pt-2">
-        <NavUser user={user} />
+        <NavUser />
       </div>
     </aside>
   )

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Clock, Folder as FolderIcon, LibraryBig, Search, Star, Tags } from "lucide-react"
+import { Clock, LibraryBig, Search, Star, Tags } from "lucide-react"
 
 import { ExploreView } from "@/components/app-sidebar/nav-views/explore-view"
 import type { PendingFolderInput, PendingPatternInput } from "@/components/app-sidebar/folder-tree"
@@ -461,7 +461,6 @@ export function AppSidebar({
           items={PRIMARY_NAV_ITEMS}
           activeNavId={activeNavId}
           onNavItemSelect={handleNavItemSelect}
-          user={data.user}
         />
       )}
       <Sidebar

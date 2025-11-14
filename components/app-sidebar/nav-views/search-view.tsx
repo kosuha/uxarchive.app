@@ -103,8 +103,6 @@ export function SearchView({
     })
   }, [hasKeyword, hasSelectedTags, normalizedQuery, patterns, selectedTagIds])
 
-  const hasActiveFilters = hasKeyword || hasSelectedTags
-
   const selectedTags = React.useMemo(() => {
     return selectedTagIds
       .map((tagId) => sortedTags.find((tag) => tag.id === tagId))

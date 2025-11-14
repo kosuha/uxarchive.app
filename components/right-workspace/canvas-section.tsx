@@ -38,7 +38,6 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import type { Capture, Insight } from "@/lib/types"
 import { cn } from "@/lib/utils"
 

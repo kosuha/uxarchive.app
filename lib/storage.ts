@@ -1,4 +1,4 @@
-import type { IdentifiableEntity, StorageCollectionKey, StorageCollections } from "./types"
+import type { StorageCollectionKey, StorageCollections } from "./types"
 
 export const LOCAL_STORAGE_KEYS: Record<StorageCollectionKey, string> = {
   patterns: "uxarchive_patterns",

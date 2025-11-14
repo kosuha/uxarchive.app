@@ -1,12 +1,12 @@
 "use client"
 
 import React from "react"
-import type { Session, SupabaseClient, User } from "@supabase/supabase-js"
+import type { Session, User } from "@supabase/supabase-js"
 
-import { getBrowserSupabaseClient } from "./browser-client"
+import { getBrowserSupabaseClient, type BrowserSupabaseClient } from "./browser-client"
 
 export type SessionContextValue = {
-  supabase: SupabaseClient
+  supabase: BrowserSupabaseClient
   session: Session | null
   user: User | null
   loading: boolean
@@ -23,7 +23,10 @@ export const SessionProvider = ({
 }: {
   children: React.ReactNode
 }) => {
-  const supabase = React.useMemo(() => getBrowserSupabaseClient(), [])
+  const supabase = React.useMemo<BrowserSupabaseClient>(
+    () => getBrowserSupabaseClient(),
+    []
+  )
   const [session, setSession] = React.useState<Session | null>(null)
   const [loading, setLoading] = React.useState(true)
 
