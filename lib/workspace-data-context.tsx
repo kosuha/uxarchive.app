@@ -28,7 +28,7 @@ type WorkspaceMutations = {
   createFolder: (input: { name: string; parentId: string | null }) => Promise<void>
   updateFolder: (folderId: string, updates: { name?: string; parentId?: string | null }) => Promise<void>
   deleteFolder: (folderId: string) => Promise<void>
-  createTag: (input?: { label?: string; type?: TagType; color?: string | null }) => Promise<void>
+  createTag: (input?: { label?: string; type?: TagType; color?: string | null }) => Promise<Tag>
   updateTag: (tagId: string, updates: Partial<Pick<Tag, "label" | "type" | "color">>) => Promise<void>
   deleteTag: (tagId: string) => Promise<void>
   assignTagToPattern: (patternId: string, tagId: string) => Promise<void>
@@ -90,6 +90,8 @@ const mapFolderRecordToFolder = (record: FolderRecord): Folder => ({
 export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode }) => {
   const { supabase, user, loading: sessionLoading } = useSupabaseSession()
   const [state, setState] = React.useState<WorkspaceState>(defaultState)
+  const hasFetchedRef = React.useRef(false)
+  const lastUserIdRef = React.useRef<string | null>(null)
 
   const fetchWorkspaceMembers = React.useCallback(async () => {
     if (!user) return { workspaceId: null, favorites: new Set<string>() }
@@ -112,8 +114,17 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
     return { workspaceId: membership.workspace_id as string, favorites }
   }, [supabase, user])
 
-  const fetchData = React.useCallback(async () => {
+  React.useEffect(() => {
+    const currentUserId = user?.id ?? null
+    if (lastUserIdRef.current !== currentUserId) {
+      lastUserIdRef.current = currentUserId
+      hasFetchedRef.current = false
+    }
+  }, [user?.id])
+
+  const fetchData = React.useCallback(async ({ force = false }: { force?: boolean } = {}) => {
     if (sessionLoading) return
+    if (!force && hasFetchedRef.current) return
     if (!user) {
       setState((prev) => ({ ...prev, loading: false, error: "로그인이 필요합니다." }))
       return
@@ -180,6 +191,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
         loading: false,
         error: null,
       })
+      hasFetchedRef.current = true
     } catch (error) {
       setState((prev) => ({
         ...prev,
@@ -196,7 +208,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
   }, [sessionLoading, fetchData])
 
   const refresh = React.useCallback(async () => {
-    await fetchData()
+    await fetchData({ force: true })
   }, [fetchData])
 
   const handleMutationError = React.useCallback((error: unknown) => {
@@ -408,6 +420,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
           error: null,
           tags: [...prev.tags, createdTag],
         }))
+        return createdTag
       } catch (error) {
         handleMutationError(error)
         throw error

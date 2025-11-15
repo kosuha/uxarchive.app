@@ -124,7 +124,8 @@ export function TagSettingsView() {
 
   const handleCreateTag = async () => {
     try {
-      await mutations.createTag({ label: "새 태그", type: "custom", color: DEFAULT_TAG_COLOR })
+      const newTag = await mutations.createTag({ label: "새 태그", type: "custom", color: DEFAULT_TAG_COLOR })
+      setActiveTagId(newTag.id)
     } catch (mutationError) {
       console.error("태그 생성 실패", mutationError)
     }
