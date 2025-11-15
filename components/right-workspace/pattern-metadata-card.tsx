@@ -4,6 +4,7 @@ import * as React from "react"
 import { Check, Plus, Star } from "lucide-react"
 
 import { TagBadge } from "@/components/tag-badge"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   Dialog,
@@ -32,9 +33,10 @@ type PatternMetadataCardProps = {
   onUpdatePattern: (updates: Partial<Pick<Pattern, "name" | "serviceName" | "summary">>) => Promise<void> | void
   onAssignTag: (tagId: string) => Promise<void> | void
   onRemoveTag: (tagId: string) => Promise<void> | void
+  onToggleFavorite?: (isFavorite: boolean) => Promise<void> | void
 }
 
-export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssignTag, onRemoveTag }: PatternMetadataCardProps) {
+export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssignTag, onRemoveTag, onToggleFavorite }: PatternMetadataCardProps) {
   const [serviceNameValue, setServiceNameValue] = React.useState(pattern.serviceName)
   const [nameValue, setNameValue] = React.useState(pattern.name)
   const [isTagDialogOpen, setIsTagDialogOpen] = React.useState(false)
@@ -68,6 +70,10 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
 
   const patternTagIds = React.useMemo(() => new Set(pattern.tags.map((tag) => tag.id)), [pattern.tags])
   const isTagLimitReached = pattern.tags.length >= MAX_PATTERN_TAGS
+
+  const handleFavoriteToggle = React.useCallback(() => {
+    onToggleFavorite?.(!pattern.isFavorite)
+  }, [onToggleFavorite, pattern.isFavorite])
 
   const handleToggleTag = React.useCallback(
     async (tagId: string) => {
@@ -157,11 +163,21 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
             className="!text-base font-semibold shadow-none rounded-none hover:bg-primary/10 leading-snug focus-visible:ring-0 focus-visible:border-none border-none bg-transparent px-0 py-0 h-auto"
           />
         </div>
-        {pattern.isFavorite && (
-          <div className="rounded-full p-2 text-primary">
-            <Star className="size-4 fill-current" />
-          </div>
-        )}
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          onClick={handleFavoriteToggle}
+          aria-pressed={pattern.isFavorite}
+          aria-label={pattern.isFavorite ? "즐겨찾기 해제" : "즐겨찾기에 추가"}
+          className={cn(
+            "rounded-full text-muted-foreground",
+            pattern.isFavorite && "text-primary",
+            !onToggleFavorite && "pointer-events-none opacity-50",
+          )}
+        >
+          <Star className={cn("size-4", pattern.isFavorite && "fill-current")} />
+        </Button>
       </div>
       <Dialog open={isTagDialogOpen} onOpenChange={setIsTagDialogOpen}>
         <div className="flex flex-wrap gap-2">

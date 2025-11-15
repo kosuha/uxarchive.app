@@ -33,12 +33,6 @@ const PRIMARY_NAV_ITEMS: NavItem[] = [
     icon: Search,
   },
   {
-    id: "recent-updates",
-    title: "RECENT UPDATES",
-    description: "",
-    icon: Clock,
-  },
-  {
     id: "favorites",
     title: "FAVORITES",
     description: "",
@@ -478,6 +472,9 @@ export function AppSidebar({
                 setQuery: setSearchQuery,
                 selectedTagIds: searchSelectedTagIds,
                 setSelectedTagIds: setSearchSelectedTagIds,
+              }}
+              favoritesViewProps={{
+                onPatternSelect: handlePatternSelect,
               }}
             />
           </SidebarContent>

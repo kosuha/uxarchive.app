@@ -24,6 +24,7 @@ type WorkspaceDataContextValue = {
 type WorkspaceMutations = {
   createPattern: (input: { folderId: string | null; name: string; serviceName?: string; summary?: string }) => Promise<void>
   updatePattern: (patternId: string, updates: Partial<Pick<Pattern, "name" | "serviceName" | "summary" | "author" | "folderId" | "isFavorite" | "captureCount">>) => Promise<void>
+  setPatternFavorite: (patternId: string, isFavorite: boolean) => Promise<void>
   deletePattern: (patternId: string) => Promise<void>
   createFolder: (input: { name: string; parentId: string | null }) => Promise<void>
   updateFolder: (folderId: string, updates: { name?: string; parentId?: string | null }) => Promise<void>
@@ -306,6 +307,50 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
       }
     },
     [ensureWorkspace, handleMutationError, supabase],
+  )
+
+  const setPatternFavorite = React.useCallback<WorkspaceMutations["setPatternFavorite"]>(
+    async (patternId, shouldFavorite) => {
+      if (!user?.id) {
+        throw new Error("로그인이 필요합니다.")
+      }
+      const workspaceId = ensureWorkspace()
+      let nextFavoriteArray: string[] = []
+      setState((prev) => {
+        const nextFavorites = new Set(prev.favoritePatternIds)
+        if (shouldFavorite) {
+          nextFavorites.add(patternId)
+        } else {
+          nextFavorites.delete(patternId)
+        }
+
+        nextFavoriteArray = Array.from(nextFavorites)
+        return {
+          ...prev,
+          favoritePatternIds: nextFavorites,
+          patterns: prev.patterns.map((pattern) =>
+            pattern.id === patternId ? { ...pattern, isFavorite: shouldFavorite } : pattern,
+          ),
+        }
+      })
+
+      try {
+        const { error } = await supabase
+          .from("workspace_members")
+          .update({ favorite_pattern_ids: nextFavoriteArray })
+          .eq("workspace_id", workspaceId)
+          .eq("profile_id", user.id)
+
+        if (error) {
+          throw error
+        }
+      } catch (error) {
+        handleMutationError(error)
+        await fetchData({ force: true })
+        throw error
+      }
+    },
+    [ensureWorkspace, fetchData, handleMutationError, supabase, user?.id],
   )
 
   const deletePattern = React.useCallback<WorkspaceMutations["deletePattern"]>(
@@ -597,6 +642,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
       mutations: {
         createPattern,
         updatePattern,
+        setPatternFavorite,
         deletePattern,
         createFolder,
         updateFolder,
@@ -627,6 +673,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
       state.tags,
       state.workspaceId,
       updateFolder,
+      setPatternFavorite,
       updatePattern,
       updateTag,
     ],
