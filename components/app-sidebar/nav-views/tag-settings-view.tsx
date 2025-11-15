@@ -190,6 +190,11 @@ export function TagSettingsView() {
         tag={activeTag}
         usageCount={activeTag ? usageCountByTag.get(activeTag.id) ?? 0 : 0}
         onChange={handleUpdateTag}
+        onPreview={(key, value) => {
+          if (!activeTag) return
+          if (key !== "label" && key !== "color") return
+          mutations.previewTag(activeTag.id, { [key]: value } as Partial<Pick<Tag, "label" | "color">>)
+        }}
       />
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -269,9 +274,10 @@ type TagEditPanelProps = {
   tag: Tag | null
   usageCount: number
   onChange: <K extends keyof Tag>(key: K, value: Tag[K]) => void
+  onPreview: <K extends keyof Tag>(key: K, value: Tag[K]) => void
 }
 
-function TagEditPanel({ tag, usageCount, onChange }: TagEditPanelProps) {
+function TagEditPanel({ tag, usageCount, onChange, onPreview }: TagEditPanelProps) {
   if (!tag) {
     return (
       <div className="rounded-xl border border-dashed border-border/70 bg-muted/30 p-6 text-center text-sm text-muted-foreground">
@@ -279,6 +285,51 @@ function TagEditPanel({ tag, usageCount, onChange }: TagEditPanelProps) {
       </div>
     )
   }
+
+  return <TagEditPanelContent tag={tag} usageCount={usageCount} onChange={onChange} onPreview={onPreview} />
+}
+
+type TagEditPanelContentProps = {
+  tag: Tag
+  usageCount: number
+  onChange: <K extends keyof Tag>(key: K, value: Tag[K]) => void
+  onPreview: <K extends keyof Tag>(key: K, value: Tag[K]) => void
+}
+
+function TagEditPanelContent({ tag, usageCount, onChange, onPreview }: TagEditPanelContentProps) {
+  const [labelValue, setLabelValue] = React.useState(tag.label)
+  const [colorValue, setColorValue] = React.useState(tag.color ?? DEFAULT_TAG_COLOR)
+  const debounceRefs = React.useRef<{ label?: number; color?: number }>({})
+  type DebounceKey = keyof typeof debounceRefs.current
+
+  const clearDebounce = React.useCallback((key: DebounceKey) => {
+    const timeoutId = debounceRefs.current[key]
+    if (typeof timeoutId !== "number") return
+    window.clearTimeout(timeoutId)
+    delete debounceRefs.current[key]
+  }, [])
+
+  const scheduleUpdate = React.useCallback(<K extends DebounceKey>(key: K, value: Tag[K]) => {
+    clearDebounce(key)
+    debounceRefs.current[key] = window.setTimeout(() => {
+      onChange(key, value)
+      delete debounceRefs.current[key]
+    }, 2000)
+  }, [clearDebounce, onChange])
+
+  React.useEffect(() => {
+    setLabelValue(tag.label)
+    setColorValue(tag.color ?? DEFAULT_TAG_COLOR)
+    clearDebounce("label")
+    clearDebounce("color")
+  }, [tag.id, tag.label, tag.color, clearDebounce])
+
+  React.useEffect(() => {
+    return () => {
+      clearDebounce("label")
+      clearDebounce("color")
+    }
+  }, [clearDebounce])
 
   return (
     <div className="rounded-xl border border-border/60 bg-card p-4">
@@ -292,13 +343,25 @@ function TagEditPanel({ tag, usageCount, onChange }: TagEditPanelProps) {
       <div className="flex mt-4 gap-4">
         <div className="space-y-2">
           <Input
-            value={tag.label}
-            onChange={(event) => onChange("label", event.target.value)}
+            value={labelValue}
+            onChange={(event) => {
+              const next = event.target.value
+              setLabelValue(next)
+              onPreview("label", next)
+              scheduleUpdate("label", next)
+            }}
             placeholder="예: 온보딩"
           />
         </div>
         <div className="">
-          <TagColorPicker color={tag.color ?? DEFAULT_TAG_COLOR} onChange={(value) => onChange("color", value)} />
+          <TagColorPicker
+            color={colorValue}
+            onChange={(value) => {
+              setColorValue(value)
+              onPreview("color", value)
+              scheduleUpdate("color", value)
+            }}
+          />
         </div>
       </div>
     </div>

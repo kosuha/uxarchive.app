@@ -94,15 +94,23 @@ export const usePatternDetail = (patternId?: string | null) => {
     } satisfies Capture
   }, [])
 
-  const refresh = React.useCallback(async () => {
+  type RefreshOptions = { silent?: boolean }
+
+  const refresh = React.useCallback(async (options?: RefreshOptions) => {
+    const silent = options?.silent ?? false
     if (!patternId) {
       setCaptures([])
       setInsights([])
       setError(null)
+      if (!silent) {
+        setLoading(false)
+      }
       return
     }
 
-    setLoading(true)
+    if (!silent) {
+      setLoading(true)
+    }
     try {
       const capturesRepo = createCapturesRepository(supabase)
       const captureRecords = await capturesRepo.listByPattern({ patternId })
@@ -142,7 +150,9 @@ export const usePatternDetail = (patternId?: string | null) => {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "패턴 상세 데이터를 불러오지 못했습니다.")
     } finally {
-      setLoading(false)
+      if (!silent) {
+        setLoading(false)
+      }
     }
   }, [mapCaptureRecord, patternId, supabase])
 
@@ -236,7 +246,7 @@ const uploadCapture = React.useCallback(
         await applyCaptureOrder(orderedIds)
       }
 
-      await refresh()
+      await refresh({ silent: true })
       return captureId
     },
     [applyCaptureOrder, patternId, refresh, supabase, workspaceId],
@@ -245,7 +255,7 @@ const uploadCapture = React.useCallback(
   const reorderCaptures = React.useCallback(
     async (orderedCaptures: Capture[]) => {
       await applyCaptureOrder(orderedCaptures.map((capture) => capture.id))
-      await refresh()
+      await refresh({ silent: true })
     },
     [applyCaptureOrder, refresh],
   )
@@ -262,7 +272,7 @@ const uploadCapture = React.useCallback(
         const payload = await response.json().catch(() => null)
         throw new Error(payload?.error ?? "캡처를 삭제하지 못했습니다.")
       }
-      await refresh()
+      await refresh({ silent: true })
     },
     [patternId, refresh, workspaceId],
   )
@@ -271,7 +281,7 @@ const uploadCapture = React.useCallback(
     async (input: { captureId: string; x: number; y: number; note?: string }) => {
       const repo = createInsightsRepository(supabase)
       const record = await repo.create({ captureId: input.captureId, x: input.x, y: input.y, note: input.note ?? "" })
-      await refresh()
+      await refresh({ silent: true })
       const created: Insight = {
         id: record.id,
         captureId: record.captureId,
@@ -287,15 +297,38 @@ const uploadCapture = React.useCallback(
 
   const updateInsight = React.useCallback(
     async (input: { captureId: string; insightId: string; x?: number; y?: number; note?: string }) => {
+      const applyLocalUpdate = () =>
+        setInsights((prev) =>
+          prev.map((insight) => {
+            if (insight.id !== input.insightId) {
+              return insight
+            }
+            return {
+              ...insight,
+              x: typeof input.x === "number" ? input.x : insight.x,
+              y: typeof input.y === "number" ? input.y : insight.y,
+              note: typeof input.note === "string" ? input.note : insight.note,
+            }
+          }),
+        )
+
+      applyLocalUpdate()
+
       const repo = createInsightsRepository(supabase)
-      await repo.update({
-        captureId: input.captureId,
-        insightId: input.insightId,
-        x: input.x,
-        y: input.y,
-        note: input.note,
-      })
-      await refresh()
+      try {
+        await repo.update({
+          captureId: input.captureId,
+          insightId: input.insightId,
+          x: input.x,
+          y: input.y,
+          note: input.note,
+        })
+      } catch (error) {
+        await refresh({ silent: true })
+        throw error
+      }
+
+      await refresh({ silent: true })
     },
     [refresh, supabase],
   )
@@ -304,7 +337,7 @@ const uploadCapture = React.useCallback(
     async (input: { captureId: string; insightId: string }) => {
       const repo = createInsightsRepository(supabase)
       await repo.remove({ captureId: input.captureId, insightId: input.insightId })
-      await refresh()
+      await refresh({ silent: true })
     },
     [refresh, supabase],
   )

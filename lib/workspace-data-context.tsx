@@ -3,7 +3,9 @@
 import * as React from "react"
 
 import { createFoldersRepository } from "@/lib/repositories/folders"
+import type { FolderRecord } from "@/lib/repositories/folders"
 import { createPatternsRepository } from "@/lib/repositories/patterns"
+import type { PatternRecord } from "@/lib/repositories/patterns"
 import { createTagsRepository } from "@/lib/repositories/tags"
 import type { TagType, Pattern, Folder, Tag } from "@/lib/types"
 import { useSupabaseSession } from "@/lib/supabase/session-context"
@@ -31,6 +33,7 @@ type WorkspaceMutations = {
   deleteTag: (tagId: string) => Promise<void>
   assignTagToPattern: (patternId: string, tagId: string) => Promise<void>
   removeTagFromPattern: (patternId: string, tagId: string) => Promise<void>
+  previewTag: (tagId: string, updates: Partial<Pick<Tag, "label" | "color">>) => void
 }
 
 type WorkspaceState = {
@@ -38,6 +41,7 @@ type WorkspaceState = {
   patterns: Pattern[]
   folders: Folder[]
   tags: Tag[]
+  favoritePatternIds: Set<string>
   loading: boolean
   error: string | null
 }
@@ -47,6 +51,7 @@ const defaultState: WorkspaceState = {
   patterns: [],
   folders: [],
   tags: [],
+  favoritePatternIds: new Set<string>(),
   loading: true,
   error: null,
 }
@@ -58,6 +63,28 @@ const mapTagRecordToTag = (record: { id: string; label: string; type: string; co
   label: record.label,
   type: record.type as TagType,
   color: record.color ?? undefined,
+})
+
+const mapPatternRecordToPattern = (record: PatternRecord, favorites: Set<string>, tags: Tag[] = []): Pattern => ({
+  id: record.id,
+  folderId: record.folderId,
+  name: record.name,
+  serviceName: record.serviceName,
+  summary: record.summary,
+  tags,
+  author: record.author,
+  isFavorite: favorites.has(record.id),
+  createdAt: record.createdAt,
+  updatedAt: record.updatedAt,
+  captureCount: record.captureCount ?? 0,
+})
+
+const mapFolderRecordToFolder = (record: FolderRecord): Folder => ({
+  id: record.id,
+  workspaceId: record.workspaceId,
+  name: record.name,
+  parentId: record.parentId,
+  createdAt: record.createdAt,
 })
 
 export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode }) => {
@@ -136,31 +163,23 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
         patternTagsMap.set(link.pattern_id, [...current, tag])
       })
 
-      const patterns: Pattern[] = patternRecords.map((record) => ({
-        id: record.id,
-        folderId: record.folderId,
-        name: record.name,
-        serviceName: record.serviceName,
-        summary: record.summary,
-        tags: patternTagsMap.get(record.id) ?? [],
-        author: record.author,
-        isFavorite: favorites.has(record.id),
-        createdAt: record.createdAt,
-        updatedAt: record.updatedAt,
-        captureCount: record.captureCount ?? 0,
-      }))
+      const patterns: Pattern[] = patternRecords.map((record) =>
+        mapPatternRecordToPattern(record, favorites, patternTagsMap.get(record.id) ?? []),
+      )
 
-      const folders: Folder[] = folderRecords.map((folder) => ({
-        id: folder.id,
-        workspaceId: folder.workspaceId,
-        name: folder.name,
-        parentId: folder.parentId,
-        createdAt: folder.createdAt,
-      }))
+      const folders: Folder[] = folderRecords.map((folder) => mapFolderRecordToFolder(folder))
 
-      const tags = tagRecords.map((record) => tagMap.get(record.id) ?? mapTagRecordToTag(record))
+      const tags = tagRecords.map((record) => mapTagRecordToTag(record))
 
-      setState({ workspaceId, patterns, folders, tags, loading: false, error: null })
+      setState({
+        workspaceId,
+        patterns,
+        folders,
+        tags,
+        favoritePatternIds: new Set(favorites),
+        loading: false,
+        error: null,
+      })
     } catch (error) {
       setState((prev) => ({
         ...prev,
@@ -180,19 +199,10 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
     await fetchData()
   }, [fetchData])
 
-  const runMutation = React.useCallback(
-    async (operation: () => Promise<void>) => {
-      try {
-        await operation()
-        await fetchData()
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "데이터를 업데이트하지 못했습니다."
-        setState((prev) => ({ ...prev, error: message }))
-        throw error
-      }
-    },
-    [fetchData],
-  )
+  const handleMutationError = React.useCallback((error: unknown) => {
+    const message = error instanceof Error ? error.message : "데이터를 업데이트하지 못했습니다."
+    setState((prev) => ({ ...prev, error: message }))
+  }, [])
 
   const ensureWorkspace = React.useCallback(() => {
     if (!state.workspaceId) {
@@ -208,10 +218,10 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
 
   const createPattern = React.useCallback<WorkspaceMutations["createPattern"]>(
     async (input) => {
-      await runMutation(async () => {
+      try {
         const workspaceId = ensureWorkspace()
         const repo = createPatternsRepository(supabase)
-        await repo.create({
+        const record = await repo.create({
           workspaceId,
           folderId: input.folderId ?? null,
           name: input.name,
@@ -219,17 +229,32 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
           summary: input.summary ?? "",
           author: getAuthorName(),
         })
-      })
+
+        setState((prev) => {
+          if (prev.workspaceId !== workspaceId) {
+            return prev
+          }
+          const createdPattern = mapPatternRecordToPattern(record, prev.favoritePatternIds, [])
+          return {
+            ...prev,
+            error: null,
+            patterns: [createdPattern, ...prev.patterns],
+          }
+        })
+      } catch (error) {
+        handleMutationError(error)
+        throw error
+      }
     },
-    [ensureWorkspace, getAuthorName, runMutation, supabase],
+    [ensureWorkspace, getAuthorName, handleMutationError, supabase],
   )
 
   const updatePattern = React.useCallback<WorkspaceMutations["updatePattern"]>(
     async (patternId, updates) => {
-      await runMutation(async () => {
+      try {
         const workspaceId = ensureWorkspace()
         const repo = createPatternsRepository(supabase)
-        await repo.update({
+        const record = await repo.update({
           workspaceId,
           patternId,
           name: updates.name,
@@ -238,92 +263,198 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
           author: updates.author,
           folderId: typeof updates.folderId === "undefined" ? undefined : updates.folderId,
           captureCount: typeof updates.captureCount === "number" ? updates.captureCount : undefined,
+        } as Parameters<ReturnType<typeof createPatternsRepository>["update"]>[0])
+
+        setState((prev) => {
+          const previous = prev.patterns.find((pattern) => pattern.id === patternId)
+          if (!previous) {
+            return prev
+          }
+
+          const nextFavoriteIds = new Set(prev.favoritePatternIds)
+          if (typeof updates.isFavorite === "boolean") {
+            if (updates.isFavorite) {
+              nextFavoriteIds.add(patternId)
+            } else {
+              nextFavoriteIds.delete(patternId)
+            }
+          }
+
+          const updatedPattern = mapPatternRecordToPattern(record, nextFavoriteIds, previous.tags)
+          return {
+            ...prev,
+            error: null,
+            favoritePatternIds: nextFavoriteIds,
+            patterns: prev.patterns.map((pattern) => (pattern.id === patternId ? updatedPattern : pattern)),
+          }
         })
-      })
+      } catch (error) {
+        handleMutationError(error)
+        throw error
+      }
     },
-    [ensureWorkspace, runMutation, supabase],
+    [ensureWorkspace, handleMutationError, supabase],
   )
 
   const deletePattern = React.useCallback<WorkspaceMutations["deletePattern"]>(
     async (patternId) => {
-      await runMutation(async () => {
+      try {
         const workspaceId = ensureWorkspace()
         const repo = createPatternsRepository(supabase)
         await repo.remove({ workspaceId, patternId })
-      })
+
+        setState((prev) => {
+          const nextFavorites = new Set(prev.favoritePatternIds)
+          nextFavorites.delete(patternId)
+          return {
+            ...prev,
+            error: null,
+            favoritePatternIds: nextFavorites,
+            patterns: prev.patterns.filter((pattern) => pattern.id !== patternId),
+          }
+        })
+      } catch (error) {
+        handleMutationError(error)
+        throw error
+      }
     },
-    [ensureWorkspace, runMutation, supabase],
+    [ensureWorkspace, handleMutationError, supabase],
   )
 
   const createFolder = React.useCallback<WorkspaceMutations["createFolder"]>(
     async (input) => {
-      await runMutation(async () => {
+      try {
         const workspaceId = ensureWorkspace()
         const repo = createFoldersRepository(supabase)
-        await repo.create({ workspaceId, name: input.name, parentId: input.parentId })
-      })
+        const record = await repo.create({ workspaceId, name: input.name, parentId: input.parentId })
+
+        setState((prev) => {
+          if (prev.workspaceId !== workspaceId) {
+            return prev
+          }
+          const createdFolder = mapFolderRecordToFolder(record)
+          return {
+            ...prev,
+            error: null,
+            folders: [...prev.folders, createdFolder],
+          }
+        })
+      } catch (error) {
+        handleMutationError(error)
+        throw error
+      }
     },
-    [ensureWorkspace, runMutation, supabase],
+    [ensureWorkspace, handleMutationError, supabase],
   )
 
   const updateFolder = React.useCallback<WorkspaceMutations["updateFolder"]>(
     async (folderId, updates) => {
-      await runMutation(async () => {
+      try {
         const workspaceId = ensureWorkspace()
         const repo = createFoldersRepository(supabase)
-        await repo.update({ workspaceId, folderId, name: updates.name, parentId: updates.parentId })
-      })
+        const record = await repo.update({ workspaceId, folderId, name: updates.name, parentId: updates.parentId })
+
+        setState((prev) => {
+          const updatedFolder = mapFolderRecordToFolder(record)
+          return {
+            ...prev,
+            error: null,
+            folders: prev.folders.map((folder) => (folder.id === folderId ? updatedFolder : folder)),
+          }
+        })
+      } catch (error) {
+        handleMutationError(error)
+        throw error
+      }
     },
-    [ensureWorkspace, runMutation, supabase],
+    [ensureWorkspace, handleMutationError, supabase],
   )
 
   const deleteFolder = React.useCallback<WorkspaceMutations["deleteFolder"]>(
     async (folderId) => {
-      await runMutation(async () => {
+      try {
         const workspaceId = ensureWorkspace()
         const repo = createFoldersRepository(supabase)
         await repo.remove({ workspaceId, folderId })
-      })
+
+        setState((prev) => ({
+          ...prev,
+          error: null,
+          folders: prev.folders.filter((folder) => folder.id !== folderId),
+        }))
+      } catch (error) {
+        handleMutationError(error)
+        throw error
+      }
     },
-    [ensureWorkspace, runMutation, supabase],
+    [ensureWorkspace, handleMutationError, supabase],
   )
 
   const createTag = React.useCallback<WorkspaceMutations["createTag"]>(
     async (input) => {
-      await runMutation(async () => {
+      try {
         const workspaceId = ensureWorkspace()
         const repo = createTagsRepository(supabase)
-        await repo.create({
+        const record = await repo.create({
           workspaceId,
           label: input?.label ?? "새 태그",
           type: input?.type ?? "custom",
           color: input?.color ?? null,
         })
-      })
+
+        const createdTag = mapTagRecordToTag(record)
+        setState((prev) => ({
+          ...prev,
+          error: null,
+          tags: [...prev.tags, createdTag],
+        }))
+      } catch (error) {
+        handleMutationError(error)
+        throw error
+      }
     },
-    [ensureWorkspace, runMutation, supabase],
+    [ensureWorkspace, handleMutationError, supabase],
   )
 
   const updateTag = React.useCallback<WorkspaceMutations["updateTag"]>(
     async (tagId, updates) => {
-      await runMutation(async () => {
+      try {
         const workspaceId = ensureWorkspace()
         const repo = createTagsRepository(supabase)
-        await repo.update({
+        const record = await repo.update({
           workspaceId,
           tagId,
           label: updates.label,
           type: updates.type,
           color: updates.color ?? null,
         })
-      })
+
+        const updatedTag = mapTagRecordToTag(record)
+        setState((prev) => ({
+          ...prev,
+          error: null,
+          tags: prev.tags.map((tag) => (tag.id === updatedTag.id ? updatedTag : tag)),
+          patterns: prev.patterns.map((pattern) => {
+            if (!pattern.tags.some((tag) => tag.id === updatedTag.id)) {
+              return pattern
+            }
+            return {
+              ...pattern,
+              tags: pattern.tags.map((tag) => (tag.id === updatedTag.id ? updatedTag : tag)),
+            }
+          }),
+        }))
+      } catch (error) {
+        handleMutationError(error)
+        throw error
+      }
     },
-    [ensureWorkspace, runMutation, supabase],
+    [ensureWorkspace, handleMutationError, supabase],
   )
 
   const deleteTag = React.useCallback<WorkspaceMutations["deleteTag"]>(
     async (tagId) => {
-      await runMutation(async () => {
+      try {
         const workspaceId = ensureWorkspace()
         const patternIds = state.patterns.map((pattern) => pattern.id)
         if (patternIds.length) {
@@ -335,33 +466,110 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
         }
         const repo = createTagsRepository(supabase)
         await repo.remove({ workspaceId, tagId })
-      })
+
+        setState((prev) => ({
+          ...prev,
+          error: null,
+          tags: prev.tags.filter((tag) => tag.id !== tagId),
+          patterns: prev.patterns.map((pattern) => {
+            if (!pattern.tags.some((tag) => tag.id === tagId)) {
+              return pattern
+            }
+            return {
+              ...pattern,
+              tags: pattern.tags.filter((tag) => tag.id !== tagId),
+            }
+          }),
+        }))
+      } catch (error) {
+        handleMutationError(error)
+        throw error
+      }
     },
-    [ensureWorkspace, runMutation, state.patterns, supabase],
+    [ensureWorkspace, handleMutationError, state.patterns, supabase],
   )
+
+  const previewTag = React.useCallback<WorkspaceMutations["previewTag"]>((tagId, updates) => {
+    setState((prev) => ({
+      ...prev,
+      tags: prev.tags.map((tag) => (tag.id === tagId ? { ...tag, ...updates } : tag)),
+      patterns: prev.patterns.map((pattern) => {
+        if (!pattern.tags.some((tag) => tag.id === tagId)) {
+          return pattern
+        }
+        return {
+          ...pattern,
+          tags: pattern.tags.map((tag) => (tag.id === tagId ? { ...tag, ...updates } : tag)),
+        }
+      }),
+    }))
+  }, [])
 
   const assignTagToPattern = React.useCallback<WorkspaceMutations["assignTagToPattern"]>(
     async (patternId, tagId) => {
-      await runMutation(async () => {
+      try {
         await supabase
           .from("pattern_tags")
           .upsert({ pattern_id: patternId, tag_id: tagId }, { onConflict: "pattern_id,tag_id" })
-      })
+
+        setState((prev) => {
+          const targetTag = prev.tags.find((tag) => tag.id === tagId)
+          if (!targetTag) {
+            return prev
+          }
+          return {
+            ...prev,
+            error: null,
+            patterns: prev.patterns.map((pattern) => {
+              if (pattern.id !== patternId) {
+                return pattern
+              }
+              if (pattern.tags.some((tag) => tag.id === tagId)) {
+                return pattern
+              }
+              return { ...pattern, tags: [...pattern.tags, targetTag] }
+            }),
+          }
+        })
+      } catch (error) {
+        handleMutationError(error)
+        throw error
+      }
     },
-    [runMutation, supabase],
+    [handleMutationError, supabase],
   )
 
   const removeTagFromPattern = React.useCallback<WorkspaceMutations["removeTagFromPattern"]>(
     async (patternId, tagId) => {
-      await runMutation(async () => {
+      try {
         await supabase
           .from("pattern_tags")
           .delete()
           .eq("pattern_id", patternId)
           .eq("tag_id", tagId)
-      })
+
+        setState((prev) => ({
+          ...prev,
+          error: null,
+          patterns: prev.patterns.map((pattern) => {
+            if (pattern.id !== patternId) {
+              return pattern
+            }
+            if (!pattern.tags.some((tag) => tag.id === tagId)) {
+              return pattern
+            }
+            return {
+              ...pattern,
+              tags: pattern.tags.filter((tag) => tag.id !== tagId),
+            }
+          }),
+        }))
+      } catch (error) {
+        handleMutationError(error)
+        throw error
+      }
     },
-    [runMutation, supabase],
+    [handleMutationError, supabase],
   )
 
   const value = React.useMemo<WorkspaceDataContextValue>(
@@ -385,6 +593,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
         deleteTag,
         assignTagToPattern,
         removeTagFromPattern,
+        previewTag,
       },
     }),
     [
@@ -397,6 +606,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
       deleteTag,
       refresh,
       removeTagFromPattern,
+      previewTag,
       state.error,
       state.folders,
       state.loading,
