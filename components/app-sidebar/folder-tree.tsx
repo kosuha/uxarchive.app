@@ -1,7 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { Check, ChevronDown, ChevronRight, Folder as FolderIcon, LibraryBig } from "lucide-react"
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  EllipsisVertical,
+  Folder as FolderIcon,
+  LibraryBig,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -29,6 +36,7 @@ import {
 } from "@/components/ui/dialog"
 import {
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
@@ -923,6 +931,24 @@ function PatternMenuItem({
     setDeleteDialogOpen(true)
   }, [])
 
+  const handleMenuActionClick = React.useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault()
+      event.stopPropagation()
+      onPatternSelect?.(pattern.id)
+      const rect = event.currentTarget.getBoundingClientRect()
+      const syntheticEvent = new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: rect.left + rect.width / 2,
+        clientY: rect.top + rect.height / 2,
+        view: window,
+      })
+      event.currentTarget.dispatchEvent(syntheticEvent)
+    },
+    [onPatternSelect, pattern.id]
+  )
+
   const handleConfirmDelete = React.useCallback(() => {
     onPatternDelete?.(pattern.id)
     setDeleteDialogOpen(false)
@@ -932,27 +958,39 @@ function PatternMenuItem({
     <>
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <SidebarMenuButton
-            {...allowContextMenuProps}
-            data-tree-interactive="true"
-            className={cn(
-              "h-auto items-start gap-2 py-2 px-3 transition-colors",
-              isSelected && "bg-primary/10 text-primary ring-1 ring-primary/40"
-            )}
-            type="button"
-            onClick={() => onPatternSelect?.(pattern.id)}
-            onPointerDown={(event) => {
-              if (event.button === 2) {
-                onPatternSelect?.(pattern.id)
-              }
-            }}
-            onContextMenu={() => onPatternSelect?.(pattern.id)}
-          >
-            <div className="flex flex-col">
-              <span className="text-sm font-medium">{pattern.name}</span>
-              <span className="text-xs text-muted-foreground">{pattern.serviceName}</span>
-            </div>
-          </SidebarMenuButton>
+          <div className="relative w-full">
+            <SidebarMenuButton
+              {...allowContextMenuProps}
+              data-tree-interactive="true"
+              className={cn(
+                "h-auto items-start gap-2 py-2 px-3 transition-colors",
+                isSelected && "bg-primary/10 text-primary ring-1 ring-primary/40"
+              )}
+              type="button"
+              onClick={() => onPatternSelect?.(pattern.id)}
+              onPointerDown={(event) => {
+                if (event.button === 2) {
+                  onPatternSelect?.(pattern.id)
+                }
+              }}
+              onContextMenu={() => onPatternSelect?.(pattern.id)}
+            >
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">{pattern.name}</span>
+                <span className="text-xs text-muted-foreground">{pattern.serviceName}</span>
+              </div>
+            </SidebarMenuButton>
+            <SidebarMenuAction
+              {...allowContextMenuProps}
+              type="button"
+              aria-label={`${pattern.name} 컨텍스트 메뉴 열기`}
+              onClick={handleMenuActionClick}
+              onContextMenu={() => onPatternSelect?.(pattern.id)}
+            >
+              <EllipsisVertical className="size-4" />
+              <span className="sr-only">패턴 컨텍스트 메뉴 토글</span>
+            </SidebarMenuAction>
+          </div>
         </ContextMenuTrigger>
         <ContextMenuContent
           className="w-44"

@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import { createCapturesRepository } from "@/lib/repositories/captures"
 import type { CaptureRecord } from "@/lib/repositories/captures"
@@ -13,6 +14,24 @@ type UploadCaptureInput = {
   file: File
   desiredOrder: number
 }
+
+type PatternDetailQueryData = {
+  captures: Capture[]
+  insights: Insight[]
+}
+
+type InsightRow = {
+  id: string
+  capture_id: string
+  x: number
+  y: number
+  note: string
+  created_at: string
+}
+
+const PATTERN_DETAIL_QUERY_KEY = "pattern-detail"
+
+const createEmptyDetailData = (): PatternDetailQueryData => ({ captures: [], insights: [] })
 
 const STORAGE_OBJECT_ROUTE = "/api/storage/object"
 
@@ -79,10 +98,7 @@ const resolveCaptureImageUrl = (record: CaptureRecord) => {
 export const usePatternDetail = (patternId?: string | null) => {
   const { supabase } = useSupabaseSession()
   const { workspaceId } = useWorkspaceData()
-  const [captures, setCaptures] = React.useState<Capture[]>([])
-  const [insights, setInsights] = React.useState<Insight[]>([])
-  const [loading, setLoading] = React.useState(false)
-  const [error, setError] = React.useState<string | null>(null)
+  const queryClient = useQueryClient()
 
   const mapCaptureRecord = React.useCallback((record: CaptureRecord) => {
     return {
@@ -94,32 +110,22 @@ export const usePatternDetail = (patternId?: string | null) => {
     } satisfies Capture
   }, [])
 
-  type RefreshOptions = { silent?: boolean }
+  const patternDetailQueryKey = React.useMemo(() => (patternId ? [PATTERN_DETAIL_QUERY_KEY, patternId] : null), [patternId])
 
-  const refresh = React.useCallback(async (options?: RefreshOptions) => {
-    const silent = options?.silent ?? false
-    if (!patternId) {
-      setCaptures([])
-      setInsights([])
-      setError(null)
-      if (!silent) {
-        setLoading(false)
+  const detailQuery = useQuery<PatternDetailQueryData>({
+    queryKey: patternDetailQueryKey ?? [PATTERN_DETAIL_QUERY_KEY, "unknown"],
+    queryFn: async () => {
+      if (!patternId) {
+        return createEmptyDetailData()
       }
-      return
-    }
 
-    if (!silent) {
-      setLoading(true)
-    }
-    try {
       const capturesRepo = createCapturesRepository(supabase)
       const captureRecords = await capturesRepo.listByPattern({ patternId })
       const mappedCaptures = captureRecords
         .map((record) => mapCaptureRecord(record))
         .sort((a, b) => a.order - b.order)
-      setCaptures(mappedCaptures)
 
-      let insightRows: Array<{ id: string; capture_id: string; x: number; y: number; note: string; created_at: string }> = []
+      let insightRows: InsightRow[] = []
       if (captureRecords.length) {
         const { data, error } = await supabase
           .from("insights")
@@ -133,54 +139,130 @@ export const usePatternDetail = (patternId?: string | null) => {
         if (error) {
           throw new Error(`인사이트를 불러오지 못했습니다: ${error.message}`)
         }
-        insightRows = (data as typeof insightRows) ?? []
+        insightRows = (data as InsightRow[]) ?? []
       }
 
-      setInsights(
-        insightRows.map((row) => ({
-          id: row.id,
-          captureId: row.capture_id,
-          x: Number(row.x),
-          y: Number(row.y),
-          note: row.note ?? "",
-          createdAt: row.created_at,
-        })),
-      )
-      setError(null)
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "패턴 상세 데이터를 불러오지 못했습니다.")
-    } finally {
-      if (!silent) {
-        setLoading(false)
+      const mappedInsights: Insight[] = insightRows.map((row) => ({
+        id: row.id,
+        captureId: row.capture_id,
+        x: Number(row.x),
+        y: Number(row.y),
+        note: row.note ?? "",
+        createdAt: row.created_at,
+      }))
+
+      return {
+        captures: mappedCaptures,
+        insights: mappedInsights,
       }
-    }
-  }, [mapCaptureRecord, patternId, supabase])
+    },
+    enabled: Boolean(patternId),
+  })
 
-  React.useEffect(() => {
-    refresh()
-  }, [refresh])
+  type RefreshOptions = { silent?: boolean }
 
-  const applyCaptureOrder = React.useCallback(
-    async (orderedIds: string[]) => {
-      if (!patternId || !orderedIds.length) return
+  const refresh = React.useCallback(
+    async (options?: RefreshOptions) => {
+      if (!patternDetailQueryKey) {
+        return
+      }
+
+      if (options?.silent) {
+        await queryClient.invalidateQueries({ queryKey: patternDetailQueryKey })
+        return
+      }
+
+      await detailQuery.refetch()
+    },
+    [detailQuery, patternDetailQueryKey, queryClient],
+  )
+
+  const setDetailData = React.useCallback(
+    (updater: (data: PatternDetailQueryData) => PatternDetailQueryData) => {
+      if (!patternDetailQueryKey) {
+        return
+      }
+      queryClient.setQueryData<PatternDetailQueryData>(patternDetailQueryKey, (previous) => {
+        const base = previous ? { captures: [...previous.captures], insights: [...previous.insights] } : createEmptyDetailData()
+        return updater(base)
+      })
+    },
+    [patternDetailQueryKey, queryClient],
+  )
+
+  const persistCaptureOrder = React.useCallback(
+    async (orderedIds: string[], overridePatternId?: string) => {
+      const targetPatternId = overridePatternId ?? patternId
+      if (!targetPatternId || !orderedIds.length) {
+        return
+      }
+
       for (const [index, captureId] of orderedIds.entries()) {
         await supabase
           .from("captures")
           .update({ order_index: index + 1 })
-          .eq("pattern_id", patternId)
+          .eq("pattern_id", targetPatternId)
           .eq("id", captureId)
       }
     },
     [patternId, supabase],
   )
 
-const uploadCapture = React.useCallback(
-    async ({ file, desiredOrder }: UploadCaptureInput) => {
-      if (!patternId || !workspaceId) {
-        throw new Error("워크스페이스 또는 패턴 정보가 부족합니다.")
+  const captureOrderMutation = useMutation({
+    mutationFn: (orderedIds: string[]) => persistCaptureOrder(orderedIds),
+    onMutate: async (orderedIds: string[]) => {
+      if (!patternDetailQueryKey || !orderedIds.length) {
+        return
       }
 
-      const captureId = globalThis.crypto?.randomUUID?.() ?? `capture-${Date.now()}`
+      await queryClient.cancelQueries({ queryKey: patternDetailQueryKey })
+      const previousData = queryClient.getQueryData<PatternDetailQueryData>(patternDetailQueryKey)
+      if (previousData) {
+        const captureMap = new Map(previousData.captures.map((capture) => [capture.id, capture]))
+        const reorderedCaptures: Capture[] = orderedIds
+          .map((id, index) => {
+            const match = captureMap.get(id)
+            if (!match) return null
+            return { ...match, order: index + 1 }
+          })
+          .filter(Boolean) as Capture[]
+
+        queryClient.setQueryData<PatternDetailQueryData>(patternDetailQueryKey, {
+          captures: reorderedCaptures,
+          insights: previousData.insights,
+        })
+      }
+
+      return { previousData }
+    },
+    onError: (_error, _orderedIds, context) => {
+      if (context?.previousData && patternDetailQueryKey) {
+        queryClient.setQueryData(patternDetailQueryKey, context.previousData)
+      }
+    },
+    onSettled: () => {
+      if (patternDetailQueryKey) {
+        queryClient.invalidateQueries({ queryKey: patternDetailQueryKey })
+      }
+    },
+  })
+
+  type UploadCaptureMutationVariables = UploadCaptureInput & {
+    captureId: string
+    patternId: string
+    workspaceId: string
+    orderedIds: string[]
+  }
+
+  type UploadCaptureMutationContext = {
+    previousData?: PatternDetailQueryData
+    previewUrl?: string
+  }
+
+  const uploadCaptureMutation = useMutation<CaptureRecord, Error, UploadCaptureMutationVariables, UploadCaptureMutationContext>({
+    mutationFn: async (variables) => {
+      const { file, captureId, workspaceId: targetWorkspaceId, patternId: targetPatternId, orderedIds } = variables
+
       const filename = file.name || `${captureId}.dat`
       const contentType = file.type || "application/octet-stream"
 
@@ -188,8 +270,8 @@ const uploadCapture = React.useCallback(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          workspaceId,
-          patternId,
+          workspaceId: targetWorkspaceId,
+          patternId: targetPatternId,
           captureId,
           filename,
           contentType,
@@ -215,7 +297,7 @@ const uploadCapture = React.useCallback(
         await fetch("/api/captures/upload", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ workspaceId, patternId, captureId }),
+          body: JSON.stringify({ workspaceId: targetWorkspaceId, patternId: targetPatternId, captureId }),
         })
         throw new Error("캡처 파일 업로드에 실패했습니다.")
       }
@@ -225,7 +307,14 @@ const uploadCapture = React.useCallback(
       const finalizeResponse = await fetch("/api/captures/finalize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceId, patternId, captureId, width, height, refreshPublicUrl: true }),
+        body: JSON.stringify({
+          workspaceId: targetWorkspaceId,
+          patternId: targetPatternId,
+          captureId,
+          width,
+          height,
+          refreshPublicUrl: true,
+        }),
       })
 
       if (!finalizeResponse.ok) {
@@ -233,36 +322,142 @@ const uploadCapture = React.useCallback(
         throw new Error(finalizePayload?.error ?? "캡처 정보를 갱신하지 못했습니다.")
       }
 
-      const repo = createCapturesRepository(supabase)
-      const captureRecords = await repo.listByPattern({ patternId })
-      const orderedIds = captureRecords
-        .sort((a, b) => a.orderIndex - b.orderIndex)
-        .map((record) => record.id)
-      const currentIndex = orderedIds.indexOf(captureId)
-      if (currentIndex !== -1) {
-        orderedIds.splice(currentIndex, 1)
-        const normalizedOrder = Math.min(Math.max(desiredOrder, 1), orderedIds.length + 1)
-        orderedIds.splice(normalizedOrder - 1, 0, captureId)
-        await applyCaptureOrder(orderedIds)
+      await persistCaptureOrder(orderedIds, targetPatternId)
+
+      const finalizePayload = (await finalizeResponse.json()) as { capture: CaptureRecord }
+      return finalizePayload.capture
+    },
+    onMutate: async (variables) => {
+      if (!patternDetailQueryKey) {
+        return
       }
 
-      await refresh({ silent: true })
+      await queryClient.cancelQueries({ queryKey: patternDetailQueryKey })
+      const previousData = queryClient.getQueryData<PatternDetailQueryData>(patternDetailQueryKey)
+      const previewUrl = URL.createObjectURL(variables.file)
+
+      const nextCaptures: Capture[] = variables.orderedIds.map((id, index) => {
+        if (id === variables.captureId) {
+          return {
+            id: variables.captureId,
+            patternId: variables.patternId,
+            imageUrl: previewUrl,
+            order: index + 1,
+            createdAt: new Date().toISOString(),
+          }
+        }
+
+        const match = previousData?.captures.find((capture) => capture.id === id)
+        if (!match) {
+          return {
+            id,
+            patternId: variables.patternId,
+            imageUrl: "",
+            order: index + 1,
+            createdAt: new Date().toISOString(),
+          }
+        }
+        return { ...match, order: index + 1 }
+      })
+
+      queryClient.setQueryData<PatternDetailQueryData>(patternDetailQueryKey, {
+        captures: nextCaptures,
+        insights: previousData?.insights ?? [],
+      })
+
+      return { previousData, previewUrl }
+    },
+    onError: async (_error, _variables, context) => {
+      if (context?.previewUrl) {
+        URL.revokeObjectURL(context.previewUrl)
+      }
+      if (patternDetailQueryKey) {
+        if (context?.previousData) {
+          queryClient.setQueryData(patternDetailQueryKey, context.previousData)
+        } else {
+          await queryClient.invalidateQueries({ queryKey: patternDetailQueryKey })
+        }
+      }
+    },
+    onSuccess: (record) => {
+      if (!patternDetailQueryKey) {
+        return
+      }
+
+      queryClient.setQueryData<PatternDetailQueryData>(patternDetailQueryKey, (current) => {
+        const base = current ?? createEmptyDetailData()
+        const mapped = mapCaptureRecord(record)
+        const updatedCaptures = base.captures.map((capture) => (capture.id === record.id ? mapped : capture))
+        return {
+          captures: updatedCaptures,
+          insights: base.insights,
+        }
+      })
+    },
+    onSettled: (_data, _error, _variables, context) => {
+      if (context?.previewUrl) {
+        URL.revokeObjectURL(context.previewUrl)
+      }
+      if (patternDetailQueryKey) {
+        queryClient.invalidateQueries({ queryKey: patternDetailQueryKey })
+      }
+    },
+  })
+
+  const uploadCapture = React.useCallback(
+    async ({ file, desiredOrder }: UploadCaptureInput) => {
+      if (!patternId || !workspaceId) {
+        throw new Error("워크스페이스 또는 패턴 정보가 부족합니다.")
+      }
+
+      if (!patternDetailQueryKey) {
+        throw new Error("패턴 세부 정보를 찾을 수 없습니다.")
+      }
+
+      const captureId = globalThis.crypto?.randomUUID?.() ?? `capture-${Date.now()}`
+      const currentData = queryClient.getQueryData<PatternDetailQueryData>(patternDetailQueryKey) ?? createEmptyDetailData()
+      const currentIds = currentData.captures.map((capture) => capture.id)
+      const normalizedOrder = Math.min(Math.max(desiredOrder, 1), currentIds.length + 1)
+      const orderedIds = [...currentIds]
+      orderedIds.splice(normalizedOrder - 1, 0, captureId)
+
+      await uploadCaptureMutation.mutateAsync({
+        file,
+        desiredOrder: normalizedOrder,
+        captureId,
+        patternId,
+        workspaceId,
+        orderedIds,
+      })
+
       return captureId
     },
-    [applyCaptureOrder, patternId, refresh, supabase, workspaceId],
+    [patternDetailQueryKey, patternId, queryClient, uploadCaptureMutation, workspaceId],
   )
 
   const reorderCaptures = React.useCallback(
     async (orderedCaptures: Capture[]) => {
-      await applyCaptureOrder(orderedCaptures.map((capture) => capture.id))
-      await refresh({ silent: true })
+      if (!patternId) return
+      const orderedIds = orderedCaptures.map((capture) => capture.id)
+      await captureOrderMutation.mutateAsync(orderedIds)
     },
-    [applyCaptureOrder, refresh],
+    [captureOrderMutation, patternId],
   )
 
   const deleteCapture = React.useCallback(
     async (captureId: string) => {
       if (!patternId || !workspaceId) return
+      setDetailData((current) => {
+        const nextCaptures = current.captures
+          .filter((capture) => capture.id !== captureId)
+          .map((capture, index) => ({ ...capture, order: index + 1 }))
+        const nextInsights = current.insights.filter((insight) => insight.captureId !== captureId)
+        return {
+          captures: nextCaptures,
+          insights: nextInsights,
+        }
+      })
+
       const response = await fetch("/api/captures/upload", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -270,18 +465,21 @@ const uploadCapture = React.useCallback(
       })
       if (!response.ok) {
         const payload = await response.json().catch(() => null)
+        await refresh({ silent: true })
         throw new Error(payload?.error ?? "캡처를 삭제하지 못했습니다.")
       }
-      await refresh({ silent: true })
+
+      if (patternDetailQueryKey) {
+        await queryClient.invalidateQueries({ queryKey: patternDetailQueryKey })
+      }
     },
-    [patternId, refresh, workspaceId],
+    [patternDetailQueryKey, patternId, queryClient, refresh, setDetailData, workspaceId],
   )
 
   const createInsight = React.useCallback(
     async (input: { captureId: string; x: number; y: number; note?: string }) => {
       const repo = createInsightsRepository(supabase)
       const record = await repo.create({ captureId: input.captureId, x: input.x, y: input.y, note: input.note ?? "" })
-      await refresh({ silent: true })
       const created: Insight = {
         id: record.id,
         captureId: record.captureId,
@@ -290,57 +488,87 @@ const uploadCapture = React.useCallback(
         note: record.note,
         createdAt: record.createdAt,
       }
+      setDetailData((current) => ({
+        captures: current.captures,
+        insights: [...current.insights, created],
+      }))
       return created
     },
-    [refresh, supabase],
+    [setDetailData, supabase],
   )
 
   const updateInsight = React.useCallback(
     async (input: { captureId: string; insightId: string; x?: number; y?: number; note?: string }) => {
-      const applyLocalUpdate = () =>
-        setInsights((prev) =>
-          prev.map((insight) => {
-            if (insight.id !== input.insightId) {
-              return insight
-            }
-            return {
-              ...insight,
-              x: typeof input.x === "number" ? input.x : insight.x,
-              y: typeof input.y === "number" ? input.y : insight.y,
-              note: typeof input.note === "string" ? input.note : insight.note,
-            }
-          }),
-        )
-
-      applyLocalUpdate()
+      setDetailData((current) => ({
+        captures: current.captures,
+        insights: current.insights.map((insight) => {
+          if (insight.id !== input.insightId) {
+            return insight
+          }
+          return {
+            ...insight,
+            x: typeof input.x === "number" ? input.x : insight.x,
+            y: typeof input.y === "number" ? input.y : insight.y,
+            note: typeof input.note === "string" ? input.note : insight.note,
+          }
+        }),
+      }))
 
       const repo = createInsightsRepository(supabase)
       try {
-        await repo.update({
+        const record = await repo.update({
           captureId: input.captureId,
           insightId: input.insightId,
           x: input.x,
           y: input.y,
           note: input.note,
         })
+
+        setDetailData((current) => ({
+          captures: current.captures,
+          insights: current.insights.map((insight) =>
+            insight.id === record.id
+              ? {
+                  id: record.id,
+                  captureId: record.captureId,
+                  x: record.x,
+                  y: record.y,
+                  note: record.note,
+                  createdAt: record.createdAt,
+                }
+              : insight,
+          ),
+        }))
       } catch (error) {
         await refresh({ silent: true })
         throw error
       }
-
-      await refresh({ silent: true })
     },
-    [refresh, supabase],
+    [refresh, setDetailData, supabase],
   )
 
   const deleteInsight = React.useCallback(
     async (input: { captureId: string; insightId: string }) => {
       const repo = createInsightsRepository(supabase)
-      await repo.remove({ captureId: input.captureId, insightId: input.insightId })
-      await refresh({ silent: true })
+      setDetailData((current) => ({
+        captures: current.captures,
+        insights: current.insights.filter((insight) => insight.id !== input.insightId),
+      }))
+
+      try {
+        await repo.remove({ captureId: input.captureId, insightId: input.insightId })
+      } catch (error) {
+        await refresh({ silent: true })
+        throw error
+      }
     },
-    [refresh, supabase],
+    [refresh, setDetailData, supabase],
   )
+
+  const captures = patternId ? detailQuery.data?.captures ?? [] : []
+  const insights = patternId ? detailQuery.data?.insights ?? [] : []
+  const loading = Boolean(patternId) ? detailQuery.isPending : false
+  const error = detailQuery.error ? (detailQuery.error instanceof Error ? detailQuery.error.message : String(detailQuery.error)) : null
 
   return {
     captures,

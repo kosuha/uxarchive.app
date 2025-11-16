@@ -1,12 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { Clock, LibraryBig, Search, Star, Tags } from "lucide-react"
+import { LibraryBig, Search, Star, Tags } from "lucide-react"
 
 import { ExploreView } from "@/components/app-sidebar/nav-views/explore-view"
 import type { PendingFolderInput, PendingPatternInput } from "@/components/app-sidebar/folder-tree"
 import { SidebarNavRail, NAV_RAIL_WIDTH, type NavItem } from "@/components/app-sidebar/nav-rail"
 import { NavViewContainer } from "@/components/app-sidebar/nav-views/nav-view-container"
+import { SyncStatusIndicator } from "@/components/app-sidebar/sync-status-indicator"
 import { useSidebarResize } from "@/components/app-sidebar/use-sidebar-resize"
 import {
   Sidebar,
@@ -453,14 +454,17 @@ export function AppSidebar({
           aria-hidden={isSidebarCollapsed}
         >
           <SidebarHeader className="gap-3.5 border-b border-border/60 p-4">
-            {activeNavItem && (
-              <div className="flex flex-col gap-1 text-left">
-                <span className="text-base font-medium text-foreground">{activeNavItem.title}</span>
-                {activeNavItem.description && (
-                  <span className="text-xs text-muted-foreground">{activeNavItem.description}</span>
-                )}
-              </div>
-            )}
+            <div className="flex flex-col gap-3 text-left">
+              {activeNavItem && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-base font-medium text-foreground">{activeNavItem.title}</span>
+                  {activeNavItem.description && (
+                    <span className="text-xs text-muted-foreground">{activeNavItem.description}</span>
+                  )}
+                </div>
+              )}
+              <SyncStatusIndicator />
+            </div>
           </SidebarHeader>
           <SidebarContent className="flex flex-1 flex-col">
             <NavViewContainer
