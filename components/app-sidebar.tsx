@@ -380,7 +380,7 @@ export function AppSidebar({
 
   const exploreView = (
     <ExploreView
-      title="My archive"
+      title="My Archive"
       state={{
         folders,
         patterns,

@@ -184,7 +184,7 @@ export function TagSettingsView() {
     <div className="flex h-full flex-col gap-4 p-4">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Edit Tag</p>
+          <p className="text-xs font-medium tracking-wide text-muted-foreground">Edit Tag</p>
         </div>
       </div>
       <TagEditPanel
@@ -199,7 +199,7 @@ export function TagSettingsView() {
       />
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <div className="text-xs font-medium text-muted-foreground uppercase">My Tags</div>
+          <div className="text-xs font-medium text-muted-foreground">My Tags</div>
           <div>
             <Button variant="ghost" size="icon" onClick={handleCreateTag}>
               <Plus className="size-4" />

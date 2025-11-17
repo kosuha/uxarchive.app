@@ -67,7 +67,6 @@ export function InsightsPanel({
                 ))
               ) : (
                 <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
-                  <Pin className="size-5" />
                   No insights yet.
                 </div>
               )}

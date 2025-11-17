@@ -49,9 +49,6 @@ export function FavoritesView({ onPatternSelect }: FavoritesViewProps) {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4">
-      <div>
-        <p className="text-xs text-muted-foreground">Keep your frequently referenced patterns in one place.</p>
-      </div>
       <div className="flex-1 overflow-hidden">
         {content}
       </div>

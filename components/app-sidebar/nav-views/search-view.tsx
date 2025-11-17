@@ -161,9 +161,9 @@ export function SearchView({
   return (
     <div className="flex flex-1 flex-col gap-4 p-4">
       <div className="">
-        <div className="flex flex-wrap justify-between text-xs gap-2 mb-2 items-center">
+        <div className="flex flex-wrap justify-between text-muted-foreground text-xs font-medium gap-2 mb-2 items-center">
           <span>
-            Search archive
+            Search Archive
           </span>
           <Button
             type="button"

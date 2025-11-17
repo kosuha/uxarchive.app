@@ -326,11 +326,11 @@ export function FolderTree({
                   <CommandEmpty>No folders match your search.</CommandEmpty>
                   <CommandGroup>
                     <CommandItem
-                      value="My archive"
+                      value="My Archive"
                       onSelect={() => setMoveDestinationId(null)}
                     >
                       <LibraryBig className="mr-2 size-4 text-muted-foreground" />
-                      <span className="flex-1 truncate">My archive</span>
+                      <span className="flex-1 truncate">My Archive</span>
                       <Check
                         className={cn(
                           "size-4 text-primary opacity-0",

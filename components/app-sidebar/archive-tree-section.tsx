@@ -93,7 +93,7 @@ export function ArchiveTreeSection({ title, state, handlers }: ArchiveTreeSectio
           onContextMenu={onBackgroundContextMenu}
         >
           <SidebarGroup>
-            <SidebarGroupLabel className="flex items-center justify-between gap-2">
+            <SidebarGroupLabel className="flex items-center justify-between gap-2 text-muted-foreground text-xs font-medium">
               <span
                 role="button"
                 tabIndex={0}
