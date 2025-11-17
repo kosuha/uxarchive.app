@@ -5,7 +5,7 @@ import Image from "next/image"
 import { Layer, Stage, Image as KonvaImage } from "react-konva"
 import { Html } from "react-konva-utils"
 import useImage from "use-image"
-import { Camera, GalleryHorizontalEnd, ImageUpscale, Loader2, MessageCircle, Minus, Plus, Share2, Trash2, UploadCloud } from "lucide-react"
+import { GalleryHorizontalEnd, ImageUpscale, Loader2, MessageCircle, Minus, Plus, Trash2, UploadCloud } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -21,7 +21,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -57,6 +56,8 @@ type CanvasSectionProps = {
   highlightedInsightId: string | null
   isAddingInsight: boolean
   isPlacingInsight: boolean
+  readOnly?: boolean
+  shareButton?: React.ReactNode
   onCanvasPlace: (point: CanvasPoint) => void
   onDeleteInsight: (insightId: string) => void
   onHighlight: (id: string | null) => void
@@ -79,6 +80,8 @@ export function CanvasSection({
   highlightedInsightId,
   isAddingInsight,
   isPlacingInsight,
+  readOnly,
+  shareButton,
   onCanvasPlace,
   onDeleteInsight,
   onHighlight,
@@ -89,6 +92,7 @@ export function CanvasSection({
   onReorderCapture,
   onDeleteCapture,
 }: CanvasSectionProps) {
+  const readOnlyMode = Boolean(readOnly)
   return (
     <section className="flex flex-1 basis-0 min-h-0 min-w-0 flex-col rounded-xl border border-border/60 bg-gradient-to-b from-card to-muted/20 shadow-sm md:min-h-[640px]">
       <CanvasHeader
@@ -97,6 +101,8 @@ export function CanvasSection({
         isAddingInsight={isAddingInsight}
         onAddInsight={onToggleAddMode}
         canAddInsight={Boolean(activeCapture)}
+        shareButton={!readOnlyMode ? shareButton : null}
+        readOnly={readOnlyMode}
       />
       <CaptureCanvas
         capture={activeCapture}
@@ -107,6 +113,7 @@ export function CanvasSection({
         onCanvasPlace={onCanvasPlace}
         onUpdateInsightPosition={onUpdateInsightPosition}
         onDeleteInsight={onDeleteInsight}
+        readOnly={readOnlyMode}
       />
       <CaptureStrip
         captures={captures}
@@ -115,6 +122,7 @@ export function CanvasSection({
         onUploadCapture={onUploadCapture}
         onReorderCapture={onReorderCapture}
         onDeleteCapture={onDeleteCapture}
+        readOnly={readOnlyMode}
       />
     </section>
   )
@@ -126,13 +134,18 @@ function CanvasHeader({
   isAddingInsight,
   onAddInsight,
   canAddInsight,
+  shareButton,
+  readOnly,
 }: {
   captureOrder: number
   totalCount: number
   isAddingInsight: boolean
   onAddInsight: () => void
   canAddInsight: boolean
+  shareButton?: React.ReactNode
+  readOnly?: boolean
 }) {
+  const isReadOnly = Boolean(readOnly)
   return (
     <div className="flex items-center justify-between border-b border-border/60 px-6 py-4">
       <div>
@@ -144,20 +157,19 @@ function CanvasHeader({
         </p>
       </div>
       <div className="flex items-center gap-2">
-        <Button
-          variant={isAddingInsight ? "default" : "outline"}
-          size="sm"
-          onClick={onAddInsight}
-          disabled={!canAddInsight}
-          aria-pressed={isAddingInsight}
-        >
-          <MessageCircle className="size-3.5 mr-2" />
-          {isAddingInsight ? "Cancel" : "Add insight"}
-        </Button>
-        <Button variant="outline" size="sm">
-          <Share2 className="size-3.5 mr-2" />
-          Share
-        </Button>
+        {!isReadOnly && (
+          <Button
+            variant={isAddingInsight ? "default" : "outline"}
+            size="sm"
+            onClick={onAddInsight}
+            disabled={!canAddInsight}
+            aria-pressed={isAddingInsight}
+          >
+            <MessageCircle className="size-3.5 mr-2" />
+            {isAddingInsight ? "Cancel" : "Add insight"}
+          </Button>
+        )}
+        {!isReadOnly && shareButton}
       </div>
     </div>
   )
@@ -172,6 +184,7 @@ function CaptureCanvas({
   onCanvasPlace,
   onUpdateInsightPosition,
   onDeleteInsight,
+  readOnly,
 }: {
   capture?: Capture
   insights: Insight[]
@@ -181,6 +194,7 @@ function CaptureCanvas({
   onCanvasPlace: (point: CanvasPoint) => void
   onUpdateInsightPosition: (insightId: string, point: CanvasPoint) => void
   onDeleteInsight: (insightId: string) => void
+  readOnly?: boolean
 }) {
   const canvasRef = React.useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = React.useState<{ id: string; x: number; y: number; isTransitioning?: boolean } | null>(null)
@@ -237,20 +251,23 @@ function CaptureCanvas({
     setCanvasSize({ width: rect.width, height: rect.height })
   }, [capture?.id])
 
+  const canEditInsights = !readOnly
+
   const handleCanvasClick = React.useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
-      if (!isPlacingInsight) return
+      if (!isPlacingInsight || !canEditInsights) return
       const target = event.target as HTMLElement
       if (target.closest("[data-insight-marker]")) return
       const coords = getRelativePosition(event.clientX, event.clientY)
       if (!coords) return
       onCanvasPlace(coords)
     },
-    [isPlacingInsight, getRelativePosition, onCanvasPlace]
+    [canEditInsights, getRelativePosition, isPlacingInsight, onCanvasPlace]
   )
 
   const startDragging = React.useCallback(
     (event: React.PointerEvent<HTMLButtonElement>, insightId: string) => {
+      if (!canEditInsights) return
       if (event.button !== 0) return
       event.preventDefault()
       event.stopPropagation()
@@ -296,7 +313,7 @@ function CaptureCanvas({
       window.addEventListener("pointerup", handleUp)
       window.addEventListener("pointercancel", handleCancel)
     },
-    [getRelativePosition, onHighlight, onUpdateInsightPosition]
+    [canEditInsights, getRelativePosition, onHighlight, onUpdateInsightPosition]
   )
 
   const clampScale = React.useCallback((scale: number) => {
@@ -551,67 +568,87 @@ function CaptureCanvas({
                           }}
                           divProps={{ style: { pointerEvents: "auto" } }}
                         >
-                          <ContextMenu>
-                            {(() => {
-                              const noteText = insight.note?.trim()
-                              const button = (
-                                <button
-                                  type="button"
-                                  data-insight-marker
-                                  {...allowContextMenuProps}
-                                  onPointerDown={(event) => startDragging(event, insight.id)}
-                                  onMouseEnter={() => onHighlight(insight.id)}
-                                  onMouseLeave={() => {
-                                    if (draggingIdRef.current === insight.id) return
-                                    onHighlight(null)
-                                  }}
-                                  onFocus={() => onHighlight(insight.id)}
-                                  onBlur={() => {
-                                    if (draggingIdRef.current === insight.id) return
-                                    onHighlight(null)
-                                  }}
-                                  className={cn(
-                                    "flex size-6 items-center justify-center rounded-full border-2 border-white font-semibold text-xs text-white shadow-lg transition-colors",
-                                    isActive ? "bg-primary" : "bg-black/70",
-                                    "cursor-grab active:cursor-grabbing"
-                                  )}
-                                  style={{
-                                    transform: "translate(-50%, -50%)",
-                                    transformOrigin: "center",
-                                  }}
-                                >
-                                  {index + 1}
-                                </button>
-                              )
+                          {(() => {
+                            const noteText = insight.note?.trim()
+                            const button = (
+                              <button
+                                type="button"
+                                data-insight-marker
+                                {...allowContextMenuProps}
+                                onPointerDown={canEditInsights ? (event) => startDragging(event, insight.id) : undefined}
+                                onMouseEnter={() => onHighlight(insight.id)}
+                                onMouseLeave={() => {
+                                  if (draggingIdRef.current === insight.id) return
+                                  onHighlight(null)
+                                }}
+                                onFocus={() => onHighlight(insight.id)}
+                                onBlur={() => {
+                                  if (draggingIdRef.current === insight.id) return
+                                  onHighlight(null)
+                                }}
+                                className={cn(
+                                  "flex size-6 items-center justify-center rounded-full border-2 border-white font-semibold text-xs text-white shadow-lg transition-colors",
+                                  isActive ? "bg-primary" : "bg-black/70",
+                                  canEditInsights ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
+                                )}
+                                style={{
+                                  transform: "translate(-50%, -50%)",
+                                  transformOrigin: "center",
+                                }}
+                              >
+                                {index + 1}
+                              </button>
+                            )
 
+                            const renderMarkerTrigger = () => {
                               if (!noteText) {
-                                return <ContextMenuTrigger asChild>{button}</ContextMenuTrigger>
+                                return canEditInsights ? (
+                                  <ContextMenuTrigger asChild>{button}</ContextMenuTrigger>
+                                ) : (
+                                  button
+                                )
                               }
 
                               return (
                                 <Tooltip>
-                                  <ContextMenuTrigger asChild>
+                                  {canEditInsights ? (
+                                    <ContextMenuTrigger asChild>
+                                      <TooltipTrigger asChild>{button}</TooltipTrigger>
+                                    </ContextMenuTrigger>
+                                  ) : (
                                     <TooltipTrigger asChild>{button}</TooltipTrigger>
-                                  </ContextMenuTrigger>
+                                  )}
                                   <TooltipContent side="top">
                                     <p className="max-w-[220px] text-xs">{noteText}</p>
                                   </TooltipContent>
                                 </Tooltip>
                               )
-                            })()}
-                            <ContextMenuContent>
-                              <ContextMenuItem
-                                variant="destructive"
-                                onSelect={(event) => {
-                                  event.preventDefault()
-                                  onDeleteInsight(insight.id)
-                                }}
-                              >
-                                <Trash2 className="size-3.5" />
-                                Delete insight
-                              </ContextMenuItem>
-                            </ContextMenuContent>
-                          </ContextMenu>
+                            }
+
+                            const markerContent = renderMarkerTrigger()
+
+                            if (!canEditInsights) {
+                              return markerContent
+                            }
+
+                            return (
+                              <ContextMenu>
+                                {markerContent}
+                                <ContextMenuContent>
+                                  <ContextMenuItem
+                                    variant="destructive"
+                                    onSelect={(event) => {
+                                      event.preventDefault()
+                                      onDeleteInsight(insight.id)
+                                    }}
+                                  >
+                                    <Trash2 className="size-3.5" />
+                                    Delete insight
+                                  </ContextMenuItem>
+                                </ContextMenuContent>
+                              </ContextMenu>
+                            )
+                          })()}
                         </Html>
                       )
                     })}
@@ -629,7 +666,7 @@ function CaptureCanvas({
               Loading image...
             </div>
           )}
-          {isPlacingInsight && (
+          {isPlacingInsight && canEditInsights && (
             <div className="pointer-events-none absolute left-4 top-4 rounded-full bg-black/70 px-3 py-1 text-xs font-medium text-white shadow-lg">
               Click on the canvas to set a position
             </div>
@@ -647,6 +684,7 @@ function CaptureStrip({
   onUploadCapture,
   onReorderCapture,
   onDeleteCapture,
+  readOnly,
 }: {
   captures: Capture[]
   activeId?: string
@@ -654,8 +692,11 @@ function CaptureStrip({
   onUploadCapture: (payload: CaptureUploadPayload) => Promise<void> | void
   onReorderCapture: (sourceId: string, targetId: string, position: CaptureReorderPosition) => void
   onDeleteCapture: (captureId: string) => void
+  readOnly?: boolean
 }) {
   const hasCaptures = captures.length > 0
+  const isReadOnly = Boolean(readOnly)
+  const allowDnD = !isReadOnly
   const [draggingId, setDraggingId] = React.useState<string | null>(null)
   const [dropHint, setDropHint] = React.useState<{
     targetId: string
@@ -685,15 +726,17 @@ function CaptureStrip({
 
   const handleDragStart = React.useCallback(
     (event: React.DragEvent<HTMLButtonElement>, captureId: string) => {
+      if (!allowDnD) return
       setDraggingId(captureId)
       event.dataTransfer.effectAllowed = "move"
       event.dataTransfer.setData("text/plain", captureId)
     },
-    []
+    [allowDnD]
   )
 
   const handleDragOver = React.useCallback(
     (event: React.DragEvent<HTMLButtonElement>, targetId: string) => {
+      if (!allowDnD) return
       if (!draggingId || draggingId === targetId) return
       event.preventDefault()
       const rect = event.currentTarget.getBoundingClientRect()
@@ -706,11 +749,12 @@ function CaptureStrip({
         event.dataTransfer.dropEffect = "move"
       }
     },
-    [draggingId]
+    [allowDnD, draggingId]
   )
 
   const handleDrop = React.useCallback(
     (event: React.DragEvent<HTMLButtonElement>, targetId: string) => {
+      if (!allowDnD) return
       event.preventDefault()
       event.stopPropagation()
       const sourceId = event.dataTransfer?.getData("text/plain")
@@ -723,11 +767,12 @@ function CaptureStrip({
       onReorderCapture(sourceId, targetId, isAfter ? "after" : "before")
       resetDragState()
     },
-    [onReorderCapture, resetDragState]
+    [allowDnD, onReorderCapture, resetDragState]
   )
 
   const handleContainerDrop = React.useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
+      if (!allowDnD) return
       if (!draggingId) return
       event.preventDefault()
       const sourceId = event.dataTransfer?.getData("text/plain")
@@ -743,32 +788,35 @@ function CaptureStrip({
       onReorderCapture(sourceId, lastCapture.id, "after")
       resetDragState()
     },
-    [captures, draggingId, onReorderCapture, resetDragState]
+    [allowDnD, captures, draggingId, onReorderCapture, resetDragState]
   )
 
   const handleContainerDragOver = React.useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
+      if (!allowDnD) return
       if (!draggingId) return
       event.preventDefault()
     },
-    [draggingId]
+    [allowDnD, draggingId]
   )
 
   const handleContainerDragLeave = React.useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!allowDnD) return
     const nextTarget = event.relatedTarget as Node | null
     if (!nextTarget || !event.currentTarget.contains(nextTarget)) {
       setDropHint(null)
     }
-  }, [])
+  }, [allowDnD])
 
   const handleDeleteClick = React.useCallback(
     (event: React.MouseEvent<HTMLButtonElement>, captureId: string) => {
+      if (isReadOnly) return
       event.preventDefault()
       event.stopPropagation()
       setDeleteTargetId(captureId)
       setDeleteDialogOpen(true)
     },
-    []
+    [isReadOnly]
   )
 
   return (
@@ -781,18 +829,20 @@ function CaptureStrip({
           </div>
           <span className="text-xs text-muted-foreground">{captures.length} items</span>
         </div>
-        <CaptureUploadDialog
-          captureCount={captures.length}
-          onUploadCapture={onUploadCapture}
-        />
+        {!isReadOnly && (
+          <CaptureUploadDialog
+            captureCount={captures.length}
+            onUploadCapture={onUploadCapture}
+          />
+        )}
       </div>
       {hasCaptures ? (
         <div className="relative w-full min-w-0 h-28">
           <div
             className="absolute inset-0 overflow-y-hidden overflow-x-auto"
-            onDragOver={handleContainerDragOver}
-            onDrop={handleContainerDrop}
-            onDragLeave={handleContainerDragLeave}
+            onDragOver={allowDnD ? handleContainerDragOver : undefined}
+            onDrop={allowDnD ? handleContainerDrop : undefined}
+            onDragLeave={allowDnD ? handleContainerDragLeave : undefined}
           >
             <div className="flex w-max max-w-none gap-2 px-2 pb-2">
               {captures.map((capture) => {
@@ -804,17 +854,17 @@ function CaptureStrip({
                   dropHint?.targetId === capture.id && dropHint.position === "after"
                 return (
                   <div className="flex flex-none items-center gap-1" key={capture.id}>
-                    {isDropBefore && <DropIndicator position="before" />}
+                    {allowDnD && isDropBefore && <DropIndicator position="before" />}
                     <div className="group relative shrink-0">
                       <button
                         type="button"
-                        draggable
-                        aria-grabbed={isDragging}
+                        draggable={allowDnD}
+                        aria-grabbed={allowDnD ? isDragging : undefined}
                         onClick={() => onSelect(capture.id)}
-                        onDragStart={(event) => handleDragStart(event, capture.id)}
-                        onDragEnd={resetDragState}
-                        onDragOver={(event) => handleDragOver(event, capture.id)}
-                        onDrop={(event) => handleDrop(event, capture.id)}
+                        onDragStart={allowDnD ? (event) => handleDragStart(event, capture.id) : undefined}
+                        onDragEnd={allowDnD ? resetDragState : undefined}
+                        onDragOver={allowDnD ? (event) => handleDragOver(event, capture.id) : undefined}
+                        onDrop={allowDnD ? (event) => handleDrop(event, capture.id) : undefined}
                         className={cn(
                           "relative h-24 w-20 shrink-0 overflow-hidden rounded-xl border text-left transition-all focus-visible:ring-2 focus-visible:ring-ring",
                           isActive
@@ -835,22 +885,24 @@ function CaptureStrip({
                           {capture.order}
                         </span>
                       </button>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="default"
-                        onClick={(event) => handleDeleteClick(event, capture.id)}
-                        aria-label="Delete capture"
-                        draggable={false}
-                        className={cn(
-                          "absolute right-1 top-1 size-6 rounded-full bg-destructive p-0 text-white opacity-0 transition-opacity pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto hover:bg-destructive/80",
-                          isDragging && "pointer-events-none opacity-0"
-                        )}
-                      >
-                        <Minus className="size-3.5" />
-                      </Button>
+                      {!isReadOnly && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="default"
+                          onClick={(event) => handleDeleteClick(event, capture.id)}
+                          aria-label="Delete capture"
+                          draggable={false}
+                          className={cn(
+                            "absolute right-1 top-1 size-6 rounded-full bg-destructive p-0 text-white opacity-0 transition-opacity pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto hover:bg-destructive/80",
+                            isDragging && "pointer-events-none opacity-0"
+                          )}
+                        >
+                          <Minus className="size-3.5" />
+                        </Button>
+                      )}
                     </div>
-                    {isDropAfter && <DropIndicator position="after" />}
+                    {allowDnD && isDropAfter && <DropIndicator position="after" />}
                   </div>
                 )
               })}
@@ -859,31 +911,33 @@ function CaptureStrip({
         </div>
       ) : (
         <div className="flex min-h-[120px] flex-col items-center justify-center rounded-lg border border-dashed border-border/60 px-4 text-sm text-muted-foreground">
-          No captures uploaded yet.
+          {isReadOnly ? "No captures have been shared yet." : "No captures uploaded yet."}
           <span className="mt-1 text-xs text-muted-foreground/80">
-            Add a new capture image to get started.
+            {isReadOnly ? "Once the author adds captures you'll see them here." : "Add a new capture image to get started."}
           </span>
         </div>
       )}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={handleDialogOpenChange}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete capture?</AlertDialogTitle>
-            <AlertDialogDescription>
-              The selected capture and its related insights cannot be recovered.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {!isReadOnly && (
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={handleDialogOpenChange}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete capture?</AlertDialogTitle>
+              <AlertDialogDescription>
+                The selected capture and its related insights cannot be recovered.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   )
 }

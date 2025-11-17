@@ -4,6 +4,7 @@ import * as React from "react"
 
 import { CanvasSection, type CaptureUploadPayload } from "@/components/right-workspace/canvas-section"
 import { InsightsPanel } from "@/components/right-workspace/insights-panel"
+import { PatternShareDialog } from "@/components/right-workspace/pattern-share-dialog"
 import { PatternMetadataCard } from "@/components/right-workspace/pattern-metadata-card"
 import type { CanvasPoint } from "@/components/right-workspace/shared"
 import {
@@ -219,6 +220,28 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
     [deleteCaptureAction, pattern, patternCaptures, refreshWorkspace]
   )
 
+  const handleToggleShare = React.useCallback(
+    (next: boolean) => {
+      if (!pattern) {
+        return Promise.resolve()
+      }
+      return mutations.updatePattern(pattern.id, { isPublic: next })
+    },
+    [mutations, pattern],
+  )
+
+  const shareControl = React.useMemo(() => {
+    if (!pattern) return null
+    return (
+      <PatternShareDialog
+        patternId={pattern.id}
+        patternName={pattern.name}
+        isPublic={pattern.isPublic}
+        onToggleShare={handleToggleShare}
+      />
+    )
+  }, [handleToggleShare, pattern])
+
   if (workspaceLoading || detailLoading) {
     return (
       <div className="text-muted-foreground flex flex-1 items-center justify-center rounded-md border border-dashed">
@@ -260,6 +283,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
           highlightedInsightId={highlightedInsightId}
           isAddingInsight={isAddingInsight}
           isPlacingInsight={isPlacingInsight}
+          shareButton={shareControl}
           onCanvasPlace={handleCanvasPlacement}
           onDeleteInsight={handleDeleteInsight}
           onHighlight={setHighlightedInsightId}

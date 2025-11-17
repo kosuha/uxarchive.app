@@ -28,7 +28,7 @@ export function FavoritesView({ onPatternSelect }: FavoritesViewProps) {
   } else if (!favoritePatterns.length) {
     content = (
       <div className="rounded-lg border border-dashed border-border/70 px-4 py-8 text-center text-xs text-muted-foreground">
-        You haven't starred any patterns yet. Use the star on a pattern card to access it quickly.
+        You haven&apos;t starred any patterns yet. Use the star on a pattern card to access it quickly.
       </div>
     )
   } else {

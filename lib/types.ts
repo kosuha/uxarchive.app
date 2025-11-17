@@ -25,6 +25,7 @@ export interface Pattern extends IdentifiableEntity {
   tags: Tag[]
   author: string
   isFavorite: boolean
+  isPublic: boolean
   createdAt: string
   updatedAt: string
   captureCount: number

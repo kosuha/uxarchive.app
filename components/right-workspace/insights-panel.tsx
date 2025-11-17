@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Pin, Trash2 } from "lucide-react"
+import { Trash2 } from "lucide-react"
 
 import {
   ContextMenu,
@@ -22,6 +22,7 @@ type InsightsPanelProps = {
   onHighlight: (id: string | null) => void
   onDeleteInsight: (insightId: string) => void
   onUpdateInsightNote: (insightId: string, note: string) => void
+  readOnly?: boolean
 }
 
 export function InsightsPanel({
@@ -30,8 +31,10 @@ export function InsightsPanel({
   onHighlight,
   onDeleteInsight,
   onUpdateInsightNote,
+  readOnly,
 }: InsightsPanelProps) {
   const listRef = React.useRef<HTMLDivElement>(null)
+  const isReadOnly = Boolean(readOnly)
 
   React.useEffect(() => {
     if (!highlightedInsightId) return
@@ -63,6 +66,7 @@ export function InsightsPanel({
                     onHighlight={onHighlight}
                     onDelete={onDeleteInsight}
                     onUpdateNote={onUpdateInsightNote}
+                    readOnly={isReadOnly}
                   />
                 ))
               ) : (
@@ -85,11 +89,22 @@ type InsightCardProps = {
   onHighlight: (id: string | null) => void
   onDelete: (id: string) => void
   onUpdateNote: (id: string, note: string) => void
+  readOnly?: boolean
 }
 
-function InsightCard({ insight, index, isActive, onHighlight, onDelete, onUpdateNote }: InsightCardProps) {
+function InsightCard({
+  insight,
+  index,
+  isActive,
+  onHighlight,
+  onDelete,
+  onUpdateNote,
+  readOnly,
+}: InsightCardProps) {
   const [value, setValue] = React.useState(insight.note)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
+  const isReadOnly = Boolean(readOnly)
+  const canEdit = !isReadOnly
 
   React.useEffect(() => {
     setValue(insight.note)
@@ -107,6 +122,7 @@ function InsightCard({ insight, index, isActive, onHighlight, onDelete, onUpdate
   }, [value, resizeTextarea])
 
   const commitChange = React.useCallback(() => {
+    if (!canEdit) return
     const trimmed = value.trim()
     if (!trimmed) {
       setValue(insight.note)
@@ -114,9 +130,10 @@ function InsightCard({ insight, index, isActive, onHighlight, onDelete, onUpdate
     }
     if (trimmed === insight.note) return
     onUpdateNote(insight.id, trimmed)
-  }, [value, insight.note, insight.id, onUpdateNote])
+  }, [canEdit, value, insight.note, insight.id, onUpdateNote])
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!canEdit) return
     if (event.key === "Escape") {
       event.preventDefault()
       setValue(insight.note)
@@ -126,41 +143,50 @@ function InsightCard({ insight, index, isActive, onHighlight, onDelete, onUpdate
   }
 
   const handleBlur = () => {
+    if (!canEdit) return
     commitChange()
+  }
+
+  const cardContent = (
+    <article
+      data-insight-card={insight.id}
+      className={cn(
+        "rounded-xl border px-4 py-3 text-sm transition-all",
+        isActive ? "border-primary/70 bg-primary/5" : "border-border/60 bg-card"
+      )}
+      tabIndex={0}
+      {...allowContextMenuProps}
+      onMouseEnter={() => onHighlight(insight.id)}
+      onMouseLeave={() => onHighlight(null)}
+      onFocus={() => onHighlight(insight.id)}
+      onBlur={() => onHighlight(null)}
+    >
+      <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <span>Insight #{index}</span>
+      </div>
+      <Textarea
+        {...allowContextMenuProps}
+        ref={textareaRef}
+        value={value}
+        onChange={canEdit ? (event) => setValue(event.target.value) : undefined}
+        onKeyDown={canEdit ? handleKeyDown : undefined}
+        onBlur={canEdit ? handleBlur : undefined}
+        readOnly={isReadOnly}
+        aria-readonly={isReadOnly || undefined}
+        placeholder="Add an insight"
+        className="mt-2 w-full resize-none overflow-hidden rounded-none border-none bg-transparent px-0 py-0 text-sm leading-relaxed text-foreground shadow-none outline-none focus-visible:border-none focus-visible:ring-0"
+        rows={1}
+      />
+    </article>
+  )
+
+  if (!canEdit) {
+    return cardContent
   }
 
   return (
     <ContextMenu>
-      <ContextMenuTrigger asChild>
-        <article
-          data-insight-card={insight.id}
-          className={cn(
-            "rounded-xl border px-4 py-3 text-sm transition-all",
-            isActive ? "border-primary/70 bg-primary/5" : "border-border/60 bg-card"
-          )}
-          tabIndex={0}
-          {...allowContextMenuProps}
-          onMouseEnter={() => onHighlight(insight.id)}
-          onMouseLeave={() => onHighlight(null)}
-          onFocus={() => onHighlight(insight.id)}
-          onBlur={() => onHighlight(null)}
-        >
-          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <span>Insight #{index}</span>
-          </div>
-          <Textarea
-            {...allowContextMenuProps}
-            ref={textareaRef}
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-            onKeyDown={handleKeyDown}
-            onBlur={handleBlur}
-            placeholder="Add an insight"
-            className="mt-2 w-full resize-none overflow-hidden rounded-none border-none bg-transparent px-0 py-0 text-sm leading-relaxed text-foreground shadow-none outline-none focus-visible:border-none focus-visible:ring-0"
-            rows={1}
-          />
-        </article>
-      </ContextMenuTrigger>
+      <ContextMenuTrigger asChild>{cardContent}</ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuItem
           variant="destructive"

@@ -3,11 +3,24 @@
 import * as React from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
-import { createFoldersRepository } from "@/lib/repositories/folders"
+import {
+  assignTagToPatternAction,
+  createFolderAction,
+  createTagAction,
+  deleteFolderAction,
+  deleteTagAction,
+  getWorkspaceMembershipAction,
+  listWorkspaceFoldersAction,
+  listWorkspacePatternsWithTagsAction,
+  listWorkspaceTagsAction,
+  removeTagFromPatternAction,
+  setPatternFavoriteAction,
+  updateFolderAction,
+  updateTagAction,
+} from "@/app/actions/workspaces"
+import { createPatternAction, deletePatternAction, updatePatternAction } from "@/app/actions/patterns"
 import type { FolderRecord } from "@/lib/repositories/folders"
-import { createPatternsRepository } from "@/lib/repositories/patterns"
 import type { PatternRecord } from "@/lib/repositories/patterns"
-import { createTagsRepository } from "@/lib/repositories/tags"
 import type { TagType, Pattern, Folder, Tag } from "@/lib/types"
 import { useSupabaseSession } from "@/lib/supabase/session-context"
 
@@ -26,7 +39,7 @@ type WorkspaceMutations = {
   createPattern: (input: { folderId: string | null; name: string; serviceName?: string; summary?: string }) => Promise<void>
   updatePattern: (
     patternId: string,
-    updates: Partial<Pick<Pattern, "name" | "serviceName" | "summary" | "author" | "folderId" | "isFavorite" | "captureCount">>,
+    updates: Partial<Pick<Pattern, "name" | "serviceName" | "summary" | "author" | "folderId" | "isFavorite" | "captureCount" | "isPublic">>,
   ) => Promise<void>
   setPatternFavorite: (patternId: string, isFavorite: boolean) => Promise<void>
   deletePattern: (patternId: string) => Promise<void>
@@ -69,6 +82,7 @@ const mapPatternRecordToPattern = (record: PatternRecord, favorites: Set<string>
   tags,
   author: record.author,
   isFavorite: favorites.has(record.id),
+  isPublic: record.isPublic,
   createdAt: record.createdAt,
   updatedAt: record.updatedAt,
   captureCount: record.captureCount ?? 0,
@@ -85,7 +99,7 @@ const mapFolderRecordToFolder = (record: FolderRecord): Folder => ({
 const toErrorMessage = (error: unknown) => (error instanceof Error ? error.message : "Failed to load data.")
 
 export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode }) => {
-  const { supabase, user, loading: sessionLoading } = useSupabaseSession()
+  const { user, loading: sessionLoading } = useSupabaseSession()
   const queryClient = useQueryClient()
   const [mutationError, setMutationError] = React.useState<string | null>(null)
 
@@ -93,84 +107,30 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
     if (!user) {
       throw new Error("You must be signed in.")
     }
-    const { data, error } = await supabase
-      .from("workspace_members")
-      .select("workspace_id, favorite_pattern_ids")
-      .eq("profile_id", user.id)
-      .order("role", { ascending: true })
-
-    if (error) {
-      throw new Error(`Failed to load workspace information: ${error.message}`)
-    }
-
-    const membership = data?.[0]
-    if (!membership) {
-      throw new Error("No workspace is linked.")
-    }
-
-    const favoritePatternIds = ((membership.favorite_pattern_ids ?? []) as string[]).filter(Boolean)
-    return {
-      workspaceId: membership.workspace_id as string,
-      favoritePatternIds,
-    }
-  }, [supabase, user])
+    return getWorkspaceMembershipAction()
+  }, [user])
 
   const loadPatterns = React.useCallback(
     async (workspaceId: string): Promise<PatternQueryData> => {
-      const repo = createPatternsRepository(supabase)
-      const patternRecords = await repo.list({ workspaceId })
-
-      if (!patternRecords.length) {
-        return {
-          records: [],
-          tagIdsByPattern: {},
-        }
-      }
-
-      const { data: links, error: patternTagError } = await supabase
-        .from("pattern_tags")
-        .select("pattern_id, tag_id")
-        .in(
-          "pattern_id",
-          patternRecords.map((pattern) => pattern.id),
-        )
-
-      if (patternTagError) {
-        throw new Error(`Failed to load pattern tag information: ${patternTagError.message}`)
-      }
-
-      const tagIdsByPattern = (links ?? []).reduce<Record<string, string[]>>((acc, link) => {
-        if (!acc[link.pattern_id]) {
-          acc[link.pattern_id] = []
-        }
-        acc[link.pattern_id].push(link.tag_id)
-        return acc
-      }, {})
-
-      return {
-        records: patternRecords,
-        tagIdsByPattern,
-      }
+      return listWorkspacePatternsWithTagsAction(workspaceId)
     },
-    [supabase],
+    [],
   )
 
   const loadFolders = React.useCallback(
     async (workspaceId: string): Promise<Folder[]> => {
-      const repo = createFoldersRepository(supabase)
-      const folderRecords = await repo.list({ workspaceId })
+      const folderRecords = await listWorkspaceFoldersAction(workspaceId)
       return folderRecords.map((record) => mapFolderRecordToFolder(record))
     },
-    [supabase],
+    [],
   )
 
   const loadTags = React.useCallback(
     async (workspaceId: string): Promise<Tag[]> => {
-      const repo = createTagsRepository(supabase)
-      const tagRecords = await repo.list({ workspaceId, onlyActive: false })
+      const tagRecords = await listWorkspaceTagsAction(workspaceId, { onlyActive: false })
       return tagRecords.map((record) => mapTagRecordToTag(record))
     },
-    [supabase],
+    [],
   )
 
   const membershipQueryKey = React.useMemo(() => ["workspace-membership", user?.id ?? "anonymous"], [user?.id])
@@ -263,7 +223,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
 
   const toRecordUpdates = (
     record: PatternRecord,
-    updates: Partial<Pick<Pattern, "name" | "serviceName" | "summary" | "author" | "folderId" | "captureCount">>,
+    updates: Partial<Pick<Pattern, "name" | "serviceName" | "summary" | "author" | "folderId" | "captureCount" | "isPublic">>,
   ): PatternRecord => ({
     ...record,
     name: typeof updates.name === "string" ? updates.name : record.name,
@@ -272,14 +232,14 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
     author: typeof updates.author === "string" ? updates.author : record.author,
     folderId: updates.folderId !== undefined ? updates.folderId ?? null : record.folderId,
     captureCount: typeof updates.captureCount === "number" ? updates.captureCount : record.captureCount,
+    isPublic: typeof updates.isPublic === "boolean" ? updates.isPublic : record.isPublic,
     updatedAt: new Date().toISOString(),
   })
 
   const createPatternMutation = useMutation({
     mutationFn: async (input: { folderId: string | null; name: string; serviceName?: string; summary?: string }) => {
       const workspaceId = ensureWorkspace()
-      const repo = createPatternsRepository(supabase)
-      const record = await repo.create({
+      return createPatternAction({
         workspaceId,
         folderId: input.folderId ?? null,
         name: input.name,
@@ -287,7 +247,6 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
         summary: input.summary ?? "",
         author: getAuthorName(),
       })
-      return record
     },
     onMutate: async (input) => {
       setMutationError(null)
@@ -358,8 +317,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
   const updatePatternMutation = useMutation({
     mutationFn: async ({ patternId, updates }: { patternId: string; updates: Parameters<WorkspaceMutations["updatePattern"]>[1] }) => {
       const workspaceId = ensureWorkspace()
-      const repo = createPatternsRepository(supabase)
-      const record = await repo.update({
+      const record = await updatePatternAction({
         workspaceId,
         patternId,
         name: updates.name,
@@ -367,7 +325,8 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
         summary: updates.summary,
         author: updates.author,
         folderId: typeof updates.folderId === "undefined" ? undefined : updates.folderId,
-      } as Parameters<ReturnType<typeof createPatternsRepository>["update"]>[0])
+        isPublic: typeof updates.isPublic === "undefined" ? undefined : updates.isPublic,
+      })
 
       if (typeof updates.captureCount === "number") {
         record.captureCount = updates.captureCount
@@ -418,8 +377,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
   const deletePatternMutation = useMutation({
     mutationFn: async (patternId: string) => {
       const workspaceId = ensureWorkspace()
-      const repo = createPatternsRepository(supabase)
-      await repo.remove({ workspaceId, patternId })
+      await deletePatternAction(workspaceId, patternId)
     },
     onMutate: async (patternId) => {
       setMutationError(null)
@@ -452,8 +410,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
   const createFolderMutation = useMutation({
     mutationFn: async (input: { name: string; parentId: string | null }) => {
       const workspaceId = ensureWorkspace()
-      const repo = createFoldersRepository(supabase)
-      const record = await repo.create({ workspaceId, name: input.name, parentId: input.parentId })
+      const record = await createFolderAction({ workspaceId, name: input.name, parentId: input.parentId })
       return mapFolderRecordToFolder(record)
     },
     onMutate: async (input) => {
@@ -496,8 +453,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
   const updateFolderMutation = useMutation({
     mutationFn: async ({ folderId, updates }: { folderId: string; updates: { name?: string; parentId?: string | null } }) => {
       const workspaceId = ensureWorkspace()
-      const repo = createFoldersRepository(supabase)
-      const record = await repo.update({ workspaceId, folderId, name: updates.name, parentId: updates.parentId })
+      const record = await updateFolderAction({ workspaceId, folderId, name: updates.name, parentId: updates.parentId })
       return mapFolderRecordToFolder(record)
     },
     onMutate: async ({ folderId, updates }) => {
@@ -537,8 +493,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
   const deleteFolderMutation = useMutation({
     mutationFn: async (folderId: string) => {
       const workspaceId = ensureWorkspace()
-      const repo = createFoldersRepository(supabase)
-      await repo.remove({ workspaceId, folderId })
+      await deleteFolderAction({ workspaceId, folderId })
     },
     onMutate: async (folderId) => {
       setMutationError(null)
@@ -566,8 +521,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
   const createTagMutation = useMutation({
     mutationFn: async (input?: { label?: string; type?: TagType; color?: string | null }) => {
       const workspaceId = ensureWorkspace()
-      const repo = createTagsRepository(supabase)
-      const record = await repo.create({
+      const record = await createTagAction({
         workspaceId,
         label: input?.label ?? "New tag",
         type: input?.type ?? "custom",
@@ -614,8 +568,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
   const updateTagMutation = useMutation({
     mutationFn: async ({ tagId, updates }: { tagId: string; updates: Partial<Pick<Tag, "label" | "type" | "color">> }) => {
       const workspaceId = ensureWorkspace()
-      const repo = createTagsRepository(supabase)
-      const record = await repo.update({
+      const record = await updateTagAction({
         workspaceId,
         tagId,
         label: updates.label,
@@ -660,19 +613,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
   const deleteTagMutation = useMutation({
     mutationFn: async (tagId: string) => {
       const workspaceId = ensureWorkspace()
-      const patternData = patternsQueryKey ? queryClient.getQueryData<PatternQueryData>(patternsQueryKey) : undefined
-      const patternIds = patternData?.records.map((pattern) => pattern.id) ?? []
-
-      if (patternIds.length) {
-        await supabase
-          .from("pattern_tags")
-          .delete()
-          .eq("tag_id", tagId)
-          .in("pattern_id", patternIds)
-      }
-
-      const repo = createTagsRepository(supabase)
-      await repo.remove({ workspaceId, tagId })
+      await deleteTagAction({ workspaceId, tagId })
     },
     onMutate: async (tagId) => {
       setMutationError(null)
@@ -730,7 +671,8 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
 
   const assignTagMutation = useMutation({
     mutationFn: async ({ patternId, tagId }: { patternId: string; tagId: string }) => {
-      await supabase.from("pattern_tags").upsert({ pattern_id: patternId, tag_id: tagId }, { onConflict: "pattern_id,tag_id" })
+      const workspaceId = ensureWorkspace()
+      await assignTagToPatternAction({ workspaceId, patternId, tagId })
     },
     onMutate: async ({ patternId, tagId }) => {
       setMutationError(null)
@@ -766,7 +708,8 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
 
   const removeTagMutation = useMutation({
     mutationFn: async ({ patternId, tagId }: { patternId: string; tagId: string }) => {
-      await supabase.from("pattern_tags").delete().eq("pattern_id", patternId).eq("tag_id", tagId)
+      const workspaceId = ensureWorkspace()
+      await removeTagFromPatternAction({ workspaceId, patternId, tagId })
     },
     onMutate: async ({ patternId, tagId }) => {
       setMutationError(null)
@@ -799,31 +742,8 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
 
   const setPatternFavoriteMutation = useMutation({
     mutationFn: async ({ patternId, isFavorite }: { patternId: string; isFavorite: boolean }) => {
-      if (!user?.id) {
-        throw new Error("You must be signed in.")
-      }
       const workspaceId = ensureWorkspace()
-      const queryKey = membershipQueryKey
-      const previous = queryClient.getQueryData<WorkspaceMembership>(queryKey)
-      const nextFavorites = previous?.favoritePatternIds ? [...previous.favoritePatternIds] : []
-      const index = nextFavorites.indexOf(patternId)
-      if (isFavorite && index === -1) {
-        nextFavorites.push(patternId)
-      }
-      if (!isFavorite && index >= 0) {
-        nextFavorites.splice(index, 1)
-      }
-
-      const { error } = await supabase
-        .from("workspace_members")
-        .update({ favorite_pattern_ids: nextFavorites })
-        .eq("workspace_id", workspaceId)
-        .eq("profile_id", user.id)
-
-      if (error) {
-        throw new Error(error.message)
-      }
-      return nextFavorites
+      return setPatternFavoriteAction({ workspaceId, patternId, isFavorite })
     },
     onMutate: async ({ patternId, isFavorite }) => {
       setMutationError(null)

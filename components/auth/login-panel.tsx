@@ -70,7 +70,7 @@ export const LoginPanel = () => {
           </Button>
           <p className="text-xs text-muted-foreground">
             On your first login, Supabase will request OAuth permissions. After approval,
-            you'll return to UX Archive automatically.
+            you&apos;ll return to UX Archive automatically.
           </p>
           {errorMessage ? (
             <p className="text-sm text-destructive">{errorMessage}</p>

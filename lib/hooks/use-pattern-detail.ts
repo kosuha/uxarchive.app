@@ -3,12 +3,17 @@
 import * as React from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
-import { createCapturesRepository } from "@/lib/repositories/captures"
+import {
+  createInsightAction,
+  deleteInsightAction,
+  getPatternDetailAction,
+  updateCaptureOrderAction,
+  updateInsightAction,
+  type PatternInsightRow,
+} from "@/app/actions/pattern-detail"
 import type { CaptureRecord } from "@/lib/repositories/captures"
-import { createInsightsRepository } from "@/lib/repositories/insights"
 import type { Capture, Insight } from "@/lib/types"
 import { useWorkspaceData } from "@/lib/workspace-data-context"
-import { useSupabaseSession } from "@/lib/supabase/session-context"
 
 type UploadCaptureInput = {
   file: File
@@ -20,14 +25,7 @@ type PatternDetailQueryData = {
   insights: Insight[]
 }
 
-type InsightRow = {
-  id: string
-  capture_id: string
-  x: number
-  y: number
-  note: string
-  created_at: string
-}
+type InsightRow = PatternInsightRow
 
 const PATTERN_DETAIL_QUERY_KEY = "pattern-detail"
 
@@ -96,7 +94,6 @@ const resolveCaptureImageUrl = (record: CaptureRecord) => {
 }
 
 export const usePatternDetail = (patternId?: string | null) => {
-  const { supabase } = useSupabaseSession()
   const { workspaceId } = useWorkspaceData()
   const queryClient = useQueryClient()
 
@@ -119,28 +116,13 @@ export const usePatternDetail = (patternId?: string | null) => {
         return createEmptyDetailData()
       }
 
-      const capturesRepo = createCapturesRepository(supabase)
-      const captureRecords = await capturesRepo.listByPattern({ patternId })
+      const data = await getPatternDetailAction(patternId)
+      const captureRecords = data.captures
       const mappedCaptures = captureRecords
         .map((record) => mapCaptureRecord(record))
         .sort((a, b) => a.order - b.order)
 
-      let insightRows: InsightRow[] = []
-      if (captureRecords.length) {
-        const { data, error } = await supabase
-          .from("insights")
-          .select("id, capture_id, x, y, note, created_at")
-          .in(
-            "capture_id",
-            captureRecords.map((record) => record.id),
-          )
-          .order("created_at", { ascending: true })
-
-        if (error) {
-          throw new Error(`Failed to load insights: ${error.message}`)
-        }
-        insightRows = (data as InsightRow[]) ?? []
-      }
+      const insightRows: InsightRow[] = data.insights ?? []
 
       const mappedInsights: Insight[] = insightRows.map((row) => ({
         id: row.id,
@@ -197,15 +179,9 @@ export const usePatternDetail = (patternId?: string | null) => {
         return
       }
 
-      for (const [index, captureId] of orderedIds.entries()) {
-        await supabase
-          .from("captures")
-          .update({ order_index: index + 1 })
-          .eq("pattern_id", targetPatternId)
-          .eq("id", captureId)
-      }
+      await updateCaptureOrderAction({ patternId: targetPatternId, orderedIds })
     },
-    [patternId, supabase],
+    [patternId],
   )
 
   const captureOrderMutation = useMutation({
@@ -478,7 +454,9 @@ export const usePatternDetail = (patternId?: string | null) => {
 
   const createInsight = React.useCallback(
     async (input: { captureId: string; x: number; y: number; note?: string }) => {
-      const repo = createInsightsRepository(supabase)
+      if (!patternId) {
+        throw new Error("Pattern information is missing.")
+      }
       const tempId = globalThis.crypto?.randomUUID?.() ?? `temp-insight-${Date.now()}`
       const tempInsight: Insight = {
         id: tempId,
@@ -495,7 +473,13 @@ export const usePatternDetail = (patternId?: string | null) => {
       }))
 
       try {
-        const record = await repo.create({ captureId: input.captureId, x: input.x, y: input.y, note: input.note ?? "" })
+        const record = await createInsightAction({
+          patternId,
+          captureId: input.captureId,
+          x: input.x,
+          y: input.y,
+          note: input.note ?? "",
+        })
         const created: Insight = {
           id: record.id,
           captureId: record.captureId,
@@ -517,11 +501,14 @@ export const usePatternDetail = (patternId?: string | null) => {
         throw error
       }
     },
-    [setDetailData, supabase],
+    [patternId, setDetailData],
   )
 
   const updateInsight = React.useCallback(
     async (input: { captureId: string; insightId: string; x?: number; y?: number; note?: string }) => {
+      if (!patternId) {
+        throw new Error("Pattern information is missing.")
+      }
       setDetailData((current) => ({
         captures: current.captures,
         insights: current.insights.map((insight) => {
@@ -537,9 +524,9 @@ export const usePatternDetail = (patternId?: string | null) => {
         }),
       }))
 
-      const repo = createInsightsRepository(supabase)
       try {
-        const record = await repo.update({
+        const record = await updateInsightAction({
+          patternId,
           captureId: input.captureId,
           insightId: input.insightId,
           x: input.x,
@@ -567,25 +554,27 @@ export const usePatternDetail = (patternId?: string | null) => {
         throw error
       }
     },
-    [refresh, setDetailData, supabase],
+    [patternId, refresh, setDetailData],
   )
 
   const deleteInsight = React.useCallback(
     async (input: { captureId: string; insightId: string }) => {
-      const repo = createInsightsRepository(supabase)
+      if (!patternId) {
+        throw new Error("Pattern information is missing.")
+      }
       setDetailData((current) => ({
         captures: current.captures,
         insights: current.insights.filter((insight) => insight.id !== input.insightId),
       }))
 
       try {
-        await repo.remove({ captureId: input.captureId, insightId: input.insightId })
+        await deleteInsightAction({ patternId, captureId: input.captureId, insightId: input.insightId })
       } catch (error) {
         await refresh({ silent: true })
         throw error
       }
     },
-    [refresh, setDetailData, supabase],
+    [patternId, refresh, setDetailData],
   )
 
   const captures = patternId ? detailQuery.data?.captures ?? [] : []
