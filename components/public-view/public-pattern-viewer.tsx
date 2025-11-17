@@ -42,7 +42,7 @@ export function PublicPatternViewer({ pattern, captures, insights }: PublicPatte
 
   return (
     <div className="flex h-full w-full min-h-[600px] flex-1 flex-col gap-6 lg:min-h-0 lg:flex-row">
-      <aside className="order-2 flex w-full max-w-[360px] flex-shrink-0 flex-col gap-4 lg:order-1 lg:w-[320px] lg:h-full">
+      <aside className="order-2 flex w-full max-w-[360px] flex-shrink-0 flex-col gap-4 min-h-0 lg:order-1 lg:w-[320px] lg:h-full">
         <PublicPatternMetadataCard
           patternName={pattern.name}
           serviceName={pattern.serviceName}

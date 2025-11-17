@@ -57,6 +57,15 @@ export function PublicInsightsPanel({ insights, highlightedInsightId, onHighligh
     [onHighlight],
   )
 
+  const insightRefs = React.useRef(new Map<string, HTMLDivElement>())
+
+  React.useEffect(() => {
+    if (!highlightedInsightId) return
+    const target = insightRefs.current.get(highlightedInsightId)
+    if (!target) return
+    target.scrollIntoView({ block: "nearest", behavior: "smooth" })
+  }, [highlightedInsightId])
+
   return (
     <section className="flex h-full flex-1 basis-0 min-h-0 flex-col rounded-xl border border-border/60 bg-card shadow-sm">
       <header className="flex items-center justify-between border-b border-border/60 px-6 py-4">
@@ -78,6 +87,13 @@ export function PublicInsightsPanel({ insights, highlightedInsightId, onHighligh
                       "rounded-xl border px-4 py-3 text-sm transition-all",
                       isHighlighted ? "border-primary/70 bg-primary/5" : "border-border/60 bg-card",
                     )}
+                    ref={(node) => {
+                      if (!node) {
+                        insightRefs.current.delete(insight.id)
+                        return
+                      }
+                      insightRefs.current.set(insight.id, node)
+                    }}
                     tabIndex={0}
                     onMouseEnter={() => handleHighlight(insight.id)}
                     onMouseLeave={() => handleHighlight(null)}
@@ -86,7 +102,6 @@ export function PublicInsightsPanel({ insights, highlightedInsightId, onHighligh
                   >
                     <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       <span>Insight #{index + 1}</span>
-                      {createdLabel ? <time dateTime={insight.createdAt ?? undefined}>{createdLabel}</time> : null}
                     </div>
                     <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-foreground">{note}</p>
                   </article>
