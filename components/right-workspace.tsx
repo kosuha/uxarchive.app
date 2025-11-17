@@ -278,15 +278,14 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
             onAssignTag={(tagId) => mutations.assignTagToPattern(pattern.id, tagId)}
             onRemoveTag={(tagId) => mutations.removeTagFromPattern(pattern.id, tagId)}
             onToggleFavorite={(next) => mutations.setPatternFavorite(pattern.id, next)}
+            onUpdateSummary={(summary) => mutations.updatePattern(pattern.id, { summary })}
           />
           <InsightsPanel
-            pattern={pattern}
             insights={captureInsights}
             highlightedInsightId={highlightedInsightId}
             onHighlight={setHighlightedInsightId}
             onDeleteInsight={handleDeleteInsight}
             onUpdateInsightNote={handleUpdateInsightNote}
-            onUpdatePatternSummary={(summary) => mutations.updatePattern(pattern.id, { summary })}
           />
         </aside>
       </div>

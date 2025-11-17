@@ -11,29 +11,25 @@ import {
 } from "@/components/ui/context-menu"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
-import type { Insight, Pattern } from "@/lib/types"
+import type { Insight } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 import { allowContextMenuProps } from "./shared"
 
 type InsightsPanelProps = {
-  pattern: Pattern
   insights: Insight[]
   highlightedInsightId: string | null
   onHighlight: (id: string | null) => void
   onDeleteInsight: (insightId: string) => void
   onUpdateInsightNote: (insightId: string, note: string) => void
-  onUpdatePatternSummary: (summary: string) => Promise<void> | void
 }
 
 export function InsightsPanel({
-  pattern,
   insights,
   highlightedInsightId,
   onHighlight,
   onDeleteInsight,
   onUpdateInsightNote,
-  onUpdatePatternSummary,
 }: InsightsPanelProps) {
   return (
     <section className="flex h-full flex-1 basis-0 min-h-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
@@ -46,7 +42,6 @@ export function InsightsPanel({
         <div className="flex flex-1 basis-0 min-h-0 flex-col">
           <ScrollArea className="flex-1 basis-0 min-h-0">
             <div className="space-y-1 pb-2 pt-2">
-              <PatternSummaryCard pattern={pattern} onUpdateSummary={onUpdatePatternSummary} />
               {insights.length ? (
                 insights.map((insight, index) => (
                   <InsightCard
@@ -168,70 +163,5 @@ function InsightCard({ insight, index, isActive, onHighlight, onDelete, onUpdate
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
-  )
-}
-
-type PatternSummaryCardProps = {
-  pattern: Pattern
-  onUpdateSummary: (summary: string) => Promise<void> | void
-}
-
-function PatternSummaryCard({ pattern, onUpdateSummary }: PatternSummaryCardProps) {
-  const [value, setValue] = React.useState(pattern.summary)
-  const textareaRef = React.useRef<HTMLTextAreaElement>(null)
-
-  React.useEffect(() => {
-    setValue(pattern.summary)
-  }, [pattern.summary, pattern.id])
-
-  const resizeTextarea = React.useCallback(() => {
-    const el = textareaRef.current
-    if (!el) return
-    el.style.height = "auto"
-    el.style.height = `${el.scrollHeight}px`
-  }, [])
-
-  React.useLayoutEffect(() => {
-    resizeTextarea()
-  }, [value, resizeTextarea])
-
-  const commitChange = React.useCallback(async () => {
-    const next = value.trim()
-    if (next === pattern.summary) return
-    try {
-      await onUpdateSummary(next)
-    } catch (error) {
-      console.error("요약 업데이트 실패", error)
-    }
-  }, [onUpdateSummary, pattern.summary, value])
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Escape") {
-      event.preventDefault()
-      setValue(pattern.summary)
-      event.currentTarget.blur()
-    }
-  }
-
-  const handleBlur = () => {
-    commitChange()
-  }
-
-  return (
-    <article className="w-full rounded-xl border border-border/60 bg-card px-4 py-3 text-sm">
-      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Description
-      </div>
-      <Textarea
-        ref={textareaRef}
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        onKeyDown={handleKeyDown}
-        onBlur={handleBlur}
-        placeholder="패턴 설명을 입력하세요"
-        rows={2}
-        className="mt-2 w-full resize-none rounded-none overflow-hidden border-none bg-transparent px-0 py-0 text-sm text-foreground shadow-none outline-none focus-visible:border-none focus-visible:ring-0"
-      />
-    </article>
   )
 }

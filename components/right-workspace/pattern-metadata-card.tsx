@@ -6,6 +6,7 @@ import { Check, Plus, Star } from "lucide-react"
 import { TagBadge } from "@/components/tag-badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
   DialogContent,
@@ -34,18 +35,21 @@ type PatternMetadataCardProps = {
   onAssignTag: (tagId: string) => Promise<void> | void
   onRemoveTag: (tagId: string) => Promise<void> | void
   onToggleFavorite?: (isFavorite: boolean) => Promise<void> | void
+  onUpdateSummary: (summary: string) => Promise<void> | void
 }
 
-export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssignTag, onRemoveTag, onToggleFavorite }: PatternMetadataCardProps) {
+export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssignTag, onRemoveTag, onToggleFavorite, onUpdateSummary }: PatternMetadataCardProps) {
   const [serviceNameValue, setServiceNameValue] = React.useState(pattern.serviceName)
   const [nameValue, setNameValue] = React.useState(pattern.name)
+  const [summaryValue, setSummaryValue] = React.useState(pattern.summary)
   const [isTagDialogOpen, setIsTagDialogOpen] = React.useState(false)
   const [tagSearch, setTagSearch] = React.useState("")
 
   React.useEffect(() => {
     setServiceNameValue(pattern.serviceName)
     setNameValue(pattern.name)
-  }, [pattern.serviceName, pattern.name, pattern.id])
+    setSummaryValue(pattern.summary)
+  }, [pattern.serviceName, pattern.summary, pattern.name, pattern.id])
 
   React.useEffect(() => {
     if (!isTagDialogOpen) {
@@ -142,43 +146,66 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
     }
   }
 
+  const commitSummary = React.useCallback(async () => {
+    const next = summaryValue.trim()
+    if (next === pattern.summary) return
+    try {
+      await onUpdateSummary(next)
+    } catch (error) {
+      console.error("요약 업데이트 실패", error)
+    }
+  }, [onUpdateSummary, pattern.summary, summaryValue])
+
+  const handleSummaryKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault()
+      setSummaryValue(pattern.summary)
+      event.currentTarget.blur()
+    }
+  }
+
+  const handleSummaryBlur = () => {
+    commitSummary()
+  }
+
   return (
-    <section className="shrink-0 space-y-4 rounded-xl border border-border/60 bg-gradient-to-b from-card to-muted/20 p-6 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col">
-          <Input
-            value={serviceNameValue}
-            onChange={(event) => setServiceNameValue(event.target.value)}
-            onBlur={commitServiceName}
-            onKeyDown={handleServiceKeyDown}
-            placeholder="서비스명을 입력하세요"
-            className="text-muted-foreground rounded-none shadow-none hover:bg-primary/10 focus-visible:ring-0 focus-visible:border-none border-none bg-transparent px-0 py-0 !text-xs uppercase tracking-wide h-auto"
-          />
-          <Input
-            value={nameValue}
-            onChange={(event) => setNameValue(event.target.value)}
-            onBlur={commitName}
-            onKeyDown={handleNameKeyDown}
-            placeholder="패턴 이름을 입력하세요"
-            className="!text-base font-semibold shadow-none rounded-none hover:bg-primary/10 leading-snug focus-visible:ring-0 focus-visible:border-none border-none bg-transparent px-0 py-0 h-auto"
-          />
+    <section className="flex max-h-[40vh] min-h-0 shrink-0 flex-col rounded-xl border border-border/60 bg-gradient-to-b from-card to-muted/20 p-6 shadow-sm">
+      <div className="flex flex-col gap-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-1 flex-col">
+            <Input
+              value={serviceNameValue}
+              onChange={(event) => setServiceNameValue(event.target.value)}
+              onBlur={commitServiceName}
+              onKeyDown={handleServiceKeyDown}
+              placeholder="서비스명을 입력하세요"
+              className="text-muted-foreground rounded-none shadow-none hover:bg-primary/10 focus-visible:ring-0 focus-visible:border-none border-none bg-transparent px-0 py-0 !text-xs uppercase tracking-wide h-auto"
+            />
+            <Input
+              value={nameValue}
+              onChange={(event) => setNameValue(event.target.value)}
+              onBlur={commitName}
+              onKeyDown={handleNameKeyDown}
+              placeholder="패턴 이름을 입력하세요"
+              className="!text-base font-semibold shadow-none rounded-none hover:bg-primary/10 leading-snug focus-visible:ring-0 focus-visible:border-none border-none bg-transparent px-0 py-0 h-auto"
+            />
+          </div>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            onClick={handleFavoriteToggle}
+            aria-pressed={pattern.isFavorite}
+            aria-label={pattern.isFavorite ? "즐겨찾기 해제" : "즐겨찾기에 추가"}
+            className={cn(
+              "rounded-full text-muted-foreground",
+              pattern.isFavorite && "text-primary",
+              !onToggleFavorite && "pointer-events-none opacity-50",
+            )}
+          >
+            <Star className={cn("size-4", pattern.isFavorite && "fill-current")} />
+          </Button>
         </div>
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          onClick={handleFavoriteToggle}
-          aria-pressed={pattern.isFavorite}
-          aria-label={pattern.isFavorite ? "즐겨찾기 해제" : "즐겨찾기에 추가"}
-          className={cn(
-            "rounded-full text-muted-foreground",
-            pattern.isFavorite && "text-primary",
-            !onToggleFavorite && "pointer-events-none opacity-50",
-          )}
-        >
-          <Star className={cn("size-4", pattern.isFavorite && "fill-current")} />
-        </Button>
-      </div>
       <Dialog open={isTagDialogOpen} onOpenChange={setIsTagDialogOpen}>
         <div className="flex flex-wrap gap-2">
           {pattern.tags.length ? (
@@ -278,10 +305,22 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
           </div>
         </DialogContent>
       </Dialog>
-      <dl className="grid grid-cols-2 gap-4 text-sm">
-        <MetadataItem label="작성자" value={pattern.author} />
-        <MetadataItem label="생성일" value={formatDate(pattern.createdAt)} />
-      </dl>
+        <dl className="grid grid-cols-2 gap-4 text-sm">
+          <MetadataItem label="작성자" value={pattern.author} />
+          <MetadataItem label="생성일" value={formatDate(pattern.createdAt)} />
+        </dl>
+      </div>
+      <div className="mt-4 flex flex-col overflow-hidden">
+        <Textarea
+          value={summaryValue}
+          onChange={(event) => setSummaryValue(event.target.value)}
+          onKeyDown={handleSummaryKeyDown}
+          onBlur={handleSummaryBlur}
+          placeholder="패턴 설명을 입력하세요"
+          className="mt-2 flex-1 resize-none overflow-auto border-none bg-transparent px-0 py-0 text-sm leading-relaxed shadow-none focus-visible:border-none focus-visible:ring-0"
+          rows={1}
+        />
+      </div>
     </section>
   )
 }
