@@ -32,7 +32,7 @@ const AuthLoadingState = () => {
       <div className="flex flex-col items-center gap-3 text-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         <p className="text-sm text-muted-foreground">
-          인증 정보를 불러오고 있습니다…
+          Loading authentication data…
         </p>
       </div>
       <div className="w-full max-w-xl space-y-3">

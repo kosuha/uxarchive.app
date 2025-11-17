@@ -137,7 +137,7 @@ export const usePatternDetail = (patternId?: string | null) => {
           .order("created_at", { ascending: true })
 
         if (error) {
-          throw new Error(`인사이트를 불러오지 못했습니다: ${error.message}`)
+          throw new Error(`Failed to load insights: ${error.message}`)
         }
         insightRows = (data as InsightRow[]) ?? []
       }
@@ -280,7 +280,7 @@ export const usePatternDetail = (patternId?: string | null) => {
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null)
-        throw new Error(payload?.error ?? "캡처 업로드 준비에 실패했습니다.")
+        throw new Error(payload?.error ?? "Failed to prepare capture upload.")
       }
 
       const payload = await response.json()
@@ -299,7 +299,7 @@ export const usePatternDetail = (patternId?: string | null) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ workspaceId: targetWorkspaceId, patternId: targetPatternId, captureId }),
         })
-        throw new Error("캡처 파일 업로드에 실패했습니다.")
+        throw new Error("Failed to upload capture file.")
       }
 
       const { width, height } = await readImageDimensions(file)
@@ -319,7 +319,7 @@ export const usePatternDetail = (patternId?: string | null) => {
 
       if (!finalizeResponse.ok) {
         const finalizePayload = await finalizeResponse.json().catch(() => null)
-        throw new Error(finalizePayload?.error ?? "캡처 정보를 갱신하지 못했습니다.")
+        throw new Error(finalizePayload?.error ?? "Failed to update capture information.")
       }
 
       await persistCaptureOrder(orderedIds, targetPatternId)
@@ -407,11 +407,11 @@ export const usePatternDetail = (patternId?: string | null) => {
   const uploadCapture = React.useCallback(
     async ({ file, desiredOrder }: UploadCaptureInput) => {
       if (!patternId || !workspaceId) {
-        throw new Error("워크스페이스 또는 패턴 정보가 부족합니다.")
+        throw new Error("Workspace or pattern information is missing.")
       }
 
       if (!patternDetailQueryKey) {
-        throw new Error("패턴 세부 정보를 찾을 수 없습니다.")
+        throw new Error("Unable to find pattern details.")
       }
 
       const captureId = globalThis.crypto?.randomUUID?.() ?? `capture-${Date.now()}`
@@ -466,7 +466,7 @@ export const usePatternDetail = (patternId?: string | null) => {
       if (!response.ok) {
         const payload = await response.json().catch(() => null)
         await refresh({ silent: true })
-        throw new Error(payload?.error ?? "캡처를 삭제하지 못했습니다.")
+        throw new Error(payload?.error ?? "Failed to delete capture.")
       }
 
       if (patternDetailQueryKey) {

@@ -46,7 +46,7 @@ const readTagSettingsState = (): TagSettingsViewState => {
       ...parsed,
     }
   } catch (error) {
-    console.warn("[tagSettings] 상태 로드 실패", error)
+    console.warn("[tagSettings] failed to load state", error)
     return { ...defaultTagSettingsState }
   }
 }
@@ -76,7 +76,7 @@ export function TagSettingsView() {
       const payload: TagSettingsViewState = { activeTagId }
       window.localStorage.setItem(TAG_SETTINGS_STATE_KEY, JSON.stringify(payload))
     } catch (error) {
-      console.error("[tagSettings] 상태 저장 실패", error)
+      console.error("[tagSettings] failed to persist state", error)
     }
   }, [activeTagId])
 
@@ -124,10 +124,10 @@ export function TagSettingsView() {
 
   const handleCreateTag = async () => {
     try {
-      const newTag = await mutations.createTag({ label: "새 태그", type: "custom", color: DEFAULT_TAG_COLOR })
+      const newTag = await mutations.createTag({ label: "New tag", type: "custom", color: DEFAULT_TAG_COLOR })
       setActiveTagId(newTag.id)
     } catch (mutationError) {
-      console.error("태그 생성 실패", mutationError)
+      console.error("Failed to create tag", mutationError)
     }
   }
 
@@ -136,7 +136,7 @@ export function TagSettingsView() {
     try {
       await mutations.updateTag(activeTag.id, { [key]: value } as Partial<Tag>)
     } catch (mutationError) {
-      console.error("태그 업데이트 실패", mutationError)
+      console.error("Failed to update tag", mutationError)
     }
   }
 
@@ -152,7 +152,7 @@ export function TagSettingsView() {
         await mutations.deleteTag(tagId)
         setActiveTagId((current) => (current === tagId ? null : current))
       } catch (mutationError) {
-        console.error("태그 삭제 실패", mutationError)
+        console.error("Failed to delete tag", mutationError)
       }
     },
     [mutations]
@@ -167,7 +167,7 @@ export function TagSettingsView() {
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        태그 데이터를 불러오는 중입니다...
+        Loading tag data...
       </div>
     )
   }
@@ -204,7 +204,7 @@ export function TagSettingsView() {
             <Button variant="ghost" size="icon" onClick={handleCreateTag}>
               <Plus className="size-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={handleRequestDeleteTag} aria-label="태그 삭제">
+            <Button variant="ghost" size="icon" onClick={handleRequestDeleteTag} aria-label="Delete tag">
               <Trash2 className="size-4" />
             </Button>
           </div>
@@ -213,7 +213,7 @@ export function TagSettingsView() {
           <ScrollArea className="h-[50vh] rounded-xl border border-border/60 bg-card">
             <div className="flex flex-wrap p-4">
               {sortedTags.length === 0 ? (
-                <p className="text-sm text-muted-foreground">아직 등록된 태그가 없습니다.</p>
+                <p className="text-sm text-muted-foreground">No tags have been created yet.</p>
               ) : (
                 sortedTags.map((tag) => {
                   const isActive = tag.id === activeTag?.id
@@ -249,20 +249,20 @@ export function TagSettingsView() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>태그를 삭제할까요?</AlertDialogTitle>
+            <AlertDialogTitle>Delete tag?</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteDialogState?.usageCount
-                ? `이 태그는 ${deleteDialogState.usageCount}개의 패턴에서 사용 중입니다.`
-                : "삭제하면 복구할 수 없습니다."}
+                ? `This tag is used by ${deleteDialogState.usageCount} patterns.`
+                : "This action cannot be undone."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDeleteTag}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              삭제
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -282,7 +282,7 @@ function TagEditPanel({ tag, usageCount, onChange, onPreview }: TagEditPanelProp
   if (!tag) {
     return (
       <div className="rounded-xl border border-dashed border-border/70 bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-        편집할 태그를 선택하거나 새 태그를 생성하세요.
+        Select a tag to edit or create a new one.
       </div>
     )
   }
@@ -337,7 +337,7 @@ function TagEditPanelContent({ tag, usageCount, onChange, onPreview }: TagEditPa
       <div className="flex items-start justify-between gap-4">
         <div className="">
           <p className="text-xs text-muted-foreground">
-            {`${usageCount}개 패턴에 연결됨`}
+            {`Linked to ${usageCount} patterns`}
           </p>
         </div>
       </div>
@@ -351,7 +351,7 @@ function TagEditPanelContent({ tag, usageCount, onChange, onPreview }: TagEditPa
               onPreview("label", next)
               scheduleUpdate("label", next)
             }}
-            placeholder="예: 온보딩"
+            placeholder="e.g., Onboarding"
           />
         </div>
         <div className="">

@@ -22,7 +22,7 @@ export function TagColorPicker({
   color,
   onChange,
   defaultColor = DEFAULT_TAG_COLOR,
-  ariaLabel = "태그 색상 선택",
+  ariaLabel = "Choose tag color",
   triggerClassName,
   popoverClassName,
 }: TagColorPickerProps) {
@@ -93,10 +93,10 @@ export function TagColorPicker({
             onBlur={handleInputBlur}
             maxLength={7}
             className="font-mono text-sm"
-            aria-label="헥스 색상 값"
+            aria-label="Hex color value"
           />
           <Button type="button" variant="outline" size="sm" onClick={handleReset} disabled={isDefault}>
-            초기화
+            Reset
           </Button>
         </div>
       </PopoverContent>

@@ -59,7 +59,7 @@ export function NavUser() {
   }
 
   const avatarUrl = metadata.avatar_url ?? undefined
-  const email = user?.email ?? (loading ? "계정 정보를 불러오는 중" : "로그인이 필요합니다")
+  const email = user?.email ?? (loading ? "Loading account info" : "Sign-in required")
   const displayName = metadata.full_name ?? metadata.name ?? email
   const initials = getInitials(user?.email, displayName)
 
@@ -116,7 +116,7 @@ export function NavUser() {
                     void handleSignOut()
                   }}
                 >
-                  <LogOut className="h-4 w-4" /> 로그아웃
+                  <LogOut className="h-4 w-4" /> Log out
                 </DropdownMenuItem>
               </>
             ) : null}

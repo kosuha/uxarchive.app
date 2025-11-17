@@ -114,7 +114,7 @@ export function ArchiveTreeSection({ title, state, handlers }: ArchiveTreeSectio
                   size="icon"
                   variant="ghost"
                   className="size-7 text-muted-foreground"
-                  aria-label="새 패턴 추가"
+                  aria-label="Add new pattern"
                   onClick={onRootPatternClick}
                 >
                   <FilePlus className="size-4" />
@@ -124,7 +124,7 @@ export function ArchiveTreeSection({ title, state, handlers }: ArchiveTreeSectio
                   size="icon"
                   variant="ghost"
                   className="size-7 text-muted-foreground"
-                  aria-label="새 폴더 추가"
+                  aria-label="Add new folder"
                   onClick={onRootFolderClick}
                 >
                   <FolderPlus className="size-4" />
@@ -165,8 +165,8 @@ export function ArchiveTreeSection({ title, state, handlers }: ArchiveTreeSectio
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-48" onCloseAutoFocus={(event) => event.preventDefault()}>
-        <ContextMenuItem onSelect={onRootPatternClick}>새 패턴</ContextMenuItem>
-        <ContextMenuItem onSelect={onRootFolderClick}>새 폴더</ContextMenuItem>
+        <ContextMenuItem onSelect={onRootPatternClick}>New pattern</ContextMenuItem>
+        <ContextMenuItem onSelect={onRootFolderClick}>New folder</ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
   )

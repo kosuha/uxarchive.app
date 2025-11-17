@@ -23,10 +23,10 @@ const requireAuthenticatedUser = async (supabase: ServerActionSupabaseClient): P
     error,
   } = await supabase.auth.getUser()
   if (error) {
-    throw new Error(`Supabase 인증 정보를 확인할 수 없습니다: ${error.message}`)
+    throw new Error(`Unable to load Supabase auth information: ${error.message}`)
   }
   if (!user) {
-    throw new Error("로그인이 필요합니다.")
+    throw new Error("You must be signed in.")
   }
   return user
 }
@@ -39,11 +39,11 @@ const fetchPatternWorkspaceId = async (supabase: ServerActionSupabaseClient, pat
     .maybeSingle()
 
   if (error) {
-    throw new Error(`패턴 정보를 조회할 수 없습니다: ${error.message}`)
+    throw new Error(`Unable to fetch pattern information: ${error.message}`)
   }
 
   if (!data) {
-    throw new Error("패턴 정보를 찾을 수 없습니다.")
+    throw new Error("Pattern information was not found.")
   }
 
   return data.workspace_id as string
@@ -56,11 +56,11 @@ const ensureWorkspaceEditorRole = async (supabase: ServerActionSupabaseClient, w
   })
 
   if (error) {
-    throw new Error(`워크스페이스 권한을 확인할 수 없습니다: ${error.message}`)
+    throw new Error(`Unable to verify workspace permissions: ${error.message}`)
   }
 
   if (data !== true) {
-    throw new Error("캡처 메타데이터를 수정할 권한이 없습니다.")
+    throw new Error("You do not have permission to update capture metadata.")
   }
 }
 
@@ -79,11 +79,11 @@ const getCaptureRecord = async (
     .maybeSingle()
 
   if (error) {
-    throw new Error(`캡처 정보를 조회할 수 없습니다: ${error.message}`)
+    throw new Error(`Unable to fetch capture information: ${error.message}`)
   }
 
   if (!data) {
-    throw new Error("캡처 정보를 찾을 수 없습니다.")
+    throw new Error("Capture information was not found.")
   }
 
   return data as CaptureRecord
@@ -95,7 +95,7 @@ const resolveStoragePublicUrl = async (supabase: ServerActionSupabaseClient, sto
   })
 
   if (error) {
-    throw new Error(`스토리지 URL을 계산할 수 없습니다: ${error.message}`)
+    throw new Error(`Unable to compute the storage URL: ${error.message}`)
   }
 
   return data as string | null
@@ -105,7 +105,7 @@ const sanitizeDimension = (value: number | null | undefined, field: "width" | "h
   if (value === undefined) return undefined
   if (value === null) return null
   if (typeof value !== "number" || Number.isNaN(value) || value <= 0) {
-    throw new Error(`${field} 값은 양수여야 합니다.`)
+    throw new Error(`The ${field} value must be positive.`)
   }
   return Math.round(value)
 }
@@ -119,7 +119,7 @@ export const finalizeCaptureUpload = async (
   const workspaceId = await fetchPatternWorkspaceId(supabase, input.patternId)
 
   if (workspaceId !== input.workspaceId) {
-    throw new Error("workspaceId가 패턴 정보와 일치하지 않습니다.")
+    throw new Error("workspaceId does not match the pattern information.")
   }
 
   await ensureWorkspaceEditorRole(supabase, input.workspaceId)
@@ -155,7 +155,7 @@ export const finalizeCaptureUpload = async (
     .single()
 
   if (error || !data) {
-    throw new Error(error?.message || "캡처 메타데이터를 갱신하지 못했습니다.")
+    throw new Error(error?.message || "Failed to update capture metadata.")
   }
 
   return data as CaptureRecord

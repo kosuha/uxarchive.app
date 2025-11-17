@@ -94,7 +94,7 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
         if (!tagToAdd) return
         await onAssignTag(tagId)
       } catch (error) {
-        console.error("태그 토글 실패", error)
+        console.error("Failed to toggle tag", error)
       }
     },
     [onAssignTag, onRemoveTag, pattern.tags, sortedTags]
@@ -106,7 +106,7 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
     try {
       await onUpdatePattern({ serviceName: next })
     } catch (error) {
-      console.error("서비스명 업데이트 실패", error)
+      console.error("Failed to update service name", error)
     }
   }, [onUpdatePattern, pattern.serviceName, serviceNameValue])
 
@@ -116,7 +116,7 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
     try {
       await onUpdatePattern({ name: next })
     } catch (error) {
-      console.error("패턴 이름 업데이트 실패", error)
+      console.error("Failed to update pattern name", error)
     }
   }, [nameValue, onUpdatePattern, pattern.name])
 
@@ -152,7 +152,7 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
     try {
       await onUpdateSummary(next)
     } catch (error) {
-      console.error("요약 업데이트 실패", error)
+      console.error("Failed to update summary", error)
     }
   }, [onUpdateSummary, pattern.summary, summaryValue])
 
@@ -178,7 +178,7 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
               onChange={(event) => setServiceNameValue(event.target.value)}
               onBlur={commitServiceName}
               onKeyDown={handleServiceKeyDown}
-              placeholder="서비스명을 입력하세요"
+              placeholder="Enter a service name"
               className="text-muted-foreground rounded-none shadow-none hover:bg-primary/10 focus-visible:ring-0 focus-visible:border-none border-none bg-transparent px-0 py-0 !text-xs uppercase tracking-wide h-auto"
             />
             <Input
@@ -186,7 +186,7 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
               onChange={(event) => setNameValue(event.target.value)}
               onBlur={commitName}
               onKeyDown={handleNameKeyDown}
-              placeholder="패턴 이름을 입력하세요"
+              placeholder="Enter a pattern name"
               className="!text-base font-semibold shadow-none rounded-none hover:bg-primary/10 leading-snug focus-visible:ring-0 focus-visible:border-none border-none bg-transparent px-0 py-0 h-auto"
             />
           </div>
@@ -196,7 +196,7 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
             variant="ghost"
             onClick={handleFavoriteToggle}
             aria-pressed={pattern.isFavorite}
-            aria-label={pattern.isFavorite ? "즐겨찾기 해제" : "즐겨찾기에 추가"}
+            aria-label={pattern.isFavorite ? "Remove from favorites" : "Add to favorites"}
             className={cn(
               "rounded-full text-muted-foreground",
               pattern.isFavorite && "text-primary",
@@ -211,7 +211,7 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
           {pattern.tags.length ? (
             pattern.tags.map((tag) => <TagBadge key={tag.id} tag={tag} />)
           ) : (
-            <span className="text-xs text-muted-foreground">태그가 없습니다.</span>
+            <span className="text-xs text-muted-foreground">No tags yet.</span>
           )}
           <DialogTrigger asChild>
             <button
@@ -219,19 +219,19 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
               className="text-muted-foreground inline-flex items-center gap-1 rounded-full border border-dashed border-border/80 px-2.5 py-0.5 text-[11px] font-medium transition hover:border-foreground/70 hover:text-foreground"
             >
               <Plus className="size-3" />
-              태그 추가
+              Add tags
             </button>
           </DialogTrigger>
         </div>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>태그 관리</DialogTitle>
-            <DialogDescription>이 패턴에 연결할 태그를 추가하거나 제거하세요.</DialogDescription>
+            <DialogTitle>Manage tags</DialogTitle>
+            <DialogDescription>Add or remove tags linked to this pattern.</DialogDescription>
           </DialogHeader>
           <div className="space-y-6">
             <div>
               <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">현재 태그</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current tags</p>
                 <span className="text-[11px] font-medium text-muted-foreground">
                   {pattern.tags.length} / {MAX_PATTERN_TAGS}
                 </span>
@@ -250,25 +250,25 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
                   ))}
                 </div>
               ) : (
-                <p className="mt-2 text-xs text-muted-foreground">아직 선택된 태그가 없습니다.</p>
+                <p className="mt-2 text-xs text-muted-foreground">No tags selected yet.</p>
               )}
             </div>
             <div className="space-y-3">
               <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">전체 태그</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">All tags</p>
                 {sortedTags.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-border/70 px-4 py-8 text-center text-sm text-muted-foreground">
-                    아직 등록된 태그가 없습니다. 아래에서 새 태그를 추가하세요.
+                    No tags have been created yet. Use the form below to add one.
                   </div>
                 ) : (
                   <Command className="h-40 rounded-lg border border-border/60 bg-background shadow-sm overflow-hidden">
                     <CommandInput
                       value={tagSearch}
                       onValueChange={setTagSearch}
-                      placeholder="태그 이름이나 유형을 검색하세요"
+                      placeholder="Search by tag name or type"
                     />
                     <CommandList className="flex-1 overflow-y-auto">
-                      <CommandEmpty>일치하는 태그가 없습니다.</CommandEmpty>
+                      <CommandEmpty>No matching tags.</CommandEmpty>
                       <CommandGroup>
                         {filteredTags.map((tag) => {
                           const isSelected = patternTagIds.has(tag.id)
@@ -306,8 +306,8 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
         </DialogContent>
       </Dialog>
         <dl className="grid grid-cols-2 gap-4 text-sm">
-          <MetadataItem label="작성자" value={pattern.author} />
-          <MetadataItem label="생성일" value={formatDate(pattern.createdAt)} />
+          <MetadataItem label="Author" value={pattern.author} />
+          <MetadataItem label="Created" value={formatDate(pattern.createdAt)} />
         </dl>
       </div>
       <div className="mt-4 flex flex-col overflow-hidden">
@@ -316,7 +316,7 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
           onChange={(event) => setSummaryValue(event.target.value)}
           onKeyDown={handleSummaryKeyDown}
           onBlur={handleSummaryBlur}
-          placeholder="패턴 설명을 입력하세요"
+          placeholder="Enter a pattern description"
           className="mt-2 flex-1 resize-none overflow-auto border-none bg-transparent px-0 py-0 text-sm leading-relaxed shadow-none focus-visible:border-none focus-visible:ring-0"
           rows={1}
         />

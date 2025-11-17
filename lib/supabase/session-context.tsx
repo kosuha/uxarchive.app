@@ -86,7 +86,7 @@ export const SessionProvider = ({
 export const useSupabaseSession = () => {
   const context = React.useContext(SessionContext)
   if (!context) {
-    throw new Error("useSupabaseSession 훅은 SessionProvider 내부에서만 사용할 수 있습니다.")
+    throw new Error("The useSupabaseSession hook can only be used within SessionProvider.")
   }
   return context
 }

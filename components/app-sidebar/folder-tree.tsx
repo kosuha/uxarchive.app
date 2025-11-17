@@ -186,8 +186,8 @@ export function FolderTree({
   }, [excludedFolderIds, moveDestinationId, moveDialogTarget])
   const moveDialogTitle = moveDialogTarget
     ? moveDialogTarget.type === "pattern"
-      ? "패턴 이동"
-      : "폴더 이동"
+      ? "Move pattern"
+      : "Move folder"
     : ""
   const moveDialogEntityName = moveDialogTarget
     ? moveDialogTarget.type === "pattern"
@@ -195,7 +195,7 @@ export function FolderTree({
       : moveDialogTarget.folder.name
     : ""
   const moveDialogDescription = moveDialogTarget
-    ? `"${moveDialogEntityName}" 항목을 옮길 폴더를 선택하세요.`
+    ? `Select a folder to move "${moveDialogEntityName}" into.`
     : ""
   const handleMoveConfirm = React.useCallback(() => {
     if (!moveDialogTarget) return
@@ -228,7 +228,7 @@ export function FolderTree({
   if (!tree.length && !pendingFolderInput && !shouldShowRootPatterns) {
     return (
       <div className="text-sidebar-foreground/70 rounded-md border border-dashed border-border/60 px-3 py-4 text-xs">
-        폴더 데이터가 없습니다.
+        No folders available.
       </div>
     )
   }
@@ -287,20 +287,20 @@ export function FolderTree({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>폴더를 삭제할까요?</AlertDialogTitle>
+            <AlertDialogTitle>Delete folder?</AlertDialogTitle>
             <AlertDialogDescription>
               {pendingFolderDelete
-                ? `"${pendingFolderDelete.name}" 폴더를 삭제하면 하위 폴더와 패턴도 함께 삭제됩니다.`
-                : "하위 항목도 모두 제거됩니다."}
+                ? `Deleting "${pendingFolderDelete.name}" also removes its subfolders and patterns.`
+                : "All child items will be removed as well."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleFolderDeleteConfirm}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              삭제
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -315,22 +315,22 @@ export function FolderTree({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{moveDialogTitle || "항목 이동"}</DialogTitle>
+            <DialogTitle>{moveDialogTitle || "Move item"}</DialogTitle>
             {moveDialogDescription && <DialogDescription>{moveDialogDescription}</DialogDescription>}
           </DialogHeader>
           <div className="space-y-3">
             <div className="rounded-md border">
               <Command className="max-h-[320px] bg-transparent">
-                <CommandInput placeholder="폴더 검색" />
+                <CommandInput placeholder="Search folders" />
                 <CommandList>
-                  <CommandEmpty>일치하는 폴더가 없습니다.</CommandEmpty>
+                  <CommandEmpty>No folders match your search.</CommandEmpty>
                   <CommandGroup>
                     <CommandItem
-                      value="내 아카이브"
+                      value="My archive"
                       onSelect={() => setMoveDestinationId(null)}
                     >
                       <LibraryBig className="mr-2 size-4 text-muted-foreground" />
-                      <span className="flex-1 truncate">내 아카이브</span>
+                      <span className="flex-1 truncate">My archive</span>
                       <Check
                         className={cn(
                           "size-4 text-primary opacity-0",
@@ -365,7 +365,7 @@ export function FolderTree({
                             ))}
                           </span>
                           {isDisabled && (
-                            <span className="text-xs text-muted-foreground/70">하위 폴더</span>
+                            <span className="text-xs text-muted-foreground/70">Subfolders</span>
                           )}
                           <Check
                             className={cn(
@@ -383,10 +383,10 @@ export function FolderTree({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeMoveDialog}>
-              취소
+              Cancel
             </Button>
             <Button onClick={handleMoveConfirm} disabled={isMoveConfirmDisabled}>
-              이동
+              Move
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -595,7 +595,7 @@ function FolderMenuList({
               <ChevronDown className="size-3.5 text-muted-foreground opacity-0" />
               <FolderIcon className="size-4 text-muted-foreground" />
               <InlineCreateInput
-                placeholder="새 폴더 이름"
+                placeholder="New folder name"
                 onSubmit={(value) => onFolderInputSubmit?.(value, parentId ?? null)}
                 onCancel={onFolderInputCancel ?? (() => {})}
                 className="px-0"
@@ -740,13 +740,13 @@ function FolderNodeItem({
           onCloseAutoFocus={(event) => event.preventDefault()}
         >
           <ContextMenuItem onSelect={() => onPatternCreateRequest?.(node.folder.id)}>
-            새 패턴
+            New pattern
           </ContextMenuItem>
           <ContextMenuItem onSelect={() => onFolderCreateRequest?.(node.folder.id)}>
-            새 폴더
+            New folder
           </ContextMenuItem>
           <ContextMenuItem onSelect={() => onFolderMoveRequest?.(node.folder)}>
-            이동
+            Move
           </ContextMenuItem>
           <ContextMenuSeparator />
         <ContextMenuItem
@@ -760,7 +760,7 @@ function FolderNodeItem({
             }
           }}
         >
-          삭제
+          Delete
         </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
@@ -879,7 +879,7 @@ function PatternList({
                 data-tree-interactive="true"
               >
                 <InlineCreateInput
-                  placeholder="새 패턴 이름"
+                  placeholder="New pattern name"
                   onSubmit={(value) => onPatternInputSubmit?.(value, folderId)}
                   onCancel={onPatternInputCancel ?? (() => {})}
                   className="px-2"
@@ -896,7 +896,7 @@ function PatternList({
             nested ? "ml-3 border-l border-dashed border-border/50 pl-3" : "px-2 py-2"
           )}
         >
-          아직 패턴이 없습니다.
+          No patterns yet.
         </div>
       )}
     </>
@@ -983,13 +983,13 @@ function PatternMenuItem({
             <SidebarMenuAction
               {...allowContextMenuProps}
               type="button"
-              aria-label={`${pattern.name} 컨텍스트 메뉴 열기`}
+              aria-label={`Open context menu for ${pattern.name}`}
               onClick={handleMenuActionClick}
               onContextMenu={() => onPatternSelect?.(pattern.id)}
               className="!top-1/2 -translate-y-1/2 text-muted-foreground"
             >
               <EllipsisVertical className="size-4" />
-              <span className="sr-only">패턴 컨텍스트 메뉴 토글</span>
+              <span className="sr-only">Toggle pattern context menu</span>
             </SidebarMenuAction>
           </div>
         </ContextMenuTrigger>
@@ -998,38 +998,38 @@ function PatternMenuItem({
           onCloseAutoFocus={(event) => event.preventDefault()}
         >
           <ContextMenuItem onSelect={() => onPatternCreateRequest?.(folderId)}>
-            새 패턴
+            New pattern
           </ContextMenuItem>
           <ContextMenuItem onSelect={() => onFolderCreateRequest?.(folderId)}>
-            새 폴더
+            New folder
           </ContextMenuItem>
           <ContextMenuItem onSelect={() => onPatternMoveRequest?.(pattern)}>
-            이동
+            Move
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem
             className="text-destructive focus:text-destructive"
             onSelect={handleDeleteSelect}
           >
-            삭제
+            Delete
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>패턴을 삭제할까요?</AlertDialogTitle>
+            <AlertDialogTitle>Delete pattern?</AlertDialogTitle>
             <AlertDialogDescription>
-              {`"${pattern.name}" 패턴을 삭제하면 연결된 캡처와 인사이트가 모두 삭제됩니다.`}
+              {`Deleting "${pattern.name}" removes all associated captures and insights.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              삭제
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

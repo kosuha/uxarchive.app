@@ -82,7 +82,7 @@ const mapFolderRecordToFolder = (record: FolderRecord): Folder => ({
   createdAt: record.createdAt,
 })
 
-const toErrorMessage = (error: unknown) => (error instanceof Error ? error.message : "데이터를 불러오지 못했습니다.")
+const toErrorMessage = (error: unknown) => (error instanceof Error ? error.message : "Failed to load data.")
 
 export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode }) => {
   const { supabase, user, loading: sessionLoading } = useSupabaseSession()
@@ -91,7 +91,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
 
   const fetchWorkspaceMembership = React.useCallback(async (): Promise<WorkspaceMembership> => {
     if (!user) {
-      throw new Error("로그인이 필요합니다.")
+      throw new Error("You must be signed in.")
     }
     const { data, error } = await supabase
       .from("workspace_members")
@@ -100,12 +100,12 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
       .order("role", { ascending: true })
 
     if (error) {
-      throw new Error(`워크스페이스 정보를 불러오지 못했습니다: ${error.message}`)
+      throw new Error(`Failed to load workspace information: ${error.message}`)
     }
 
     const membership = data?.[0]
     if (!membership) {
-      throw new Error("연결된 워크스페이스가 없습니다.")
+      throw new Error("No workspace is linked.")
     }
 
     const favoritePatternIds = ((membership.favorite_pattern_ids ?? []) as string[]).filter(Boolean)
@@ -136,7 +136,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
         )
 
       if (patternTagError) {
-        throw new Error(`패턴 태그 정보를 불러오지 못했습니다: ${patternTagError.message}`)
+        throw new Error(`Failed to load pattern tag information: ${patternTagError.message}`)
       }
 
       const tagIdsByPattern = (links ?? []).reduce<Record<string, string[]>>((acc, link) => {
@@ -234,7 +234,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
 
   const ensureWorkspace = React.useCallback(() => {
     if (!workspaceId) {
-      throw new Error("워크스페이스 컨텍스트가 초기화되지 않았습니다.")
+      throw new Error("Workspace context has not been initialized.")
     }
     return workspaceId
   }, [workspaceId])
@@ -569,7 +569,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
       const repo = createTagsRepository(supabase)
       const record = await repo.create({
         workspaceId,
-        label: input?.label ?? "새 태그",
+        label: input?.label ?? "New tag",
         type: input?.type ?? "custom",
         color: input?.color ?? null,
       })
@@ -583,7 +583,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
       const tempId = `temp-tag-${Date.now()}`
       const optimisticTag: Tag = {
         id: tempId,
-        label: input?.label ?? "새 태그",
+        label: input?.label ?? "New tag",
         type: input?.type ?? "custom",
         color: input?.color ?? undefined,
       }
@@ -800,7 +800,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
   const setPatternFavoriteMutation = useMutation({
     mutationFn: async ({ patternId, isFavorite }: { patternId: string; isFavorite: boolean }) => {
       if (!user?.id) {
-        throw new Error("로그인이 필요합니다.")
+        throw new Error("You must be signed in.")
       }
       const workspaceId = ensureWorkspace()
       const queryKey = membershipQueryKey
@@ -875,7 +875,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
 
   const error = React.useMemo(() => {
     if (!sessionLoading && !user) {
-      return "로그인이 필요합니다."
+      return "You must be signed in."
     }
     if (queryError) {
       return toErrorMessage(queryError)
@@ -974,7 +974,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
 export const useWorkspaceData = () => {
   const context = React.useContext(WorkspaceDataContext)
   if (!context) {
-    throw new Error("WorkspaceDataProvider 내부에서만 useWorkspaceData를 사용할 수 있습니다.")
+    throw new Error("useWorkspaceData can only be used within WorkspaceDataProvider.")
   }
   return context
 }

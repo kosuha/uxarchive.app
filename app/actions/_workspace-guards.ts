@@ -18,14 +18,14 @@ export const requireAuthenticatedUser = async (client: SupabaseClient): Promise<
   } = await client.auth.getUser()
 
   if (error) {
-    throw new RepositoryError(`Supabase 인증 정보를 확인할 수 없습니다: ${error.message}`, {
+    throw new RepositoryError(`Unable to load Supabase auth information: ${error.message}`, {
       cause: error,
       code: error.code,
     })
   }
 
   if (!user) {
-    throw new RepositoryError("로그인이 필요합니다.", { status: 401 })
+    throw new RepositoryError("You must be signed in.", { status: 401 })
   }
 
   return user
@@ -42,13 +42,13 @@ export const ensureWorkspaceRole = async (
   })
 
   if (error) {
-    throw new RepositoryError(`워크스페이스 권한을 확인할 수 없습니다: ${error.message}`, {
+    throw new RepositoryError(`Unable to verify workspace permissions: ${error.message}`, {
       cause: error,
       code: error.code,
     })
   }
 
   if (data !== true) {
-    throw new RepositoryError("워크스페이스에 접근할 권한이 없습니다.", { status: 403 })
+    throw new RepositoryError("You do not have permission to access this workspace.", { status: 403 })
   }
 }

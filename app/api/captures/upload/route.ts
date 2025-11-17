@@ -37,21 +37,21 @@ const isSafeSegment = (value: string) => SAFE_SEGMENT.test(value)
 
 const assertSafeSegment = (value: unknown, field: keyof UploadInitPayload | "variant") => {
   if (typeof value !== "string" || !isSafeSegment(value)) {
-    throw new HttpError(`${field} 값이 올바르지 않습니다.`, 400)
+    throw new HttpError(`${field} value is invalid.`, 400)
   }
   return value
 }
 
 const assertFileName = (value: unknown) => {
   if (typeof value !== "string" || value.trim().length === 0) {
-    throw new HttpError("filename 값이 필요합니다.", 400)
+    throw new HttpError("The filename value is required.", 400)
   }
   return value.trim()
 }
 
 const assertContentType = (value: unknown) => {
   if (typeof value !== "string" || !/^[\w.+-]+\/[\w.+-]+$/.test(value)) {
-    throw new HttpError("contentType 값이 올바르지 않습니다.", 400)
+    throw new HttpError("The contentType value is invalid.", 400)
   }
   return value
 }
@@ -61,11 +61,11 @@ const parseRequest = async (request: Request): Promise<UploadInitPayload> => {
   try {
     body = await request.json()
   } catch {
-    throw new HttpError("JSON 본문을 파싱할 수 없습니다.", 400)
+    throw new HttpError("Unable to parse the JSON body.", 400)
   }
 
   if (!body || typeof body !== "object") {
-    throw new HttpError("유효한 요청 본문이 필요합니다.", 400)
+    throw new HttpError("A valid request body is required.", 400)
   }
 
   const payload = body as Record<string, unknown>
@@ -85,11 +85,11 @@ const parseCancelRequest = async (request: Request): Promise<CancelUploadPayload
   try {
     body = await request.json()
   } catch {
-    throw new HttpError("JSON 본문을 파싱할 수 없습니다.", 400)
+    throw new HttpError("Unable to parse the JSON body.", 400)
   }
 
   if (!body || typeof body !== "object") {
-    throw new HttpError("유효한 요청 본문이 필요합니다.", 400)
+    throw new HttpError("A valid request body is required.", 400)
   }
 
   const payload = body as Record<string, unknown>
@@ -127,12 +127,12 @@ const requireAuthenticatedUser = async (supabase: RouteSupabaseClient): Promise<
   if (error) {
     const isMissingSession = /Auth session missing/i.test(error.message)
     if (isMissingSession) {
-      throw new HttpError("로그인이 필요합니다.", 401)
+      throw new HttpError("You must be signed in.", 401)
     }
-    throw new Error(`Supabase 인증 정보를 확인할 수 없습니다: ${error.message}`)
+    throw new Error(`Unable to load Supabase auth information: ${error.message}`)
   }
   if (!user) {
-    throw new HttpError("로그인이 필요합니다.", 401)
+    throw new HttpError("You must be signed in.", 401)
   }
   return user
 }
@@ -145,11 +145,11 @@ const fetchPatternWorkspaceId = async (supabase: RouteSupabaseClient, patternId:
     .maybeSingle()
 
   if (error) {
-    throw new Error(`패턴 정보를 조회할 수 없습니다: ${error.message}`)
+    throw new Error(`Unable to fetch pattern information: ${error.message}`)
   }
 
   if (!data) {
-    throw new HttpError("패턴 정보를 찾을 수 없습니다.", 404)
+    throw new HttpError("Pattern information was not found.", 404)
   }
 
   return data.workspace_id as string
@@ -162,11 +162,11 @@ const ensureWorkspaceEditorRole = async (supabase: RouteSupabaseClient, workspac
   })
 
   if (error) {
-    throw new Error(`워크스페이스 권한을 확인할 수 없습니다: ${error.message}`)
+    throw new Error(`Unable to verify workspace permissions: ${error.message}`)
   }
 
   if (data !== true) {
-    throw new HttpError("캡처를 업로드할 권한이 없습니다.", 403)
+    throw new HttpError("You do not have permission to upload captures.", 403)
   }
 }
 
@@ -180,7 +180,7 @@ const resolveNextOrderIndex = async (supabase: RouteSupabaseClient, patternId: s
     .maybeSingle()
 
   if (error) {
-    throw new Error(`다음 캡처 정렬 값을 계산할 수 없습니다: ${error.message}`)
+    throw new Error(`Unable to compute the next capture sort value: ${error.message}`)
   }
 
   const latestIndex = typeof data?.order_index === "number" ? data.order_index : -1
@@ -215,13 +215,13 @@ const createCaptureRecord = async (
     .select("id, pattern_id, storage_path, media_type, mime_type, order_index, created_at")
     .single()
 
-  // TODO(@server-actions): 업로드 완료 후 width/height, poster_storage_path 등을 업데이트하는 Server Action/잡 연동
+  // TODO(@server-actions): wire up a Server Action/job to populate width/height, poster_storage_path, etc. after uploads finish
 
   if (error) {
     if (error.code === "23505") {
-      throw new HttpError("이미 존재하는 캡처 ID입니다.", 409)
+      throw new HttpError("A capture with this ID already exists.", 409)
     }
-    throw new Error(`캡처 레코드를 생성하지 못했습니다: ${error.message}`)
+    throw new Error(`Failed to create the capture record: ${error.message}`)
   }
 
   return data as CaptureRecord
@@ -240,11 +240,11 @@ const deleteCaptureRecord = async (
     .maybeSingle()
 
   if (lookupError) {
-    throw new Error(`삭제 대상 캡처를 조회할 수 없습니다: ${lookupError.message}`)
+    throw new Error(`Unable to look up the capture targeted for deletion: ${lookupError.message}`)
   }
 
   if (!target) {
-    throw new HttpError("삭제할 캡처를 찾을 수 없습니다.", 404)
+    throw new HttpError("The capture to delete could not be found.", 404)
   }
 
   const { error: deleteError } = await supabase
@@ -254,7 +254,7 @@ const deleteCaptureRecord = async (
     .eq("pattern_id", patternId)
 
   if (deleteError) {
-    throw new Error(`캡처 레코드를 삭제하지 못했습니다: ${deleteError.message}`)
+    throw new Error(`Failed to delete the capture record: ${deleteError.message}`)
   }
 
   return target as CaptureRecord
@@ -264,8 +264,8 @@ const removeStorageObjectIfExists = async (bucket: string, storagePath: string) 
   const supabase = getServiceRoleSupabaseClient()
   const { error } = await supabase.storage.from(bucket).remove([storagePath])
   if (error) {
-    // 객체가 존재하지 않는 경우에도 오류가 발생할 수 있지만, 재시도 용도로만 호출되므로 실패를 치명적으로 취급하지 않는다.
-    console.warn(`[captures/upload] 스토리지 객체 삭제 실패 (${storagePath})`, error.message)
+    // Errors can occur even if the object no longer exists. Since this handler is only used for retries, treat failures as non-fatal.
+    console.warn(`[captures/upload] Failed to delete storage object (${storagePath})`, error.message)
   }
 }
 
@@ -282,7 +282,7 @@ export async function POST(request: Request) {
     const patternWorkspaceId = await fetchPatternWorkspaceId(supabase, payload.patternId)
 
     if (patternWorkspaceId !== payload.workspaceId) {
-      throw new HttpError("workspaceId가 패턴 정보와 일치하지 않습니다.", 400)
+      throw new HttpError("workspaceId does not match the pattern information.", 400)
     }
 
     await ensureWorkspaceEditorRole(supabase, payload.workspaceId)
@@ -299,7 +299,7 @@ export async function POST(request: Request) {
     const { data, error } = await createSignedUploadUrl(objectPath, bucket)
 
     if (error || !data) {
-      throw new Error(error?.message || "Supabase Storage 서명 URL을 생성할 수 없습니다.")
+      throw new Error(error?.message || "Unable to create the Supabase Storage signed URL.")
     }
 
     return NextResponse.json({
@@ -314,8 +314,8 @@ export async function POST(request: Request) {
     if (error instanceof HttpError) {
       return NextResponse.json({ error: error.message }, { status: error.status })
     }
-    console.error("[captures/upload] 처리 실패", error)
-    return NextResponse.json({ error: "업로드 URL 생성 중 오류가 발생했습니다." }, { status: 500 })
+    console.error("[captures/upload] Processing failed", error)
+    return NextResponse.json({ error: "An error occurred while creating the upload URL." }, { status: 500 })
   }
 }
 
@@ -329,7 +329,7 @@ export async function DELETE(request: Request) {
     const patternWorkspaceId = await fetchPatternWorkspaceId(supabase, payload.patternId)
 
     if (patternWorkspaceId !== payload.workspaceId) {
-      throw new HttpError("workspaceId가 패턴 정보와 일치하지 않습니다.", 400)
+      throw new HttpError("workspaceId does not match the pattern information.", 400)
     }
 
     await ensureWorkspaceEditorRole(supabase, payload.workspaceId)
@@ -340,13 +340,13 @@ export async function DELETE(request: Request) {
     return NextResponse.json({
       deletedCaptureId: deletedCapture.id,
       storagePath: deletedCapture.storage_path,
-      message: "업로드가 취소되어 캡처 레코드를 정리했습니다.",
+      message: "Upload was canceled and the capture record was cleaned up.",
     })
   } catch (error) {
     if (error instanceof HttpError) {
       return NextResponse.json({ error: error.message }, { status: error.status })
     }
-    console.error("[captures/upload] 업로드 취소 처리 실패", error)
-    return NextResponse.json({ error: "업로드 취소 처리 중 오류가 발생했습니다." }, { status: 500 })
+    console.error("[captures/upload] Failed to process upload cancellation", error)
+    return NextResponse.json({ error: "An error occurred while processing the upload cancellation." }, { status: 500 })
   }
 }

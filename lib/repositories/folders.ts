@@ -45,7 +45,7 @@ export const listFolders = async (
     .eq("workspace_id", params.workspaceId)
     .order("sort_order", { ascending: true })
 
-  ensureData(data, error, "폴더 목록을 불러오지 못했습니다.")
+  ensureData(data, error, "Failed to load folders.")
   return (data as FolderRow[]).map(mapFolder)
 }
 
@@ -73,7 +73,7 @@ export const createFolder = async (
     .select(FOLDER_SELECT_FIELDS)
     .single()
 
-  const row = ensureData(data, error, "폴더를 생성하지 못했습니다.")
+  const row = ensureData(data, error, "Failed to create folder.")
   return mapFolder(row as FolderRow)
 }
 
@@ -106,7 +106,7 @@ export const updateFolder = async (
     .select(FOLDER_SELECT_FIELDS)
     .single()
 
-  const row = ensureData(data, error, "폴더를 업데이트하지 못했습니다.")
+  const row = ensureData(data, error, "Failed to update folder.")
   return mapFolder(row as FolderRow)
 }
 
@@ -126,7 +126,7 @@ export const getFolderById = async (
     .eq("id", params.folderId)
     .maybeSingle()
 
-  const row = ensureData(data, error, "폴더를 찾을 수 없습니다.")
+  const row = ensureData(data, error, "Unable to find the folder.")
   return mapFolder(row as FolderRow)
 }
 
@@ -146,7 +146,7 @@ export const deleteFolder = async (
     .eq("id", input.folderId)
 
   if (error) {
-    throw new RepositoryError(`폴더를 삭제하지 못했습니다: ${error.message}`, {
+    throw new RepositoryError(`Failed to delete folder: ${error.message}`, {
       cause: error,
       code: error.code,
     })

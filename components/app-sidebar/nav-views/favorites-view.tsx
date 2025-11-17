@@ -22,13 +22,13 @@ export function FavoritesView({ onPatternSelect }: FavoritesViewProps) {
   let content: React.ReactNode = null
 
   if (loading) {
-    content = <p className="text-xs text-muted-foreground">즐겨찾기를 불러오는 중입니다...</p>
+    content = <p className="text-xs text-muted-foreground">Loading favorites...</p>
   } else if (error) {
     content = <p className="text-xs text-destructive">{error}</p>
   } else if (!favoritePatterns.length) {
     content = (
       <div className="rounded-lg border border-dashed border-border/70 px-4 py-8 text-center text-xs text-muted-foreground">
-        아직 즐겨찾기에 담은 패턴이 없습니다. 패턴 카드에서 별표를 눌러 빠르게 접근하세요.
+        You haven't starred any patterns yet. Use the star on a pattern card to access it quickly.
       </div>
     )
   } else {
@@ -50,7 +50,7 @@ export function FavoritesView({ onPatternSelect }: FavoritesViewProps) {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4">
       <div>
-        <p className="text-xs text-muted-foreground">자주 확인하는 패턴을 한곳에서 모아 보세요.</p>
+        <p className="text-xs text-muted-foreground">Keep your frequently referenced patterns in one place.</p>
       </div>
       <div className="flex-1 overflow-hidden">
         {content}

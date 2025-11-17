@@ -72,7 +72,7 @@ export const listPatterns = async (
     .eq("workspace_id", params.workspaceId)
     .order("updated_at", { ascending: false })
 
-  ensureData(data, error, "패턴 목록을 불러오지 못했습니다.")
+  ensureData(data, error, "Failed to load patterns.")
   return (data as PatternRow[]).map(mapPattern)
 }
 
@@ -92,7 +92,7 @@ export const getPatternById = async (
     .eq("id", params.patternId)
     .maybeSingle()
 
-  const row = ensureData(data, error, "패턴을 찾을 수 없습니다.")
+  const row = ensureData(data, error, "Unable to find the pattern.")
   return mapPattern(row as PatternRow)
 }
 
@@ -130,7 +130,7 @@ export const createPattern = async (
     .select("id")
     .single()
 
-  const row = ensureData(data, error, "패턴을 생성하지 못했습니다.") as { id: string }
+  const row = ensureData(data, error, "Failed to create pattern.") as { id: string }
   return getPatternById(client, { workspaceId: input.workspaceId, patternId: row.id })
 }
 
@@ -171,7 +171,7 @@ export const updatePattern = async (
     .eq("id", input.patternId)
 
   if (error) {
-    throw new RepositoryError(`패턴을 업데이트하지 못했습니다: ${error.message}`,
+    throw new RepositoryError(`Failed to update pattern: ${error.message}`,
       { cause: error, code: error.code, status: error.status })
   }
 
@@ -194,7 +194,7 @@ export const deletePattern = async (
     .eq("id", input.patternId)
 
   if (error) {
-    throw new RepositoryError(`패턴을 삭제하지 못했습니다: ${error.message}`, {
+    throw new RepositoryError(`Failed to delete pattern: ${error.message}`, {
       cause: error,
       code: error.code,
     })

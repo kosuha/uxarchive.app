@@ -36,7 +36,7 @@ export function SidebarNavRail({ items, activeNavId, onNavItemSelect }: SidebarN
       <div className="px-1 pb-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" className="justify-center" aria-label="워크스페이스 홈">
+            <SidebarMenuButton size="lg" className="justify-center" aria-label="Workspace home">
               <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                 <Archive className="size-4" />
               </div>

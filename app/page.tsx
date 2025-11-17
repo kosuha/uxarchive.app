@@ -66,7 +66,7 @@ function WorkspaceShell() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-muted-foreground">
-        데이터를 불러오는 중입니다...
+        Loading data...
       </div>
     )
   }
@@ -98,7 +98,7 @@ function WorkspaceShell() {
               <BreadcrumbList>
                 <BreadcrumbItem className="flex justify-center items-center">
                   <LibraryBig className="h-4 w-4" />
-                  <span>내 아카이브</span>
+                  <span>My Archive</span>
                 </BreadcrumbItem>
                 {folderPath.map((folder) => (
                   <React.Fragment key={folder.id}>
@@ -112,7 +112,7 @@ function WorkspaceShell() {
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbPage>
-                    {selectedPattern?.name ?? "선택된 패턴 없음"}
+                    {selectedPattern?.name ?? "No pattern selected"}
                   </BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>

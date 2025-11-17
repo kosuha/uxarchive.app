@@ -17,18 +17,18 @@ const parseRequest = async (request: Request): Promise<FinalizePayload> => {
   try {
     body = await request.json()
   } catch {
-    throw new Error("요청 본문을 파싱할 수 없습니다.")
+    throw new Error("Unable to parse the request body.")
   }
 
   if (!body || typeof body !== "object") {
-    throw new Error("유효한 JSON 본문이 필요합니다.")
+    throw new Error("A valid JSON body is required.")
   }
 
   const payload = body as Record<string, unknown>
 
   const requireString = (value: unknown, key: string) => {
     if (typeof value !== "string" || !value.trim()) {
-      throw new Error(`${key} 값이 필요합니다.`)
+      throw new Error(`The ${key} value is required.`)
     }
     return value
   }
@@ -42,7 +42,7 @@ const parseRequest = async (request: Request): Promise<FinalizePayload> => {
         return parsed
       }
     }
-    throw new Error("width/height 값은 숫자여야 합니다.")
+    throw new Error("The width/height values must be numbers.")
   }
 
   return {
@@ -66,8 +66,8 @@ export async function POST(request: Request) {
     const capture = await finalizeCaptureUpload(payload)
     return NextResponse.json({ capture })
   } catch (error) {
-    console.error("[captures/finalize] 처리 실패", error)
-    const message = error instanceof Error ? error.message : "캡처 정보를 갱신하지 못했습니다."
+    console.error("[captures/finalize] Processing failed", error)
+    const message = error instanceof Error ? error.message : "Failed to update capture information."
     return NextResponse.json({ error: message }, { status: 400 })
   }
 }

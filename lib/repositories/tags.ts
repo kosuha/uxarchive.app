@@ -48,7 +48,7 @@ export const listTags = async (
     query = query.eq("is_active", true)
   }
   const { data, error } = await query.order("label", { ascending: true })
-  ensureData(data, error, "태그 목록을 불러오지 못했습니다.")
+  ensureData(data, error, "Failed to load tags.")
   return (data as TagRow[]).map(mapTag)
 }
 
@@ -68,7 +68,7 @@ export const getTagById = async (
     .eq("id", params.tagId)
     .maybeSingle()
 
-  const row = ensureData(data, error, "태그를 찾을 수 없습니다.")
+  const row = ensureData(data, error, "Unable to find the tag.")
   return mapTag(row as TagRow)
 }
 
@@ -96,7 +96,7 @@ export const createTag = async (
     .select(TAG_SELECT_FIELDS)
     .single()
 
-  const row = ensureData(data, error, "태그를 생성하지 못했습니다.")
+  const row = ensureData(data, error, "Failed to create tag.")
   return mapTag(row as TagRow)
 }
 
@@ -131,7 +131,7 @@ export const updateTag = async (
     .select(TAG_SELECT_FIELDS)
     .single()
 
-  const row = ensureData(data, error, "태그를 업데이트하지 못했습니다.")
+  const row = ensureData(data, error, "Failed to update tag.")
   return mapTag(row as TagRow)
 }
 
@@ -151,7 +151,7 @@ export const deleteTag = async (
     .eq("id", input.tagId)
 
   if (error) {
-    throw new RepositoryError(`태그를 삭제하지 못했습니다: ${error.message}`, {
+    throw new RepositoryError(`Failed to delete tag: ${error.message}`, {
       cause: error,
       code: error.code,
     })

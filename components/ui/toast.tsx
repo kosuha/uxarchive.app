@@ -75,7 +75,7 @@ const ToastClose = React.forwardRef<
     toast-close=""
     {...props}
   >
-    <span className="sr-only">닫기</span>
+    <span className="sr-only">Close</span>
     ×
   </ToastPrimitives.Close>
 ))

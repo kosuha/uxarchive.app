@@ -33,7 +33,7 @@ export function PatternResultCard({ pattern, onSelect, className }: PatternResul
           <p className="text-xs text-muted-foreground">{pattern.serviceName}</p>
         </div>
         {pattern.captureCount > 0 && (
-          <span className="text-[11px] text-muted-foreground">{pattern.captureCount}장</span>
+          <span className="text-[11px] text-muted-foreground">{pattern.captureCount} captures</span>
         )}
       </div>
       {pattern.summary && (

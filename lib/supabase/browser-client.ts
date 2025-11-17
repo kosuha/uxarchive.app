@@ -8,7 +8,7 @@ let browserClient: BrowserSupabaseClient | null = null
 
 const requireEnv = (value: string | undefined, key: string) => {
   if (!value) {
-    throw new Error(`환경변수 ${key}가 설정되어 있지 않습니다.`)
+    throw new Error(`Environment variable ${key} is not set.`)
   }
   return value
 }

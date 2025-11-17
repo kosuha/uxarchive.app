@@ -39,7 +39,7 @@ const hydrateFromStorage = (): WorkspaceState => {
       tagFilters: Array.isArray(parsed.tagFilters) ? parsed.tagFilters : [],
     }
   } catch (error) {
-    console.warn("[workspaceStore] 상태 파싱 실패", error)
+    console.warn("[workspaceStore] failed to parse state", error)
     return { ...DEFAULT_STATE }
   }
 }
@@ -61,7 +61,7 @@ const schedulePersist = () => {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(workspaceState))
     } catch (error) {
-      console.error("[workspaceStore] 상태 저장 실패", error)
+      console.error("[workspaceStore] failed to persist state", error)
     }
   }, PERSIST_DELAY)
 }

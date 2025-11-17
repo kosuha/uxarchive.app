@@ -48,9 +48,9 @@ export const LoginPanel = () => {
           <p className="text-sm uppercase tracking-[0.3em] text-muted-foreground">
             UX ARCHIVE
           </p>
-          <h1 className="text-2xl font-semibold">워크스페이스 로그인</h1>
+          <h1 className="text-2xl font-semibold">Workspace sign-in</h1>
           <p className="text-sm text-muted-foreground">
-            Google 계정으로 로그인하여 패턴을 저장하고 인사이트를 작성하세요.
+            Sign in with Google to save patterns and capture insights.
           </p>
         </div>
         <div className="mt-8 space-y-4">
@@ -66,11 +66,11 @@ export const LoginPanel = () => {
             ) : (
               <LogIn className="h-4 w-4" />
             )}
-            Google로 계속하기
+            Continue with Google
           </Button>
           <p className="text-xs text-muted-foreground">
-            처음 로그인하면 Supabase에서 OAuth 권한을 요청합니다. 승인 후에는
-            자동으로 UX Archive로 돌아옵니다.
+            On your first login, Supabase will request OAuth permissions. After approval,
+            you'll return to UX Archive automatically.
           </p>
           {errorMessage ? (
             <p className="text-sm text-destructive">{errorMessage}</p>

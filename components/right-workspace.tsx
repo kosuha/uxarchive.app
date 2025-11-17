@@ -109,7 +109,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
         setHighlightedInsightId(created.id)
         setIsPlacingInsight(false)
       } catch (mutationError) {
-        console.error("인사이트 생성 실패", mutationError)
+        console.error("Failed to create insight", mutationError)
       }
     },
     [activeCapture, createInsightAction]
@@ -121,7 +121,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
       try {
         await updateInsightAction({ captureId: activeCapture.id, insightId, x: point.x, y: point.y })
       } catch (mutationError) {
-        console.error("인사이트 위치 업데이트 실패", mutationError)
+        console.error("Failed to update insight position", mutationError)
       }
     },
     [activeCapture, updateInsightAction]
@@ -138,7 +138,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
       setHighlightedInsightId((current) => (current === pendingInsightDeleteId ? null : current))
       setPendingInsightDeleteId(null)
     } catch (mutationError) {
-      console.error("인사이트 삭제 실패", mutationError)
+      console.error("Failed to delete insight", mutationError)
     }
   }, [deleteInsightAction, insightDeleteTarget, pendingInsightDeleteId])
 
@@ -148,7 +148,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
       try {
         await updateInsightAction({ captureId: activeCapture.id, insightId, note })
       } catch (mutationError) {
-        console.error("인사이트 메모 업데이트 실패", mutationError)
+        console.error("Failed to update insight note", mutationError)
       }
     },
     [activeCapture, updateInsightAction]
@@ -166,7 +166,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
         setActiveCaptureId(captureId)
         await refreshWorkspace()
       } catch (mutationError) {
-        console.error("캡처 업로드 실패", mutationError)
+        console.error("Failed to upload capture", mutationError)
       }
     },
     [pattern, refreshWorkspace, uploadCaptureAction]
@@ -194,7 +194,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
         await reorderCapturesAction(updated)
         setActiveCaptureId(moved.id)
       } catch (mutationError) {
-        console.error("캡처 순서 변경 실패", mutationError)
+        console.error("Failed to reorder captures", mutationError)
       }
     },
     [pattern, patternCaptures, reorderCapturesAction]
@@ -213,7 +213,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
           return current
         })
       } catch (mutationError) {
-        console.error("캡처 삭제 실패", mutationError)
+        console.error("Failed to delete capture", mutationError)
       }
     },
     [deleteCaptureAction, pattern, patternCaptures, refreshWorkspace]
@@ -222,7 +222,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
   if (workspaceLoading || detailLoading) {
     return (
       <div className="text-muted-foreground flex flex-1 items-center justify-center rounded-md border border-dashed">
-        패턴 데이터를 불러오는 중입니다...
+        Loading pattern data...
       </div>
     )
   }
@@ -238,7 +238,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
   if (!pattern) {
     return (
       <div className="text-muted-foreground flex flex-1 items-center justify-center rounded-md border border-dashed">
-        표시할 패턴 데이터가 없습니다.
+        No pattern data to display.
       </div>
     )
   }
@@ -299,9 +299,9 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>인사이트를 삭제할까요?</AlertDialogTitle>
+            <AlertDialogTitle>Delete this insight?</AlertDialogTitle>
             <AlertDialogDescription>
-              삭제하면 복구할 수 없습니다.
+              This action cannot be undone.
               {insightDeleteTarget?.note ? (
                 <span className="mt-2 block truncate text-muted-foreground">
                   {`"${insightDeleteTarget.note}"`}
@@ -310,12 +310,12 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleCancelDeleteInsight}>취소</AlertDialogCancel>
+            <AlertDialogCancel onClick={handleCancelDeleteInsight}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDeleteInsight}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              삭제
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

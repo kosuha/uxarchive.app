@@ -21,13 +21,13 @@ export const SyncStatusListener = () => {
     if (!isOnline && previousOnlineRef.current) {
       toast({
         variant: "destructive",
-        title: "오프라인 상태입니다",
-        description: "네트워크 연결이 복구되면 자동으로 동기화됩니다.",
+        title: "You're offline",
+        description: "Sync will resume automatically once the network reconnects.",
       })
     } else if (isOnline && previousOnlineRef.current === false) {
       toast({
-        title: "온라인으로 복구되었습니다",
-        description: "대기 중이던 동기화가 다시 진행됩니다.",
+        title: "Back online",
+        description: "Pending sync operations will continue now.",
       })
     }
 
@@ -41,11 +41,11 @@ export const SyncStatusListener = () => {
 
     toast({
       variant: "destructive",
-      title: "동기화에 실패했습니다",
-      description: lastErrorMessage ?? "알 수 없는 이유로 업데이트하지 못했습니다.",
+      title: "Sync failed",
+      description: lastErrorMessage ?? "Updates failed for an unknown reason.",
       action: (
-        <ToastAction altText="재시도" onClick={() => retryAll()}>
-          재시도
+        <ToastAction altText="Retry" onClick={() => retryAll()}>
+          Retry
         </ToastAction>
       ),
     })

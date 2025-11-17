@@ -1,7 +1,7 @@
 {
   "name": "UX Archive",
   "short_name": "UXArchive",
-  "description": "UX 팀을 위한 패턴·캡쳐·인사이트 아카이브",
+  "description": "Pattern, capture, and insight archive for UX teams",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#f4f5ff",

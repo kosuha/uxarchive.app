@@ -43,8 +43,8 @@ export function NavViewContainer({ activeNavId, exploreView, searchViewProps, fa
   return (
     <EmptyPlaceholder
       icon={Compass}
-      title="새로운 뷰를 구성할 준비가 되어 있습니다"
-      description="Nav id와 매핑되는 뷰 컴포넌트를 추가하면 이 영역에 바로 표시됩니다."
+      title="Ready to add a new view"
+      description="Add a view component mapped to the nav id to display it here."
     />
   )
 }

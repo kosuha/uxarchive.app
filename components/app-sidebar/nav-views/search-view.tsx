@@ -119,7 +119,7 @@ export function SearchView({
   const renderResults = () => {
     if (loading) {
       return (
-        <div className="text-xs text-muted-foreground">패턴을 불러오는 중입니다...</div>
+        <div className="text-xs text-muted-foreground">Loading patterns...</div>
       )
     }
 
@@ -135,12 +135,12 @@ export function SearchView({
 
     if (!hasKeyword && !hasSelectedTags) {
       return (
-        <p className="text-xs text-muted-foreground">검색어나 태그를 선택하면 결과가 표시됩니다.</p>
+        <p className="text-xs text-muted-foreground">Enter a query or choose tags to see results.</p>
       )
     }
 
     if (!filteredPatterns.length) {
-      return <p className="text-xs text-muted-foreground">조건에 맞는 패턴이 없습니다.</p>
+      return <p className="text-xs text-muted-foreground">No patterns match your filters.</p>
     }
 
     return (
@@ -163,7 +163,7 @@ export function SearchView({
       <div className="">
         <div className="flex flex-wrap justify-between text-xs gap-2 mb-2 items-center">
           <span>
-            아카이브 내 검색
+            Search archive
           </span>
           <Button
             type="button"
@@ -173,11 +173,11 @@ export function SearchView({
             disabled={!hasSelectedTags}
             className="text-xs text-muted-foreground p-0 m-0 h-auto"
           >
-            초기화
+            Reset
           </Button>
         </div>
         {sortedTags.length === 0 ? (
-          <p className="mt-3 text-xs text-muted-foreground">등록된 태그가 아직 없어요.</p>
+          <p className="mt-3 text-xs text-muted-foreground">No tags have been created yet.</p>
         ) : (
           <div className="">
             <Command className="relative border border-border/60 overflow-visible">
@@ -186,7 +186,7 @@ export function SearchView({
                 onValueChange={setQuery}
                 onFocus={handleInputFocus}
                 onBlur={handleInputBlur}
-                placeholder="서비스나 패턴 키워드 혹은 태그 이름을 입력하세요"
+                placeholder="Enter a service, pattern keyword, or tag name"
               />
               <div
                 className={cn(
@@ -200,7 +200,7 @@ export function SearchView({
               >
                 {selectedTags.length > 0 && (
                   <div className="border-b border-border/60 bg-popover px-3 py-2 text-xs">
-                    <p className="mb-2 font-medium text-foreground">선택한 태그</p>
+                    <p className="mb-2 font-medium text-foreground">Selected tags</p>
                     <div className="flex flex-wrap gap-1.5">
                       {selectedTags.map((tag) => (
                         <button
@@ -217,8 +217,8 @@ export function SearchView({
                   </div>
                 )}
                 <CommandList className="max-h-56">
-                  <CommandEmpty>일치하는 태그가 없어요.</CommandEmpty>
-                  <CommandGroup heading="전체 태그">
+                  <CommandEmpty>No matching tags.</CommandEmpty>
+                  <CommandGroup heading="All tags">
                     {sortedTags.map((tag) => {
                       const isSelected = selectedTagIds.includes(tag.id)
                       return (

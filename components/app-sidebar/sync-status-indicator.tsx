@@ -17,10 +17,10 @@ export function SyncStatusIndicator() {
   }
 
   const Icon = !isOnline ? WifiOff : AlertTriangle
-  const headline = !isOnline ? "오프라인 상태" : "동기화 실패"
+  const headline = !isOnline ? "Offline" : "Sync failed"
   const description = !isOnline
-    ? "네트워크 연결이 복구되면 자동으로 재시도돼요."
-    : "문제가 해결되면 재시도를 눌러 동기화를 다시 시도하세요."
+    ? "We'll retry automatically once your network connection is restored."
+    : "Once the issue is resolved, select Retry to sync again."
 
   return (
     <div className="rounded-lg border border-border/70 bg-muted/50 p-3 text-xs">
@@ -29,12 +29,12 @@ export function SyncStatusIndicator() {
         <p className="flex-1 text-sm font-medium text-foreground">{headline}</p>
         {pendingMutations > 0 && (
           <Badge variant="secondary" className="text-[11px]">
-            대기 {pendingMutations}
+            Pending {pendingMutations}
           </Badge>
         )}
         {failedMutations > 0 && (
           <Badge variant="destructive" className="text-[11px]">
-            실패 {failedMutations}
+            Failed {failedMutations}
           </Badge>
         )}
       </div>
@@ -51,7 +51,7 @@ export function SyncStatusIndicator() {
           }}
         >
           <RotateCcw className="mr-1 h-3.5 w-3.5" />
-          {retrying ? "재시도 중" : "재시도"}
+          {retrying ? "Retrying" : "Retry"}
         </Button>
       </div>
     </div>

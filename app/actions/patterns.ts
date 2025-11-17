@@ -12,7 +12,7 @@ import {
 
 export const listWorkspacePatternsAction = async (workspaceId: string) => {
   if (!workspaceId) {
-    throw new RepositoryError("workspaceId가 필요합니다.")
+    throw new RepositoryError("workspaceId is required.")
   }
 
   const supabase = await createActionSupabaseClient()
@@ -29,7 +29,7 @@ type CreatePatternActionInput = Omit<CreatePatternInput, "createdBy"> & {
 
 export const createPatternAction = async (input: CreatePatternActionInput) => {
   if (!input?.workspaceId) {
-    throw new RepositoryError("workspaceId가 필요합니다.")
+    throw new RepositoryError("workspaceId is required.")
   }
 
   const supabase = await createActionSupabaseClient()
@@ -54,7 +54,7 @@ type UpdatePatternActionInput = {
 
 export const updatePatternAction = async (input: UpdatePatternActionInput) => {
   if (!input?.workspaceId || !input?.patternId) {
-    throw new RepositoryError("workspaceId와 patternId가 필요합니다.")
+    throw new RepositoryError("workspaceId and patternId are required.")
   }
 
   const supabase = await createActionSupabaseClient()
@@ -67,7 +67,7 @@ export const updatePatternAction = async (input: UpdatePatternActionInput) => {
 
 export const deletePatternAction = async (workspaceId: string, patternId: string) => {
   if (!workspaceId || !patternId) {
-    throw new RepositoryError("workspaceId와 patternId가 필요합니다.")
+    throw new RepositoryError("workspaceId and patternId are required.")
   }
 
   const supabase = await createActionSupabaseClient()

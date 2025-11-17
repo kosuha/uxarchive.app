@@ -22,14 +22,14 @@ const resolveBucketName = (explicit?: string | null) =>
 
 const sanitizeObjectPath = (value: string | null) => {
   if (!value) {
-    throw new HttpError("path 쿼리 파라미터가 필요합니다.", 400)
+    throw new HttpError("The path query parameter is required.", 400)
   }
   const normalized = value.replace(/^\/+/, "")
   if (!normalized) {
-    throw new HttpError("path 값이 올바르지 않습니다.", 400)
+    throw new HttpError("The path value is invalid.", 400)
   }
   if (normalized.includes("..")) {
-    throw new HttpError("path 값에 허용되지 않는 문자가 포함되어 있습니다.", 400)
+    throw new HttpError("The path value contains disallowed characters.", 400)
   }
   return normalized
 }
@@ -43,13 +43,13 @@ const requireAuthenticatedUser = async (supabase: RouteSupabaseClient): Promise<
   if (error) {
     const isMissingSession = /Auth session missing/i.test(error.message)
     if (isMissingSession) {
-      throw new HttpError("로그인이 필요합니다.", 401)
+      throw new HttpError("You must be signed in.", 401)
     }
-    throw new Error(`Supabase 인증 정보를 확인할 수 없습니다: ${error.message}`)
+    throw new Error(`Unable to load Supabase auth info: ${error.message}`)
   }
 
   if (!user) {
-    throw new HttpError("로그인이 필요합니다.", 401)
+    throw new HttpError("You must be signed in.", 401)
   }
 
   return user
@@ -67,9 +67,9 @@ export const GET = async (request: Request) => {
     const { data, error } = await supabase.storage.from(bucket).download(objectPath)
     if (error || !data) {
       if (error?.statusCode === "404" || error?.statusCode === 404) {
-        throw new HttpError("요청한 객체를 찾을 수 없습니다.", 404)
+        throw new HttpError("The requested object was not found.", 404)
       }
-      throw new Error(error?.message || "스토리지 객체를 다운로드하지 못했습니다.")
+      throw new Error(error?.message || "Failed to download the storage object.")
     }
 
     const arrayBuffer = await data.arrayBuffer()
@@ -86,6 +86,6 @@ export const GET = async (request: Request) => {
       return NextResponse.json({ error: caught.message }, { status: caught.status })
     }
     console.error("[storage-object] download failed", caught)
-    return NextResponse.json({ error: "스토리지 객체를 전달하지 못했습니다." }, { status: 500 })
+    return NextResponse.json({ error: "Failed to proxy the storage object." }, { status: 500 })
   }
 }

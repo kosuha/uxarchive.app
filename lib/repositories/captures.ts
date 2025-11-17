@@ -67,7 +67,7 @@ export const listCapturesByPattern = async (
     .eq("pattern_id", params.patternId)
     .order("order_index", { ascending: true })
 
-  ensureData(data, error, "캡처 목록을 불러오지 못했습니다.")
+  ensureData(data, error, "Failed to load captures.")
   return (data as CaptureRow[]).map(mapCapture)
 }
 
@@ -101,7 +101,7 @@ export const createCapture = async (
     .select(CAPTURE_SELECT_FIELDS)
     .single()
 
-  const row = ensureData(data, error, "캡처를 생성하지 못했습니다.")
+  const row = ensureData(data, error, "Failed to create capture.")
   return mapCapture(row as CaptureRow)
 }
 
@@ -140,7 +140,7 @@ export const updateCapture = async (
     .select(CAPTURE_SELECT_FIELDS)
     .single()
 
-  const row = ensureData(data, error, "캡처를 업데이트하지 못했습니다.")
+  const row = ensureData(data, error, "Failed to update capture.")
   return mapCapture(row as CaptureRow)
 }
 
@@ -160,7 +160,7 @@ export const getCaptureById = async (
     .eq("id", params.captureId)
     .maybeSingle()
 
-  const row = ensureData(data, error, "캡처를 찾을 수 없습니다.")
+  const row = ensureData(data, error, "Unable to find the capture.")
   return mapCapture(row as CaptureRow)
 }
 
@@ -180,7 +180,7 @@ export const deleteCapture = async (
     .eq("id", input.captureId)
 
   if (error) {
-    throw new RepositoryError(`캡처를 삭제하지 못했습니다: ${error.message}`, {
+    throw new RepositoryError(`Failed to delete capture: ${error.message}`, {
       cause: error,
       code: error.code,
     })

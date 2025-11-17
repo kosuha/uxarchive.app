@@ -68,7 +68,7 @@ export function InsightsPanel({
               ) : (
                 <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
                   <Pin className="size-5" />
-                  아직 인사이트가 없습니다.
+                  No insights yet.
                 </div>
               )}
             </div>
@@ -156,7 +156,7 @@ function InsightCard({ insight, index, isActive, onHighlight, onDelete, onUpdate
             onChange={(event) => setValue(event.target.value)}
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
-            placeholder="인사이트를 입력하세요"
+            placeholder="Add an insight"
             className="mt-2 w-full resize-none overflow-hidden rounded-none border-none bg-transparent px-0 py-0 text-sm leading-relaxed text-foreground shadow-none outline-none focus-visible:border-none focus-visible:ring-0"
             rows={1}
           />
@@ -171,7 +171,7 @@ function InsightCard({ insight, index, isActive, onHighlight, onDelete, onUpdate
           }}
         >
           <Trash2 className="size-3.5" />
-          인사이트 삭제
+          Delete insight
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

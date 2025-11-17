@@ -36,7 +36,7 @@ export const UserAccountMenu = () => {
   const avatarUrl =
     (user.user_metadata as { avatar_url?: string } | null)?.avatar_url ??
     undefined
-  const email = user.email ?? "로그인 사용자"
+  const email = user.email ?? "Signed-in user"
 
   const handleSignOut = async () => {
     await signOut()
@@ -67,7 +67,7 @@ export const UserAccountMenu = () => {
         <DropdownMenuLabel>
           <div className="space-y-1">
             <p className="text-sm font-medium">{email}</p>
-            <p className="text-xs text-muted-foreground">Google 로그인</p>
+            <p className="text-xs text-muted-foreground">Google sign-in</p>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -79,7 +79,7 @@ export const UserAccountMenu = () => {
             handleSignOut()
           }}
         >
-          <LogOut className="h-4 w-4" /> 로그아웃
+          <LogOut className="h-4 w-4" /> Log out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

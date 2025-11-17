@@ -268,7 +268,7 @@ export function AppSidebar({
           onPatternSelect?.()
         }
       } catch (mutationError) {
-        console.error("패턴 삭제 실패", mutationError)
+        console.error("Failed to delete pattern", mutationError)
       }
     },
     [mutations, onPatternSelect, uiSelectedPatternId]
@@ -307,7 +307,7 @@ export function AppSidebar({
           setPendingFolderInput(null)
         }
       } catch (mutationError) {
-        console.error("폴더 삭제 실패", mutationError)
+        console.error("Failed to delete folder", mutationError)
       }
     },
     [collectFolderBranch, mutations, patterns, pendingFolderInput, pendingPatternInput, selectedFolderId]
@@ -318,7 +318,7 @@ export function AppSidebar({
       try {
         await mutations.updatePattern(patternId, { folderId: destinationFolderId })
       } catch (mutationError) {
-        console.error("패턴 이동 실패", mutationError)
+        console.error("Failed to move pattern", mutationError)
       }
     },
     [mutations]
@@ -333,7 +333,7 @@ export function AppSidebar({
       try {
         await mutations.updateFolder(folderId, { parentId: destinationFolderId ?? null })
       } catch (mutationError) {
-        console.error("폴더 이동 실패", mutationError)
+        console.error("Failed to move folder", mutationError)
       }
     },
     [collectFolderBranch, mutations]
@@ -350,7 +350,7 @@ export function AppSidebar({
         await mutations.createPattern({ name: trimmed, folderId })
         setPendingPatternInput(null)
       } catch (mutationError) {
-        console.error("패턴 생성 실패", mutationError)
+        console.error("Failed to create pattern", mutationError)
       }
     },
     [mutations]
@@ -367,7 +367,7 @@ export function AppSidebar({
         await mutations.createFolder({ name: trimmed, parentId })
         setPendingFolderInput(null)
       } catch (mutationError) {
-        console.error("폴더 생성 실패", mutationError)
+        console.error("Failed to create folder", mutationError)
       }
     },
     [mutations]
@@ -380,7 +380,7 @@ export function AppSidebar({
 
   const exploreView = (
     <ExploreView
-      title="내 아카이브"
+      title="My archive"
       state={{
         folders,
         patterns,
@@ -414,7 +414,7 @@ export function AppSidebar({
   if (loading) {
     return (
       <div className="flex min-h-full flex-1 items-center justify-center text-sm text-muted-foreground">
-        워크스페이스를 불러오는 중입니다...
+        Loading workspace...
       </div>
     )
   }
@@ -488,7 +488,7 @@ export function AppSidebar({
         <div
           role="separator"
           aria-orientation="vertical"
-          aria-label="사이드바 너비 조절"
+          aria-label="Resize sidebar"
           className={cn(
             "fixed inset-y-0 z-30 hidden cursor-col-resize touch-none md:block",
             "transition-colors",

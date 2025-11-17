@@ -51,7 +51,7 @@ export const listInsightsByCapture = async (
     .eq("capture_id", params.captureId)
     .order("created_at", { ascending: true })
 
-  ensureData(data, error, "인사이트 목록을 불러오지 못했습니다.")
+  ensureData(data, error, "Failed to load insights.")
   return (data as InsightRow[]).map(mapInsight)
 }
 
@@ -81,7 +81,7 @@ export const createInsight = async (
     .select(INSIGHT_SELECT_FIELDS)
     .single()
 
-  const row = ensureData(data, error, "인사이트를 생성하지 못했습니다.")
+  const row = ensureData(data, error, "Failed to create insight.")
   return mapInsight(row as InsightRow)
 }
 
@@ -114,7 +114,7 @@ export const updateInsight = async (
     .select(INSIGHT_SELECT_FIELDS)
     .single()
 
-  const row = ensureData(data, error, "인사이트를 업데이트하지 못했습니다.")
+  const row = ensureData(data, error, "Failed to update insight.")
   return mapInsight(row as InsightRow)
 }
 
@@ -134,7 +134,7 @@ export const getInsightById = async (
     .eq("id", params.insightId)
     .maybeSingle()
 
-  const row = ensureData(data, error, "인사이트를 찾을 수 없습니다.")
+  const row = ensureData(data, error, "Unable to find the insight.")
   return mapInsight(row as InsightRow)
 }
 
@@ -154,7 +154,7 @@ export const deleteInsight = async (
     .eq("id", input.insightId)
 
   if (error) {
-    throw new RepositoryError(`인사이트를 삭제하지 못했습니다: ${error.message}`, {
+    throw new RepositoryError(`Failed to delete insight: ${error.message}`, {
       cause: error,
       code: error.code,
     })

@@ -22,28 +22,28 @@ export const metadata: Metadata = {
     template: "%s | UX Archive",
   },
   description:
-    "UX 팀과 프로덕트 디자이너를 위한 패턴 수집·인사이트 아카이브 도구",
+    "A pattern collection and insight archive tool for UX teams and product designers.",
   keywords: [
     "UX Archive",
-    "UX 패턴",
-    "프로덕트 디자인",
-    "인사이트",
-    "디자인 레퍼런스",
+    "UX patterns",
+    "Product design",
+    "Insights",
+    "Design reference",
   ],
   openGraph: {
     title: "UX Archive",
     description:
-      "서비스별 UX 패턴과 캡쳐를 정리하고 핀으로 인사이트를 남기는 워크스페이스",
+      "Workspace for organizing service-specific UX patterns and captures and leaving insights with pins.",
     url: "https://uxarchive.app",
     siteName: "UX Archive",
-    locale: "ko_KR",
+    locale: "en_US",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "UX Archive",
     description:
-      "패턴 수집과 인사이트 메모를 한 번에 관리하는 디자이너용 워크플로우",
+      "Designer-first workflow for managing pattern captures and insight notes in one place.",
   },
   icons: {
     icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
@@ -59,7 +59,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

@@ -137,7 +137,7 @@ function CanvasHeader({
     <div className="flex items-center justify-between border-b border-border/60 px-6 py-4">
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          현재 캡처
+          Current capture
         </p>
         <p className="text-lg font-semibold">
           {captureOrder ? `${captureOrder} / ${totalCount}` : "-"}
@@ -152,11 +152,11 @@ function CanvasHeader({
           aria-pressed={isAddingInsight}
         >
           <MessageCircle className="size-3.5 mr-2" />
-          {isAddingInsight ? "추가 취소" : "인사이트 추가"}
+          {isAddingInsight ? "Cancel" : "Add insight"}
         </Button>
         <Button variant="outline" size="sm">
           <Share2 className="size-3.5 mr-2" />
-          공유
+          Share
         </Button>
       </div>
     </div>
@@ -324,7 +324,7 @@ function CaptureCanvas({
       canvasSize.width / imageDimensions.width,
       canvasSize.height / imageDimensions.height
     )
-    // 약간의 여백을 주어 화면에 맞추기 시 캔버스 테두리가 드러나도록 함
+    // Slightly offset so the canvas border remains visible when fitting to screen
     const paddingScale = baseScale * 0.95
     const x = (canvasSize.width - imageDimensions.width * paddingScale) / 2
     const y = (canvasSize.height - imageDimensions.height * paddingScale) / 2
@@ -475,7 +475,7 @@ function CaptureCanvas({
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 p-10 text-center text-sm text-muted-foreground">
         <Camera className="size-6" />
-        <p>선택된 캡처가 없습니다.</p>
+        <p>No capture selected.</p>
       </div>
     )
   }
@@ -609,7 +609,7 @@ function CaptureCanvas({
                                 }}
                               >
                                 <Trash2 className="size-3.5" />
-                                인사이트 삭제
+                                Delete insight
                               </ContextMenuItem>
                             </ContextMenuContent>
                           </ContextMenu>
@@ -622,17 +622,17 @@ function CaptureCanvas({
             </div>
           ) : (
             <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
-              캔버스를 준비하는 중...
+              Preparing the canvas...
             </div>
           )}
           {!imageElement && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
-              이미지를 불러오는 중...
+              Loading image...
             </div>
           )}
           {isPlacingInsight && (
             <div className="pointer-events-none absolute left-4 top-4 rounded-full bg-black/70 px-3 py-1 text-xs font-medium text-white shadow-lg">
-              캔버스를 클릭해 위치를 지정하세요
+              Click on the canvas to set a position
             </div>
           )}
         </div>
@@ -778,9 +778,9 @@ function CaptureStrip({
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <GalleryHorizontalEnd className="size-3.5" />
-            캡처 스트립
+            Capture strip
           </div>
-          <span className="text-xs text-muted-foreground">{captures.length}장</span>
+          <span className="text-xs text-muted-foreground">{captures.length} items</span>
         </div>
         <CaptureUploadDialog
           captureCount={captures.length}
@@ -826,7 +826,7 @@ function CaptureStrip({
                       >
                         <Image
                           src={capture.imageUrl}
-                          alt="캡처 썸네일"
+                          alt="Capture thumbnail"
                           fill
                           sizes="80px"
                           unoptimized
@@ -841,7 +841,7 @@ function CaptureStrip({
                         size="icon"
                         variant="default"
                         onClick={(event) => handleDeleteClick(event, capture.id)}
-                        aria-label="캡처 삭제"
+                        aria-label="Delete capture"
                         draggable={false}
                         className={cn(
                           "absolute right-1 top-1 size-6 rounded-full bg-destructive p-0 text-white opacity-0 transition-opacity pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto hover:bg-destructive/80",
@@ -860,26 +860,27 @@ function CaptureStrip({
         </div>
       ) : (
         <div className="flex min-h-[120px] flex-col items-center justify-center rounded-lg border border-dashed border-border/60 px-4 text-sm text-muted-foreground">
-          아직 업로드된 캡처가 없습니다.
+          No captures uploaded yet.
           <span className="mt-1 text-xs text-muted-foreground/80">
-            새 캡처 이미지를 추가해보세요.
+            Add a new capture image to get started.
           </span>
         </div>
       )}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={handleDialogOpenChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>캡처를 삭제할까요?</AlertDialogTitle>
+            <AlertDialogTitle>Delete capture?</AlertDialogTitle>
             <AlertDialogDescription>
-              선택한 캡처와 연결된 인사이트는 복구할 수 없습니다.
+              The selected capture and its related insights cannot be recovered.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleConfirmDelete} 
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              삭제
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1002,7 +1003,7 @@ function CaptureUploadDialog({
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!selectedFiles.length) {
-      setErrorMessage("업로드할 이미지를 선택해주세요.")
+      setErrorMessage("Please select an image to upload.")
       return
     }
     setIsSubmitting(true)
@@ -1016,7 +1017,7 @@ function CaptureUploadDialog({
       setOpen(false)
     } catch (error) {
       console.error("capture upload preparation failed", error)
-      setErrorMessage("업로드를 준비하는 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.")
+      setErrorMessage("Something went wrong while preparing the upload. Please try again in a moment.")
     } finally {
       setIsSubmitting(false)
     }
@@ -1025,15 +1026,15 @@ function CaptureUploadDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="캡쳐 이미지 업로드">
+        <Button variant="ghost" size="icon" aria-label="Upload capture image">
           <Plus className="size-4" />
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>캡처 이미지 업로드</DialogTitle>
+          <DialogTitle>Upload capture images</DialogTitle>
           <DialogDescription>
-            파일을 선택하고 순서를 지정하면 추후 서버 업로드 API와 연결할 준비가 완료됩니다.
+            Select files and define their order before connecting to the server upload API.
           </DialogDescription>
         </DialogHeader>
         <form className="space-y-5" onSubmit={handleSubmit}>
@@ -1046,10 +1047,10 @@ function CaptureUploadDialog({
             >
               <UploadCloud className="size-6 text-primary" />
               <div className="space-y-1">
-                <p className="font-medium text-foreground">여러 이미지를 드래그하거나 클릭해서 선택할 수 있습니다</p>
-                <p className="text-xs text-muted-foreground/80">PNG, JPG, SVG 등 이미지 파일 지원</p>
+                <p className="font-medium text-foreground">Drag or click to select multiple images.</p>
+                <p className="text-xs text-muted-foreground/80">Supports PNG, JPG, SVG, and other image files.</p>
               </div>
-              <p className="text-xs text-muted-foreground/70">파일은 아직 서버에 저장되지 않으며 검토 후 업로드됩니다.</p>
+              <p className="text-xs text-muted-foreground/70">Files aren't stored on the server yet; they'll upload after review.</p>
             </label>
             <input
               id={fileInputId}
@@ -1065,7 +1066,7 @@ function CaptureUploadDialog({
           {Boolean(selectedFiles.length) && (
             <div className="space-y-3 rounded-lg border border-border/70 bg-muted/20 p-3">
               <p className="text-xs font-medium text-muted-foreground">
-                선택된 파일 {selectedFiles.length}개
+                Selected files {selectedFiles.length}
               </p>
               <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
                 {selectedFiles.map(({ file, previewUrl }) => (
@@ -1076,7 +1077,7 @@ function CaptureUploadDialog({
                     <div className="relative h-16 w-16 overflow-hidden rounded-sm bg-muted/30">
                       <Image
                         src={previewUrl}
-                        alt={`${file.name} 미리보기`}
+                        alt={`${file.name} preview`}
                         fill
                         sizes="64px"
                         className="object-contain"
@@ -1095,7 +1096,7 @@ function CaptureUploadDialog({
                       onClick={() => handleRemoveFile(previewUrl)}
                     >
                       <Trash2 className="size-4" />
-                      <span className="sr-only">{file.name} 제거</span>
+                      <span className="sr-only">Remove {file.name}</span>
                     </Button>
                   </div>
                 ))}
@@ -1114,11 +1115,11 @@ function CaptureUploadDialog({
               onClick={() => setOpen(false)}
               disabled={isSubmitting}
             >
-              취소
+              Cancel
             </Button>
             <Button type="submit" disabled={!selectedFiles.length || isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
-              업로드
+              Upload
             </Button>
           </DialogFooter>
         </form>
