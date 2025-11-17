@@ -479,20 +479,43 @@ export const usePatternDetail = (patternId?: string | null) => {
   const createInsight = React.useCallback(
     async (input: { captureId: string; x: number; y: number; note?: string }) => {
       const repo = createInsightsRepository(supabase)
-      const record = await repo.create({ captureId: input.captureId, x: input.x, y: input.y, note: input.note ?? "" })
-      const created: Insight = {
-        id: record.id,
-        captureId: record.captureId,
-        x: record.x,
-        y: record.y,
-        note: record.note,
-        createdAt: record.createdAt,
+      const tempId = globalThis.crypto?.randomUUID?.() ?? `temp-insight-${Date.now()}`
+      const tempInsight: Insight = {
+        id: tempId,
+        captureId: input.captureId,
+        x: input.x,
+        y: input.y,
+        note: input.note ?? "",
+        createdAt: new Date().toISOString(),
       }
+
       setDetailData((current) => ({
         captures: current.captures,
-        insights: [...current.insights, created],
+        insights: [...current.insights, tempInsight],
       }))
-      return created
+
+      try {
+        const record = await repo.create({ captureId: input.captureId, x: input.x, y: input.y, note: input.note ?? "" })
+        const created: Insight = {
+          id: record.id,
+          captureId: record.captureId,
+          x: record.x,
+          y: record.y,
+          note: record.note,
+          createdAt: record.createdAt,
+        }
+        setDetailData((current) => ({
+          captures: current.captures,
+          insights: current.insights.map((insight) => (insight.id === tempId ? created : insight)),
+        }))
+        return created
+      } catch (error) {
+        setDetailData((current) => ({
+          captures: current.captures,
+          insights: current.insights.filter((insight) => insight.id !== tempId),
+        }))
+        throw error
+      }
     },
     [setDetailData, supabase],
   )
