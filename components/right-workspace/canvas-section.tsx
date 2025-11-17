@@ -183,7 +183,7 @@ function CaptureCanvas({
   onDeleteInsight: (insightId: string) => void
 }) {
   const canvasRef = React.useRef<HTMLDivElement>(null)
-  const [dragging, setDragging] = React.useState<{ id: string; x: number; y: number } | null>(null)
+  const [dragging, setDragging] = React.useState<{ id: string; x: number; y: number; isTransitioning?: boolean } | null>(null)
   const [canvasTransform, setCanvasTransform] = React.useState({ scale: 1, x: 0, y: 0 })
   const [isSpacePressed, setIsSpacePressed] = React.useState(false)
   const [isPanning, setIsPanning] = React.useState(false)
@@ -254,22 +254,24 @@ function CaptureCanvas({
       event.stopPropagation()
       const initial = getRelativePosition(event.clientX, event.clientY)
       if (!initial) return
-      setDragging({ id: insightId, ...initial })
+      setDragging({ id: insightId, ...initial, isTransitioning: false })
 
       const handleMove = (moveEvent: PointerEvent) => {
         moveEvent.preventDefault()
         const coords = getRelativePosition(moveEvent.clientX, moveEvent.clientY)
         if (!coords) return
-        setDragging({ id: insightId, ...coords })
+        setDragging({ id: insightId, ...coords, isTransitioning: false })
       }
 
       const finishDrag = (point?: CanvasPoint | null, persist = false) => {
         window.removeEventListener("pointermove", handleMove)
         window.removeEventListener("pointerup", handleUp)
         window.removeEventListener("pointercancel", handleCancel)
-        setDragging(null)
         if (persist && point) {
+          setDragging({ id: insightId, ...point, isTransitioning: true })
           onUpdateInsightPosition(insightId, point)
+        } else {
+          setDragging(null)
         }
       }
 
@@ -450,6 +452,18 @@ function CaptureCanvas({
     setImageDimensions(null)
     hasUserAdjustedRef.current = false
   }, [capture?.id])
+
+  React.useEffect(() => {
+    if (!dragging?.isTransitioning) return
+    const matchingInsight = insights.find((insight) => insight.id === dragging.id)
+    if (!matchingInsight) return
+    const withinThreshold =
+      Math.abs(matchingInsight.x - dragging.x) < 0.0001 &&
+      Math.abs(matchingInsight.y - dragging.y) < 0.0001
+    if (withinThreshold) {
+      setDragging(null)
+    }
+  }, [dragging, insights])
 
   if (!capture) {
     return (
