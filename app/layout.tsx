@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://ux-archive.app"),
+  metadataBase: new URL("https://uxarchive.app"),
   applicationName: "UX Archive",
   title: {
     default: "UX Archive",
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     title: "UX Archive",
     description:
       "서비스별 UX 패턴과 캡쳐를 정리하고 핀으로 인사이트를 남기는 워크스페이스",
-    url: "https://ux-archive.app",
+    url: "https://uxarchive.app",
     siteName: "UX Archive",
     locale: "ko_KR",
     type: "website",
