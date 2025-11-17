@@ -317,7 +317,7 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
           onKeyDown={handleSummaryKeyDown}
           onBlur={handleSummaryBlur}
           placeholder="Enter a pattern description"
-          className="mt-2 flex-1 resize-none overflow-auto border-none bg-transparent px-0 py-0 text-sm leading-relaxed shadow-none focus-visible:border-none focus-visible:ring-0"
+          className="mt-2 flex-1 resize-none overflow-auto rounded-none border-none bg-transparent px-0 py-0 text-sm leading-relaxed shadow-none focus-visible:border-none focus-visible:ring-0"
           rows={1}
         />
       </div>

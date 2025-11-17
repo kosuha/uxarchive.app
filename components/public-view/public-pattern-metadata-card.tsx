@@ -40,7 +40,7 @@ export function PublicPatternMetadataCard({
   )
   const authorLabel = author?.trim() || "Unknown"
   const updatedLabel = readableUpdatedAt || "Not available"
-  const summaryLabel = summary?.trim() || "No summary has been provided for this pattern."
+  const summaryLabel = summary?.trim() || ""
 
   return (
     <section className="flex h-full min-h-0 flex-1 flex-col rounded-xl border border-border/60 bg-card p-6 shadow-sm">
@@ -68,7 +68,7 @@ export function PublicPatternMetadataCard({
             ))}
           </div>
         ) : (
-          <p className="mt-2 text-sm text-muted-foreground">No tags have been assigned.</p>
+          <p className="mt-2 text-sm text-muted-foreground"></p>
         )}
       </div>
       <div className="mt-6 flex-1 min-h-0">

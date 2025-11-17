@@ -14,7 +14,7 @@ type PublicInsightsPanelProps = {
   onHighlight?: (id: string | null) => void
 }
 
-const EMPTY_NOTE_MESSAGE = "No note provided for this insight."
+const EMPTY_NOTE_MESSAGE = "-"
 
 const formatTimestamp = (value?: string | null) => {
   if (!value) return null
