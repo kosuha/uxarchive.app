@@ -533,36 +533,47 @@ function CaptureCanvas({
                           divProps={{ style: { pointerEvents: "auto" } }}
                         >
                           <ContextMenu>
-                            <Tooltip>
-                              <ContextMenuTrigger asChild>
-                                <TooltipTrigger asChild>
-                                  <button
-                                    type="button"
-                                    data-insight-marker
-                                    {...allowContextMenuProps}
-                                    onPointerDown={(event) => startDragging(event, insight.id)}
-                                    onMouseEnter={() => onHighlight(insight.id)}
-                                    onMouseLeave={() => onHighlight(null)}
-                                    onFocus={() => onHighlight(insight.id)}
-                                    onBlur={() => onHighlight(null)}
-                                    className={cn(
-                                      "flex size-6 items-center justify-center rounded-full border-2 border-white font-semibold text-xs text-white shadow-lg transition-colors",
-                                      isActive ? "bg-primary" : "bg-black/70",
-                                      "cursor-grab active:cursor-grabbing"
-                                    )}
-                                    style={{
-                                      transform: "translate(-50%, -50%)",
-                                      transformOrigin: "center",
-                                    }}
-                                  >
-                                    {index + 1}
-                                  </button>
-                                </TooltipTrigger>
-                              </ContextMenuTrigger>
-                              <TooltipContent side="top">
-                                <p className="max-w-[220px] text-xs">{insight.note}</p>
-                              </TooltipContent>
-                            </Tooltip>
+                            {(() => {
+                              const noteText = insight.note?.trim()
+                              const button = (
+                                <button
+                                  type="button"
+                                  data-insight-marker
+                                  {...allowContextMenuProps}
+                                  onPointerDown={(event) => startDragging(event, insight.id)}
+                                  onMouseEnter={() => onHighlight(insight.id)}
+                                  onMouseLeave={() => onHighlight(null)}
+                                  onFocus={() => onHighlight(insight.id)}
+                                  onBlur={() => onHighlight(null)}
+                                  className={cn(
+                                    "flex size-6 items-center justify-center rounded-full border-2 border-white font-semibold text-xs text-white shadow-lg transition-colors",
+                                    isActive ? "bg-primary" : "bg-black/70",
+                                    "cursor-grab active:cursor-grabbing"
+                                  )}
+                                  style={{
+                                    transform: "translate(-50%, -50%)",
+                                    transformOrigin: "center",
+                                  }}
+                                >
+                                  {index + 1}
+                                </button>
+                              )
+
+                              if (!noteText) {
+                                return <ContextMenuTrigger asChild>{button}</ContextMenuTrigger>
+                              }
+
+                              return (
+                                <Tooltip>
+                                  <ContextMenuTrigger asChild>
+                                    <TooltipTrigger asChild>{button}</TooltipTrigger>
+                                  </ContextMenuTrigger>
+                                  <TooltipContent side="top">
+                                    <p className="max-w-[220px] text-xs">{noteText}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )
+                            })()}
                             <ContextMenuContent>
                               <ContextMenuItem
                                 variant="destructive"
