@@ -986,6 +986,7 @@ function PatternMenuItem({
               aria-label={`${pattern.name} 컨텍스트 메뉴 열기`}
               onClick={handleMenuActionClick}
               onContextMenu={() => onPatternSelect?.(pattern.id)}
+              className="!top-1/2 -translate-y-1/2 text-muted-foreground"
             >
               <EllipsisVertical className="size-4" />
               <span className="sr-only">패턴 컨텍스트 메뉴 토글</span>
