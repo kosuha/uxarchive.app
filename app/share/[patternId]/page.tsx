@@ -189,17 +189,12 @@ export default async function SharePatternPage({ params }: SharePageProps) {
   const data = await fetchSharedPattern(patternId)
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 md:py-12">
-        <header className="text-center">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Shared pattern</p>
-          <h1 className="mt-2 text-3xl font-semibold text-foreground">{data.pattern.name}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            View-only snapshot of {data.pattern.serviceName || "this experience"}
-          </p>
-        </header>
-        <PublicPatternViewer pattern={data.pattern} captures={data.captures} insights={data.insights} />
-      </div>
+    <div className="flex min-h-screen w-full flex-col bg-muted/30">
+      <main className="flex flex-1 flex-col gap-6 overflow-hidden px-4 py-6 sm:px-6 lg:px-10">
+        <div className="flex flex-1 basis-0 flex-col overflow-hidden">
+          <PublicPatternViewer pattern={data.pattern} captures={data.captures} insights={data.insights} />
+        </div>
+      </main>
     </div>
   )
 }

@@ -41,8 +41,18 @@ export function PublicPatternViewer({ pattern, captures, insights }: PublicPatte
   const noopAsync = React.useCallback(async () => {}, [])
 
   return (
-    <div className="flex h-full min-h-[600px] flex-col gap-6 lg:flex-row">
-      <div className="flex h-full min-h-[600px] flex-1">
+    <div className="flex h-full w-full min-h-[600px] flex-1 flex-col gap-6 lg:min-h-0 lg:flex-row">
+      <aside className="order-2 flex w-full max-w-[360px] flex-shrink-0 flex-col gap-4 lg:order-1 lg:w-[320px] lg:h-full">
+        <PublicPatternMetadataCard
+          patternName={pattern.name}
+          serviceName={pattern.serviceName}
+          summary={pattern.summary}
+          tags={pattern.tags}
+          author={pattern.author}
+          updatedAt={pattern.updatedAt}
+        />
+      </aside>
+      <div className="order-1 flex h-full min-h-0 flex-1 lg:order-2">
         <CanvasSection
           activeCapture={activeCapture}
           activeCaptureId={activeCaptureId}
@@ -64,15 +74,7 @@ export function PublicPatternViewer({ pattern, captures, insights }: PublicPatte
           onDeleteCapture={noop}
         />
       </div>
-      <aside className="flex w-full max-w-[360px] flex-1 basis-0 flex-col gap-4">
-        <PublicPatternMetadataCard
-          patternName={pattern.name}
-          serviceName={pattern.serviceName}
-          summary={pattern.summary}
-          tags={pattern.tags}
-          author={pattern.author}
-          updatedAt={pattern.updatedAt}
-        />
+      <aside className="order-3 flex w-full max-w-[360px] flex-shrink-0 flex-col gap-4 lg:order-3 lg:w-[320px] lg:h-full">
         <PublicInsightsPanel
           insights={captureInsights}
           highlightedInsightId={highlightedInsightId}
