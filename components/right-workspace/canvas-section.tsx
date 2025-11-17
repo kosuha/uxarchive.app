@@ -1032,9 +1032,6 @@ function CaptureUploadDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Upload capture images</DialogTitle>
-          <DialogDescription>
-            Select files and define their order before connecting to the server upload API.
-          </DialogDescription>
         </DialogHeader>
         <form className="space-y-5" onSubmit={handleSubmit}>
           <div className="space-y-2">
@@ -1049,7 +1046,6 @@ function CaptureUploadDialog({
                 <p className="font-medium text-foreground">Drag or click to select multiple images.</p>
                 <p className="text-xs text-muted-foreground/80">Supports PNG, JPG, SVG, and other image files.</p>
               </div>
-              <p className="text-xs text-muted-foreground/70">Files aren't stored on the server yet; they'll upload after review.</p>
             </label>
             <input
               id={fileInputId}
