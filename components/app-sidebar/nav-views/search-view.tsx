@@ -170,7 +170,7 @@ export function SearchView({
             variant="link"
             size="sm"
             onClick={clearTagFilters}
-            disabled={!hasSelectedTags}
+            disabled={!hasSelectedTags && !hasKeyword}
             className="text-xs text-muted-foreground p-0 m-0 h-auto"
           >
             Reset
