@@ -31,6 +31,17 @@ export function InsightsPanel({
   onDeleteInsight,
   onUpdateInsightNote,
 }: InsightsPanelProps) {
+  const listRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    if (!highlightedInsightId) return
+    const listEl = listRef.current
+    if (!listEl) return
+    const target = listEl.querySelector<HTMLElement>(`[data-insight-card="${highlightedInsightId}"]`)
+    if (!target) return
+    target.scrollIntoView({ block: "nearest", behavior: "smooth" })
+  }, [highlightedInsightId, insights])
+
   return (
     <section className="flex h-full flex-1 basis-0 min-h-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
       <header className="flex items-center justify-between border-b border-border/60 px-6 py-4">
@@ -41,7 +52,7 @@ export function InsightsPanel({
       <div className="flex flex-1 basis-0 min-h-0 flex-col px-2 py-0">
         <div className="flex flex-1 basis-0 min-h-0 flex-col">
           <ScrollArea className="flex-1 basis-0 min-h-0">
-            <div className="space-y-1 pb-2 pt-2">
+            <div ref={listRef} className="space-y-1 pb-2 pt-2">
               {insights.length ? (
                 insights.map((insight, index) => (
                   <InsightCard
@@ -123,6 +134,7 @@ function InsightCard({ insight, index, isActive, onHighlight, onDelete, onUpdate
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <article
+          data-insight-card={insight.id}
           className={cn(
             "rounded-xl border px-4 py-3 text-sm transition-all",
             isActive ? "border-primary/70 bg-primary/5" : "border-border/60 bg-card"

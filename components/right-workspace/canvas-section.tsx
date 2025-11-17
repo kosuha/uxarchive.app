@@ -184,6 +184,7 @@ function CaptureCanvas({
 }) {
   const canvasRef = React.useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = React.useState<{ id: string; x: number; y: number; isTransitioning?: boolean } | null>(null)
+  const draggingIdRef = React.useRef<string | null>(null)
   const [canvasTransform, setCanvasTransform] = React.useState({ scale: 1, x: 0, y: 0 })
   const [isSpacePressed, setIsSpacePressed] = React.useState(false)
   const [isPanning, setIsPanning] = React.useState(false)
@@ -197,6 +198,7 @@ function CaptureCanvas({
 
   React.useEffect(() => {
     setDragging(null)
+    draggingIdRef.current = null
   }, [capture?.id])
 
   const getRelativePosition = React.useCallback(
@@ -255,6 +257,8 @@ function CaptureCanvas({
       const initial = getRelativePosition(event.clientX, event.clientY)
       if (!initial) return
       setDragging({ id: insightId, ...initial, isTransitioning: false })
+      draggingIdRef.current = insightId
+      onHighlight(insightId)
 
       const handleMove = (moveEvent: PointerEvent) => {
         moveEvent.preventDefault()
@@ -273,6 +277,8 @@ function CaptureCanvas({
         } else {
           setDragging(null)
         }
+        draggingIdRef.current = null
+        onHighlight(null)
       }
 
       const handleUp = (upEvent: PointerEvent) => {
@@ -290,7 +296,7 @@ function CaptureCanvas({
       window.addEventListener("pointerup", handleUp)
       window.addEventListener("pointercancel", handleCancel)
     },
-    [getRelativePosition, onUpdateInsightPosition]
+    [getRelativePosition, onHighlight, onUpdateInsightPosition]
   )
 
   const clampScale = React.useCallback((scale: number) => {
@@ -556,9 +562,15 @@ function CaptureCanvas({
                                   {...allowContextMenuProps}
                                   onPointerDown={(event) => startDragging(event, insight.id)}
                                   onMouseEnter={() => onHighlight(insight.id)}
-                                  onMouseLeave={() => onHighlight(null)}
+                                  onMouseLeave={() => {
+                                    if (draggingIdRef.current === insight.id) return
+                                    onHighlight(null)
+                                  }}
                                   onFocus={() => onHighlight(insight.id)}
-                                  onBlur={() => onHighlight(null)}
+                                  onBlur={() => {
+                                    if (draggingIdRef.current === insight.id) return
+                                    onHighlight(null)
+                                  }}
                                   className={cn(
                                     "flex size-6 items-center justify-center rounded-full border-2 border-white font-semibold text-xs text-white shadow-lg transition-colors",
                                     isActive ? "bg-primary" : "bg-black/70",
