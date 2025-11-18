@@ -5,6 +5,7 @@ import type { FolderRecord } from "@/lib/repositories/folders"
 import { createPatternsRepository } from "@/lib/repositories/patterns"
 import type { PatternRecord } from "@/lib/repositories/patterns"
 import { RepositoryError } from "@/lib/repositories/types"
+import { FOLDER_NAME_MAX_LENGTH, TAG_LABEL_MAX_LENGTH } from "@/lib/field-limits"
 import { createTagsRepository } from "@/lib/repositories/tags"
 import type { TagRecord } from "@/lib/repositories/tags"
 
@@ -13,6 +14,7 @@ import {
   ensureWorkspaceRole,
   requireAuthenticatedUser,
 } from "./_workspace-guards"
+import { ensureMaxLength } from "./_validation"
 
 export type WorkspaceMembershipPayload = {
   workspaceId: string
@@ -140,6 +142,8 @@ export const createFolderAction = async (
     throw new RepositoryError("workspaceId is required.")
   }
 
+  ensureMaxLength(input.name, FOLDER_NAME_MAX_LENGTH, "Folder name")
+
   const supabase = await createActionSupabaseClient()
   await requireAuthenticatedUser(supabase)
   await ensureWorkspaceRole(supabase, input.workspaceId, "editor")
@@ -160,6 +164,10 @@ export const updateFolderAction = async (
 ): Promise<FolderRecord> => {
   if (!input?.workspaceId || !input.folderId) {
     throw new RepositoryError("workspaceId and folderId are required.")
+  }
+
+  if (typeof input.name === "string") {
+    ensureMaxLength(input.name, FOLDER_NAME_MAX_LENGTH, "Folder name")
   }
 
   const supabase = await createActionSupabaseClient()
@@ -202,6 +210,9 @@ export const createTagAction = async (
     throw new RepositoryError("workspaceId is required.")
   }
 
+  const label = input.label ?? "New tag"
+  ensureMaxLength(label, TAG_LABEL_MAX_LENGTH, "Tag name")
+
   const supabase = await createActionSupabaseClient()
   await requireAuthenticatedUser(supabase)
   await ensureWorkspaceRole(supabase, input.workspaceId, "editor")
@@ -209,7 +220,7 @@ export const createTagAction = async (
   const repo = createTagsRepository(supabase)
   return repo.create({
     workspaceId: input.workspaceId,
-    label: input.label ?? "New tag",
+    label,
     type: (input.type as TagRecord["type"]) ?? "custom",
     color: input.color ?? null,
   })
@@ -228,6 +239,10 @@ export const updateTagAction = async (
 ): Promise<TagRecord> => {
   if (!input?.workspaceId || !input.tagId) {
     throw new RepositoryError("workspaceId and tagId are required.")
+  }
+
+  if (typeof input.label === "string") {
+    ensureMaxLength(input.label, TAG_LABEL_MAX_LENGTH, "Tag name")
   }
 
   const supabase = await createActionSupabaseClient()

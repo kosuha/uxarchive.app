@@ -23,6 +23,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
+import { PATTERN_NAME_MAX_LENGTH, PATTERN_SERVICE_NAME_MAX_LENGTH } from "@/lib/field-limits"
 import type { Pattern, Tag } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -179,6 +180,7 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
               onBlur={commitServiceName}
               onKeyDown={handleServiceKeyDown}
               placeholder="Enter a service name"
+              maxLength={PATTERN_SERVICE_NAME_MAX_LENGTH}
               className="text-muted-foreground rounded-none shadow-none hover:bg-primary/10 focus-visible:ring-0 focus-visible:border-none border-none bg-transparent px-0 py-0 !text-xs uppercase tracking-wide h-auto"
             />
             <Input
@@ -187,6 +189,7 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
               onBlur={commitName}
               onKeyDown={handleNameKeyDown}
               placeholder="Enter a pattern name"
+              maxLength={PATTERN_NAME_MAX_LENGTH}
               className="!text-base font-semibold shadow-none rounded-none hover:bg-primary/10 leading-snug focus-visible:ring-0 focus-visible:border-none border-none bg-transparent px-0 py-0 h-auto"
             />
           </div>

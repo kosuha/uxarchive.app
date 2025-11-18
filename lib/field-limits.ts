@@ -1,0 +1,4 @@
+export const TAG_LABEL_MAX_LENGTH = 30
+export const PATTERN_NAME_MAX_LENGTH = 30
+export const PATTERN_SERVICE_NAME_MAX_LENGTH = 30
+export const FOLDER_NAME_MAX_LENGTH = 30

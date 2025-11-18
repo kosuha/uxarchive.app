@@ -3,12 +3,14 @@
 import type { CreatePatternInput } from "@/lib/repositories/patterns"
 import { createPatternsRepository } from "@/lib/repositories/patterns"
 import { RepositoryError } from "@/lib/repositories/types"
+import { PATTERN_NAME_MAX_LENGTH, PATTERN_SERVICE_NAME_MAX_LENGTH } from "@/lib/field-limits"
 
 import {
   createActionSupabaseClient,
   ensureWorkspaceRole,
   requireAuthenticatedUser,
 } from "./_workspace-guards"
+import { ensureMaxLength } from "./_validation"
 
 export const listWorkspacePatternsAction = async (workspaceId: string) => {
   if (!workspaceId) {
@@ -31,6 +33,9 @@ export const createPatternAction = async (input: CreatePatternActionInput) => {
   if (!input?.workspaceId) {
     throw new RepositoryError("workspaceId is required.")
   }
+
+  ensureMaxLength(input.name, PATTERN_NAME_MAX_LENGTH, "Pattern name")
+  ensureMaxLength(input.serviceName, PATTERN_SERVICE_NAME_MAX_LENGTH, "Service name")
 
   const supabase = await createActionSupabaseClient()
   const user = await requireAuthenticatedUser(supabase)
@@ -55,6 +60,13 @@ type UpdatePatternActionInput = {
 export const updatePatternAction = async (input: UpdatePatternActionInput) => {
   if (!input?.workspaceId || !input?.patternId) {
     throw new RepositoryError("workspaceId and patternId are required.")
+  }
+
+  if (typeof input.name === "string") {
+    ensureMaxLength(input.name, PATTERN_NAME_MAX_LENGTH, "Pattern name")
+  }
+  if (typeof input.serviceName === "string") {
+    ensureMaxLength(input.serviceName, PATTERN_SERVICE_NAME_MAX_LENGTH, "Service name")
   }
 
   const supabase = await createActionSupabaseClient()

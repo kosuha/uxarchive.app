@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import type { Tag } from "@/lib/types"
 import { useWorkspaceData } from "@/lib/workspace-data-context"
+import { TAG_LABEL_MAX_LENGTH } from "@/lib/field-limits"
 import { DEFAULT_TAG_COLOR } from "@/lib/tag-constants"
 import { cn } from "@/lib/utils"
 
@@ -409,6 +410,7 @@ function TagEditPanelContent({ tag, usageCount, onChange, onPreview, disabled }:
             }}
             placeholder="e.g., Onboarding"
             disabled={disabled}
+            maxLength={TAG_LABEL_MAX_LENGTH}
           />
         </div>
         <div className={cn("flex items-center", disabled && "pointer-events-none opacity-70")} aria-disabled={disabled}>

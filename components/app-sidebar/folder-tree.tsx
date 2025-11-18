@@ -56,6 +56,7 @@ import {
   CommandList,
 } from "@/components/ui/command"
 import { Input } from "@/components/ui/input"
+import { FOLDER_NAME_MAX_LENGTH, PATTERN_NAME_MAX_LENGTH } from "@/lib/field-limits"
 import type { Folder, Pattern } from "@/lib/types"
 import { allowContextMenuProps } from "@/lib/context-menu"
 import { cn } from "@/lib/utils"
@@ -599,6 +600,7 @@ function FolderMenuList({
                 onSubmit={(value) => onFolderInputSubmit?.(value, parentId ?? null)}
                 onCancel={onFolderInputCancel ?? (() => {})}
                 className="px-0"
+                maxLength={FOLDER_NAME_MAX_LENGTH}
               />
             </div>
           </SidebarMenuButton>
@@ -878,12 +880,13 @@ function PatternList({
                 className={cn("cursor-text", !nested && "px-2")}
                 data-tree-interactive="true"
               >
-                <InlineCreateInput
-                  placeholder="New pattern name"
-                  onSubmit={(value) => onPatternInputSubmit?.(value, folderId)}
-                  onCancel={onPatternInputCancel ?? (() => {})}
-                  className="px-2"
-                />
+              <InlineCreateInput
+                placeholder="New pattern name"
+                onSubmit={(value) => onPatternInputSubmit?.(value, folderId)}
+                onCancel={onPatternInputCancel ?? (() => {})}
+                className="px-2"
+                maxLength={PATTERN_NAME_MAX_LENGTH}
+              />
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}
@@ -1043,9 +1046,10 @@ type InlineCreateInputProps = {
   onSubmit: (value: string) => void
   onCancel: () => void
   className?: string
+  maxLength?: number
 }
 
-function InlineCreateInput({ placeholder, onSubmit, onCancel, className }: InlineCreateInputProps) {
+function InlineCreateInput({ placeholder, onSubmit, onCancel, className, maxLength }: InlineCreateInputProps) {
   const [value, setValue] = React.useState("")
   const inputRef = React.useRef<HTMLInputElement | null>(null)
   const finishedRef = React.useRef(false)
@@ -1078,6 +1082,7 @@ function InlineCreateInput({ placeholder, onSubmit, onCancel, className }: Inlin
       value={value}
       onChange={(event) => setValue(event.target.value)}
       placeholder={placeholder}
+      maxLength={maxLength}
       className={cn(
         "h-8 w-full border-none bg-transparent px-0 text-sm shadow-none focus-visible:ring-0 focus-visible:outline-none",
         className
