@@ -6,7 +6,6 @@ import { Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Command,
-  CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -109,6 +108,11 @@ export function SearchView({
       .filter((tag): tag is NonNullable<typeof tag> => Boolean(tag))
   }, [selectedTagIds, sortedTags])
 
+  const matchingTags = React.useMemo(() => {
+    if (!hasKeyword) return []
+    return sortedTags.filter((tag) => tag.label.toLowerCase().includes(normalizedQuery))
+  }, [hasKeyword, normalizedQuery, sortedTags])
+
   const handleResultSelect = React.useCallback(
     (patternId: string) => {
       onPatternSelect?.(patternId)
@@ -185,71 +189,64 @@ export function SearchView({
               onBlur={handleInputBlur}
               placeholder="Enter a service, pattern keyword, or tag name"
             />
-            <div
-              className={cn(
-                "absolute left-0 right-0 top-full z-10 mt-1 origin-top rounded-lg border border-border/60 bg-popover shadow-lg transition-all duration-150",
-                "overflow-hidden",
-                isInputFocused
-                  ? "pointer-events-auto opacity-100 scale-y-100"
-                  : "pointer-events-none opacity-0 scale-y-95",
-              )}
-              aria-hidden={!isInputFocused}
-            >
-              {sortedTags.length === 0 ? (
-                <div className="px-3 py-4 text-xs text-muted-foreground">
-                  No tags have been created yet.
-                </div>
-              ) : (
-                <>
-                  {selectedTags.length > 0 && (
-                    <div className="border-b border-border/60 bg-popover px-3 py-2 text-xs">
-                      <p className="mb-2 font-medium text-foreground">Selected tags</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {selectedTags.map((tag) => (
-                          <button
-                            key={tag.id}
-                            type="button"
-                            className="rounded-full"
-                            onMouseDown={(event) => event.preventDefault()}
-                            onClick={() => toggleTag(tag.id)}
-                          >
-                            <TagBadge tag={tag} className="transition-colors hover:bg-muted/30" />
-                          </button>
-                        ))}
-                      </div>
+            {sortedTags.length > 0 && hasKeyword && matchingTags.length > 0 && (
+              <div
+                className={cn(
+                  "absolute left-0 right-0 top-full z-10 mt-1 origin-top rounded-lg border border-border/60 bg-popover shadow-lg transition-all duration-150",
+                  "overflow-hidden",
+                  isInputFocused
+                    ? "pointer-events-auto opacity-100 scale-y-100"
+                    : "pointer-events-none opacity-0 scale-y-95",
+                )}
+                aria-hidden={!isInputFocused}
+              >
+                {selectedTags.length > 0 && (
+                  <div className="border-b border-border/60 bg-popover px-3 py-2 text-xs">
+                    <p className="mb-2 font-medium text-foreground">Selected tags</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedTags.map((tag) => (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          className="rounded-full"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => toggleTag(tag.id)}
+                        >
+                          <TagBadge tag={tag} className="transition-colors hover:bg-muted/30" />
+                        </button>
+                      ))}
                     </div>
-                  )}
-                  <CommandList className="max-h-56">
-                    <CommandEmpty>No matching tags.</CommandEmpty>
-                    <CommandGroup heading="All tags">
-                      {sortedTags.map((tag) => {
-                        const isSelected = selectedTagIds.includes(tag.id)
-                        return (
-                          <CommandItem
-                            key={tag.id}
-                            value={`${tag.label} ${tag.type}`}
-                            onSelect={() => toggleTag(tag.id)}
-                            className="flex items-center gap-2"
-                          >
-                            <span
-                              className="h-2 w-2 rounded-full"
-                              style={{ backgroundColor: tag.color ?? "hsl(var(--muted-foreground))" }}
-                            />
-                            <span className="flex-1 text-sm">{tag.label}</span>
-                            <Check
-                              className={cn(
-                                "size-3 text-primary",
-                                isSelected ? "opacity-100" : "opacity-0",
-                              )}
-                            />
-                          </CommandItem>
-                        )
-                      })}
-                    </CommandGroup>
-                  </CommandList>
-                </>
-              )}
-            </div>
+                  </div>
+                )}
+                <CommandList className="max-h-56">
+                  <CommandGroup>
+                    {matchingTags.map((tag) => {
+                      const isSelected = selectedTagIds.includes(tag.id)
+                      return (
+                        <CommandItem
+                          key={tag.id}
+                          value={`${tag.label} ${tag.type}`}
+                          onSelect={() => toggleTag(tag.id)}
+                          className="flex items-center gap-2"
+                        >
+                          <span
+                            className="h-2 w-2 rounded-full"
+                            style={{ backgroundColor: tag.color ?? "hsl(var(--muted-foreground))" }}
+                          />
+                          <span className="flex-1 text-sm">{tag.label}</span>
+                          <Check
+                            className={cn(
+                              "size-3 text-primary",
+                              isSelected ? "opacity-100" : "opacity-0",
+                            )}
+                          />
+                        </CommandItem>
+                      )
+                    })}
+                  </CommandGroup>
+                </CommandList>
+              </div>
+            )}
           </Command>
           {sortedTags.length === 0 ? (
             <p className="mt-3 text-xs text-muted-foreground">No tags have been created yet.</p>
