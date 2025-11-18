@@ -43,9 +43,9 @@ export const LoginPanel = () => {
 
   return (
     <div className="flex min-h-svh flex-col items-center justify-center bg-muted/30 px-4 py-10">
-      <div className="w-full max-w-sm rounded-2xl border bg-background/95 p-8 shadow-xl">
+      <div className="w-full max-w-md rounded-2xl border bg-background/95 p-8 shadow-xl">
         <div className="space-y-1 text-center">
-          <p className="text-sm uppercase tracking-[0.3em] text-muted-foreground">
+          <p className="text-sm uppercase text-muted-foreground">
             UX ARCHIVE
           </p>
           <h1 className="text-2xl font-semibold">Workspace sign-in</h1>
@@ -68,10 +68,6 @@ export const LoginPanel = () => {
             )}
             Continue with Google
           </Button>
-          <p className="text-xs text-muted-foreground">
-            On your first login, Supabase will request OAuth permissions. After approval,
-            you&apos;ll return to UX Archive automatically.
-          </p>
           {errorMessage ? (
             <p className="text-sm text-destructive">{errorMessage}</p>
           ) : null}
