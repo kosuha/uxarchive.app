@@ -1,5 +1,6 @@
 import { cache } from "react"
 import type { Metadata } from "next"
+import Link from "next/link"
 import { notFound } from "next/navigation"
 
 import { PublicPatternViewer } from "@/components/public-view/public-pattern-viewer"
@@ -197,6 +198,9 @@ export default async function SharePatternPage({ params }: SharePageProps) {
           <PublicPatternViewer pattern={data.pattern} captures={data.captures} insights={data.insights} />
         </div>
       </main>
+      <Link href="/" className="fixed bottom-1 right-4 text-xs tracking-tight text-muted-foreground transition-colors hover:text-primary">
+        uxarchive.app
+      </Link>
     </div>
   )
 }
