@@ -4,6 +4,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 
 import { PublicPatternViewer } from "@/components/public-view/public-pattern-viewer"
+import { PublicThemeToggle } from "@/components/public-view/public-theme-toggle"
 import type { Capture, Insight, Tag } from "@/lib/types"
 import { createCapturesRepository } from "@/lib/repositories/captures"
 import type { CaptureRecord } from "@/lib/repositories/captures"
@@ -198,6 +199,7 @@ export default async function SharePatternPage({ params }: SharePageProps) {
           <PublicPatternViewer pattern={data.pattern} captures={data.captures} insights={data.insights} />
         </div>
       </main>
+      <PublicThemeToggle />
       <Link href="/" className="fixed bottom-1 right-4 text-xs tracking-tight text-muted-foreground transition-colors hover:text-primary">
         uxarchive.app
       </Link>
