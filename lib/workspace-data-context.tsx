@@ -46,7 +46,10 @@ type WorkspaceMutations = {
   createFolder: (input: { name: string; parentId: string | null }) => Promise<void>
   updateFolder: (folderId: string, updates: { name?: string; parentId?: string | null }) => Promise<void>
   deleteFolder: (folderId: string) => Promise<void>
-  createTag: (input?: { label?: string; type?: TagType; color?: string | null }) => Promise<Tag>
+  createTag: (
+    input?: { label?: string; type?: TagType; color?: string | null },
+    options?: { onOptimisticCreate?: (tag: Tag) => void; onConfirmedCreate?: (tag: Tag) => void }
+  ) => Promise<Tag>
   updateTag: (tagId: string, updates: Partial<Pick<Tag, "label" | "type" | "color">>) => Promise<void>
   deleteTag: (tagId: string) => Promise<void>
   assignTagToPattern: (patternId: string, tagId: string) => Promise<void>
@@ -66,11 +69,12 @@ type PatternQueryData = {
   tagIdsByPattern: Record<string, string[]>
 }
 
-const mapTagRecordToTag = (record: { id: string; label: string; type: string; color: string | null }): Tag => ({
+const mapTagRecordToTag = (record: { id: string; label: string; type: string; color: string | null; createdAt: string }): Tag => ({
   id: record.id,
   label: record.label,
   type: record.type as TagType,
   color: record.color ?? undefined,
+  createdAt: record.createdAt,
 })
 
 const mapPatternRecordToPattern = (record: PatternRecord, favorites: Set<string>, tags: Tag[] = []): Pattern => ({
@@ -518,8 +522,14 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
     },
   })
 
+  type CreateTagMutationVariables = {
+    input?: { label?: string; type?: TagType; color?: string | null }
+    onOptimisticCreate?: (tag: Tag) => void
+    onConfirmedCreate?: (tag: Tag) => void
+  }
+
   const createTagMutation = useMutation({
-    mutationFn: async (input?: { label?: string; type?: TagType; color?: string | null }) => {
+    mutationFn: async ({ input }: CreateTagMutationVariables = {}) => {
       const workspaceId = ensureWorkspace()
       const record = await createTagAction({
         workspaceId,
@@ -529,7 +539,8 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
       })
       return mapTagRecordToTag(record)
     },
-    onMutate: async (input) => {
+    onMutate: async (variables) => {
+      const input = variables?.input
       setMutationError(null)
       if (!tagsQueryKey) return undefined
       await queryClient.cancelQueries({ queryKey: tagsQueryKey })
@@ -540,8 +551,10 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
         label: input?.label ?? "New tag",
         type: input?.type ?? "custom",
         color: input?.color ?? undefined,
+        createdAt: new Date().toISOString(),
       }
       queryClient.setQueryData<Tag[]>(tagsQueryKey, [optimisticTag, ...(previous ?? [])])
+      variables?.onOptimisticCreate?.(optimisticTag)
       return { previous, tempId }
     },
     onError: (error, _input, context) => {
@@ -550,7 +563,8 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
         queryClient.setQueryData(tagsQueryKey, context.previous)
       }
     },
-    onSuccess: (tag, _input, context) => {
+    onSuccess: (tag, variables, context) => {
+      variables?.onConfirmedCreate?.(tag)
       if (!tagsQueryKey) return
       queryClient.setQueryData<Tag[]>(tagsQueryKey, (prev) => {
         if (!prev) return [tag]
@@ -786,10 +800,15 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
     [queryClient, tagsQueryKey],
   )
 
+  const membershipPending = membershipQuery.isPending && !membershipQuery.data
+  const patternsPending = patternsQuery.isPending && !patternsQuery.data
+  const foldersPending = foldersQuery.isPending && !foldersQuery.data
+  const tagsPending = tagsQuery.isPending && !tagsQuery.data
+
   const loading =
     sessionLoading ||
-    membershipQuery.isPending ||
-    (Boolean(workspaceId) && (patternsQuery.isPending || foldersQuery.isPending || tagsQuery.isPending))
+    membershipPending ||
+    (Boolean(workspaceId) && (patternsPending || foldersPending || tagsPending))
 
   const queryError = membershipQuery.error ?? patternsQuery.error ?? foldersQuery.error ?? tagsQuery.error
 
@@ -838,7 +857,15 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
     [deleteFolderMutation],
   )
 
-  const createTag = React.useCallback<WorkspaceMutations["createTag"]>((input) => createTagMutation.mutateAsync(input), [createTagMutation])
+  const createTag = React.useCallback<WorkspaceMutations["createTag"]>(
+    (input, options) =>
+      createTagMutation.mutateAsync({
+        input,
+        onOptimisticCreate: options?.onOptimisticCreate,
+        onConfirmedCreate: options?.onConfirmedCreate,
+      }),
+    [createTagMutation],
+  )
 
   const updateTag = React.useCallback<WorkspaceMutations["updateTag"]>(
     (tagId, updates) => updateTagMutation.mutateAsync({ tagId, updates }).then(() => undefined),

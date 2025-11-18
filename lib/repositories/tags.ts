@@ -47,7 +47,7 @@ export const listTags = async (
   if (params.onlyActive) {
     query = query.eq("is_active", true)
   }
-  const { data, error } = await query.order("label", { ascending: true })
+  const { data, error } = await query.order("created_at", { ascending: false })
   ensureData(data, error, "Failed to load tags.")
   return (data as TagRow[]).map(mapTag)
 }

@@ -8,6 +8,7 @@ export interface Tag extends IdentifiableEntity {
   label: string
   type: TagType
   color?: string
+  createdAt: string
 }
 
 export interface Folder extends IdentifiableEntity {

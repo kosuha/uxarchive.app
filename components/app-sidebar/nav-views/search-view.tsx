@@ -43,7 +43,7 @@ export function SearchView({
   const normalizedQuery = trimmedQuery.toLowerCase()
 
   const sortedTags = React.useMemo(
-    () => [...tags].sort((a, b) => a.label.localeCompare(b.label, "ko")),
+    () => [...tags].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     [tags]
   )
 

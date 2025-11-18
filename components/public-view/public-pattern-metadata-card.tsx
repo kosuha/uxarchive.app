@@ -35,7 +35,7 @@ export function PublicPatternMetadataCard({
 }: PublicPatternMetadataCardProps) {
   const readableUpdatedAt = React.useMemo(() => formatDate(updatedAt), [updatedAt])
   const sortedTags = React.useMemo(
-    () => (tags?.length ? [...tags].sort((a, b) => a.label.localeCompare(b.label, "ko")) : []),
+    () => (tags?.length ? [...tags].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) : []),
     [tags],
   )
   const authorLabel = author?.trim() || "Unknown"

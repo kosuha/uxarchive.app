@@ -58,7 +58,7 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
   }, [isTagDialogOpen])
 
   const sortedTags = React.useMemo(
-    () => [...allTags].sort((a, b) => a.label.localeCompare(b.label, "ko")),
+    () => [...allTags].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     [allTags]
   )
 

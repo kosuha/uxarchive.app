@@ -54,21 +54,51 @@ const readTagSettingsState = (): TagSettingsViewState => {
 export function TagSettingsView() {
   const { tags, patterns, loading, error, mutations } = useWorkspaceData()
   const [activeTagId, setActiveTagId] = React.useState<string | null>(() => readTagSettingsState().activeTagId)
+  const pendingActiveTagIdRef = React.useRef<string | null>(null)
+  const selectActiveTag = React.useCallback((nextTagId: string | null) => {
+    pendingActiveTagIdRef.current = nextTagId
+    setActiveTagId(nextTagId)
+  }, [setActiveTagId])
   const tagRefs = React.useRef(new Map<string, HTMLButtonElement | null>())
   const [deleteDialogState, setDeleteDialogState] = React.useState<{ tagId: string; usageCount: number } | null>(null)
 
   const sortedTags = React.useMemo(() => {
-    return [...tags].sort((a, b) => a.label.localeCompare(b.label, "ko"))
+    return [...tags].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   }, [tags])
 
   React.useEffect(() => {
-    setActiveTagId((current) => {
-      if (current && sortedTags.some((tag) => tag.id === current)) {
-        return current
+    if (sortedTags.length === 0) {
+      pendingActiveTagIdRef.current = null
+      if (activeTagId !== null) {
+        setActiveTagId(null)
       }
-      return sortedTags[0]?.id ?? null
-    })
-  }, [sortedTags])
+      return
+    }
+
+    const pendingId = pendingActiveTagIdRef.current
+    if (pendingId) {
+      const pendingExists = sortedTags.some((tag) => tag.id === pendingId)
+      if (pendingExists) {
+        pendingActiveTagIdRef.current = null
+        if (activeTagId !== pendingId) {
+          setActiveTagId(pendingId)
+        }
+      }
+      return
+    }
+
+    if (activeTagId) {
+      const hasActive = sortedTags.some((tag) => tag.id === activeTagId)
+      if (hasActive) {
+        return
+      }
+    }
+
+    const fallbackId = sortedTags[0]?.id ?? null
+    if (fallbackId !== activeTagId) {
+      setActiveTagId(fallbackId)
+    }
+  }, [activeTagId, sortedTags])
 
   React.useEffect(() => {
     if (typeof window === "undefined") return
@@ -85,11 +115,11 @@ export function TagSettingsView() {
     const handleStorage = (event: StorageEvent) => {
       if (event.key !== TAG_SETTINGS_STATE_KEY) return
       const nextState = readTagSettingsState()
-      setActiveTagId(nextState.activeTagId)
+      selectActiveTag(nextState.activeTagId)
     }
     window.addEventListener("storage", handleStorage)
     return () => window.removeEventListener("storage", handleStorage)
-  }, [])
+  }, [selectActiveTag])
 
   const activeTag = React.useMemo(() => {
     return sortedTags.find((tag) => tag.id === activeTagId) ?? null
@@ -124,8 +154,13 @@ export function TagSettingsView() {
 
   const handleCreateTag = async () => {
     try {
-      const newTag = await mutations.createTag({ label: "New tag", type: "custom", color: DEFAULT_TAG_COLOR })
-      setActiveTagId(newTag.id)
+      await mutations.createTag(
+        { label: "New tag", type: "custom", color: DEFAULT_TAG_COLOR },
+        {
+          onOptimisticCreate: (tag) => selectActiveTag(tag.id),
+          onConfirmedCreate: (tag) => selectActiveTag(tag.id),
+        },
+      )
     } catch (mutationError) {
       console.error("Failed to create tag", mutationError)
     }
@@ -150,7 +185,13 @@ export function TagSettingsView() {
     async (tagId: string) => {
       try {
         await mutations.deleteTag(tagId)
-        setActiveTagId((current) => (current === tagId ? null : current))
+        setActiveTagId((current) => {
+          if (current !== tagId) {
+            return current
+          }
+          pendingActiveTagIdRef.current = null
+          return null
+        })
       } catch (mutationError) {
         console.error("Failed to delete tag", mutationError)
       }
@@ -221,7 +262,7 @@ export function TagSettingsView() {
                     <button
                       type="button"
                       key={tag.id}
-                      onClick={() => setActiveTagId(tag.id)}
+                      onClick={() => selectActiveTag(tag.id)}
                       ref={registerTagRef(tag.id)}
                       className={cn(
                         "relative rounded-full border border-transparent p-1 transition focus-visible:outline-none"
@@ -279,27 +320,38 @@ type TagEditPanelProps = {
 }
 
 function TagEditPanel({ tag, usageCount, onChange, onPreview }: TagEditPanelProps) {
-  if (!tag) {
-    return (
-      <div className="rounded-xl border border-dashed border-border/70 bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-        Select a tag to edit or create a new one.
-      </div>
-    )
-  }
+  const isDisabled = !tag
 
-  return <TagEditPanelContent tag={tag} usageCount={usageCount} onChange={onChange} onPreview={onPreview} />
+  return (
+    <div
+      className={cn(
+        "rounded-xl border border-border/60 bg-card p-4 transition-opacity",
+        isDisabled && "opacity-60"
+      )}
+      aria-disabled={isDisabled}
+    >
+      <TagEditPanelContent
+        tag={tag}
+        usageCount={usageCount}
+        onChange={onChange}
+        onPreview={onPreview}
+        disabled={isDisabled}
+      />
+    </div>
+  )
 }
 
 type TagEditPanelContentProps = {
-  tag: Tag
+  tag: Tag | null
   usageCount: number
   onChange: <K extends keyof Tag>(key: K, value: Tag[K]) => void
   onPreview: <K extends keyof Tag>(key: K, value: Tag[K]) => void
+  disabled?: boolean
 }
 
-function TagEditPanelContent({ tag, usageCount, onChange, onPreview }: TagEditPanelContentProps) {
-  const [labelValue, setLabelValue] = React.useState(tag.label)
-  const [colorValue, setColorValue] = React.useState(tag.color ?? DEFAULT_TAG_COLOR)
+function TagEditPanelContent({ tag, usageCount, onChange, onPreview, disabled }: TagEditPanelContentProps) {
+  const [labelValue, setLabelValue] = React.useState(tag?.label ?? "")
+  const [colorValue, setColorValue] = React.useState(tag?.color ?? DEFAULT_TAG_COLOR)
   const debounceRefs = React.useRef<{ label?: number; color?: number }>({})
   type DebounceKey = keyof typeof debounceRefs.current
 
@@ -319,11 +371,16 @@ function TagEditPanelContent({ tag, usageCount, onChange, onPreview }: TagEditPa
   }, [clearDebounce, onChange])
 
   React.useEffect(() => {
-    setLabelValue(tag.label)
-    setColorValue(tag.color ?? DEFAULT_TAG_COLOR)
+    if (!tag) {
+      setLabelValue("")
+      setColorValue(DEFAULT_TAG_COLOR)
+    } else {
+      setLabelValue(tag.label)
+      setColorValue(tag.color ?? DEFAULT_TAG_COLOR)
+    }
     clearDebounce("label")
     clearDebounce("color")
-  }, [tag.id, tag.label, tag.color, clearDebounce])
+  }, [tag, clearDebounce])
 
   React.useEffect(() => {
     return () => {
@@ -333,32 +390,33 @@ function TagEditPanelContent({ tag, usageCount, onChange, onPreview }: TagEditPa
   }, [clearDebounce])
 
   return (
-    <div className="rounded-xl border border-border/60 bg-card p-4">
+    <div className="flex h-full flex-col">
       <div className="flex items-start justify-between gap-4">
-        <div className="">
-          <p className="text-xs text-muted-foreground">
-            {`Linked to ${usageCount} patterns`}
-          </p>
+        <div>
+          <p className="text-xs text-muted-foreground">{`Linked to ${usageCount} patterns`}</p>
         </div>
       </div>
-      <div className="flex mt-4 gap-4">
-        <div className="space-y-2">
+      <div className="mt-4 flex flex-col gap-4 md:flex-row">
+        <div className="space-y-2 flex-1">
           <Input
             value={labelValue}
             onChange={(event) => {
               const next = event.target.value
               setLabelValue(next)
+              if (disabled || !tag) return
               onPreview("label", next)
               scheduleUpdate("label", next)
             }}
             placeholder="e.g., Onboarding"
+            disabled={disabled}
           />
         </div>
-        <div className="">
+        <div className={cn("flex items-center", disabled && "pointer-events-none opacity-70")} aria-disabled={disabled}>
           <TagColorPicker
             color={colorValue}
             onChange={(value) => {
               setColorValue(value)
+              if (disabled || !tag) return
               onPreview("color", value)
               scheduleUpdate("color", value)
             }}

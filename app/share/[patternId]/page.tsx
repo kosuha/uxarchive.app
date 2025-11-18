@@ -120,6 +120,7 @@ type PatternTagRow = {
     label: string
     type: Tag["type"]
     color: string | null
+    created_at: string
   } | null
 }
 
@@ -149,7 +150,7 @@ const loadPatternInsights = async (client: ServiceSupabaseClient, captureIds: st
 const loadPatternTags = async (client: ServiceSupabaseClient, patternId: string): Promise<Tag[]> => {
   const { data, error } = await client
     .from("pattern_tags")
-    .select("tag:tags(id, label, type, color)")
+    .select("tag:tags(id, label, type, color, created_at)")
     .eq("pattern_id", patternId)
 
   if (error) {
@@ -166,6 +167,7 @@ const loadPatternTags = async (client: ServiceSupabaseClient, patternId: string)
       label: tag.label,
       type: tag.type,
       color: tag.color ?? undefined,
+      createdAt: tag.created_at,
     }))
 }
 
