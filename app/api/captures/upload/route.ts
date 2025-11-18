@@ -7,7 +7,8 @@ import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server-clients"
 const SAFE_SEGMENT = /^[A-Za-z0-9_-]+$/
 const DEFAULT_VARIANT = "original"
 const DEFAULT_BUCKET = "ux-archive-captures"
-const SIGNED_URL_TTL_SECONDS = 60
+// Supabase signed upload URLs are valid for two hours by default
+const SIGNED_URL_TTL_SECONDS = 60 * 60 * 2
 const MEDIA_TYPE_VIDEO_PREFIX = "video/"
 
 class HttpError extends Error {
@@ -116,7 +117,7 @@ const resolveObjectPath = ({ workspaceId, patternId, captureId, filename, varian
 
 const createSignedUploadUrl = async (objectPath: string, bucket: string) => {
   const supabase = getServiceRoleSupabaseClient()
-  return supabase.storage.from(bucket).createSignedUploadUrl(objectPath, SIGNED_URL_TTL_SECONDS)
+  return supabase.storage.from(bucket).createSignedUploadUrl(objectPath, { upsert: false })
 }
 
 const requireAuthenticatedUser = async (supabase: RouteSupabaseClient): Promise<User> => {

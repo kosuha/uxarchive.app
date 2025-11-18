@@ -2,6 +2,13 @@ import type { SupabaseRepositoryClient } from "./types"
 import { RepositoryError } from "./types"
 import { ensureData } from "./utils"
 
+const getPostgrestErrorStatus = (error: unknown): number | undefined => {
+  if (typeof error !== "object" || error === null) return undefined;
+
+  const status = (error as { status?: unknown }).status;
+  return typeof status === "number" ? status : undefined;
+};
+
 const PATTERN_BASE_FIELDS =
   "id, workspace_id, folder_id, name, service_name, summary, author, is_public, is_archived, created_by, created_at, updated_at"
 
@@ -172,7 +179,7 @@ export const updatePattern = async (
 
   if (error) {
     throw new RepositoryError(`Failed to update pattern: ${error.message}`,
-      { cause: error, code: error.code, status: error.status })
+      { cause: error, code: error.code, status: getPostgrestErrorStatus(error) })
   }
 
   return getPatternById(client, { workspaceId: input.workspaceId, patternId: input.patternId })

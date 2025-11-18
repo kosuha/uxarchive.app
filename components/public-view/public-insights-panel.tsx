@@ -57,7 +57,7 @@ export function PublicInsightsPanel({ insights, highlightedInsightId, onHighligh
     [onHighlight],
   )
 
-  const insightRefs = React.useRef(new Map<string, HTMLDivElement>())
+  const insightRefs = React.useRef(new Map<string, HTMLElement>())
   const [allowAutoScroll, setAllowAutoScroll] = React.useState(false)
 
   React.useEffect(() => {

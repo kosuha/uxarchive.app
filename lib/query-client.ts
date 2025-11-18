@@ -1,7 +1,9 @@
 import { QueryClient, type QueryClientConfig, focusManager, onlineManager } from "@tanstack/react-query";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import type { Persister } from "@tanstack/query-persist-client-core";
-import localforage, { type LocalForage } from "localforage";
+import localforage from "localforage";
+
+type LocalForageInstance = ReturnType<typeof localforage.createInstance>;
 
 const isServer = typeof window === "undefined";
 
@@ -37,7 +39,7 @@ export const getQueryClient = () => {
 };
 
 let persister: Persister | undefined;
-let browserStorage: LocalForage | undefined;
+let browserStorage: LocalForageInstance | undefined;
 
 const getLocalForageInstance = () => {
   if (isServer) return undefined;

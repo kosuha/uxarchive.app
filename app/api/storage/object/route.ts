@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import type { SupabaseClient } from "@supabase/supabase-js"
+import type { SupabaseClient, User } from "@supabase/supabase-js"
 
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server-clients"
 
@@ -20,6 +20,16 @@ type RouteSupabaseClient = SupabaseClient
 const resolveBucketName = (explicit?: string | null) =>
   explicit?.trim() || process.env.SUPABASE_STORAGE_BUCKET || DEFAULT_BUCKET
 
+const isNotFoundStorageError = (error: unknown) => {
+  if (!error || typeof error !== "object") return false
+  const withCodes = error as { statusCode?: string | number; status?: string | number }
+  return (
+    withCodes.statusCode === "404" ||
+    withCodes.statusCode === 404 ||
+    withCodes.status === 404
+  )
+}
+
 const sanitizeObjectPath = (value: string | null) => {
   if (!value) {
     throw new HttpError("The path query parameter is required.", 400)
@@ -34,7 +44,7 @@ const sanitizeObjectPath = (value: string | null) => {
   return normalized
 }
 
-const requireAuthenticatedUser = async (supabase: RouteSupabaseClient): Promise<void> => {
+const requireAuthenticatedUser = async (supabase: RouteSupabaseClient): Promise<User> => {
   const {
     data: { user },
     error,
@@ -66,7 +76,7 @@ export const GET = async (request: Request) => {
 
     const { data, error } = await supabase.storage.from(bucket).download(objectPath)
     if (error || !data) {
-      if (error?.statusCode === "404" || error?.statusCode === 404) {
+      if (isNotFoundStorageError(error)) {
         throw new HttpError("The requested object was not found.", 404)
       }
       throw new Error(error?.message || "Failed to download the storage object.")

@@ -305,7 +305,7 @@ export const usePatternDetail = (patternId?: string | null) => {
     },
     onMutate: async (variables) => {
       if (!patternDetailQueryKey) {
-        return
+        return {}
       }
 
       await queryClient.cancelQueries({ queryKey: patternDetailQueryKey })

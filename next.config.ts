@@ -1,8 +1,15 @@
 import type { NextConfig } from "next"
+import type { RemotePattern } from "next/dist/shared/lib/image-config"
 
 const DEFAULT_STORAGE_BUCKET = "ux-archive-captures"
 
-const resolveStorageRemotePattern = () => {
+const normalizeProtocol = (value?: string): RemotePattern["protocol"] => {
+  if (!value) return undefined
+  const normalized = value.replace(/:$/, "")
+  return normalized === "http" || normalized === "https" ? normalized : undefined
+}
+
+const resolveStorageRemotePattern = (): RemotePattern | null => {
   const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET?.trim() || DEFAULT_STORAGE_BUCKET
   const customEndpoint = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_ENDPOINT?.trim()?.replace(/\/$/, "")
 
@@ -11,7 +18,7 @@ const resolveStorageRemotePattern = () => {
       const endpointUrl = new URL(customEndpoint)
       const pathname = `${endpointUrl.pathname.replace(/\/$/, "") || ""}/${bucket}/**`
       return {
-        protocol: endpointUrl.protocol.replace(":", ""),
+        protocol: normalizeProtocol(endpointUrl.protocol),
         hostname: endpointUrl.hostname,
         pathname: pathname.startsWith("/") ? pathname : `/${pathname}`,
       }

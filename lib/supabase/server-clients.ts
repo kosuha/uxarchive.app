@@ -1,6 +1,5 @@
 import { cookies } from "next/headers"
 import { createRouteHandlerClient, createServerActionClient } from "@supabase/auth-helpers-nextjs"
-import type { SupabaseClient } from "@supabase/supabase-js"
 
 const requireEnv = (key: string) => {
   const value = process.env[key]
@@ -13,18 +12,18 @@ const requireEnv = (key: string) => {
 const supabaseUrl = requireEnv("NEXT_PUBLIC_SUPABASE_URL")
 const supabaseAnonKey = requireEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
 
-const resolveCookieStore = async () => await cookies()
+const resolveCookieStore = () => cookies()
 
-const createRouteClient = async (): Promise<SupabaseClient> => {
-  const cookieStore = await resolveCookieStore()
+const createRouteClient = () => {
+  const cookieStore = resolveCookieStore()
   return createRouteHandlerClient(
     { cookies: () => cookieStore },
     { supabaseUrl, supabaseKey: supabaseAnonKey },
   )
 }
 
-const createServerAction = async (): Promise<SupabaseClient> => {
-  const cookieStore = await resolveCookieStore()
+const createServerAction = () => {
+  const cookieStore = resolveCookieStore()
   return createServerActionClient(
     { cookies: () => cookieStore },
     { supabaseUrl, supabaseKey: supabaseAnonKey },
