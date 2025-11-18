@@ -177,7 +177,7 @@ export function TagSettingsView() {
   }
 
   const handleRequestDeleteTag = () => {
-    if (!activeTag) return
+    if (!activeTag || activeTag.id.startsWith("temp-tag-")) return
     const usageCount = usageCountByTag.get(activeTag.id) ?? 0
     setDeleteDialogState({ tagId: activeTag.id, usageCount })
   }
@@ -199,6 +199,8 @@ export function TagSettingsView() {
     },
     [mutations]
   )
+
+  const isDeleteDisabled = !activeTag || activeTag.id.startsWith("temp-tag-")
 
   const handleConfirmDeleteTag = React.useCallback(() => {
     if (!deleteDialogState) return
@@ -246,7 +248,13 @@ export function TagSettingsView() {
             <Button variant="ghost" size="icon" onClick={handleCreateTag}>
               <Plus className="size-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={handleRequestDeleteTag} aria-label="Delete tag">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleRequestDeleteTag}
+              aria-label="Delete tag"
+              disabled={isDeleteDisabled}
+            >
               <Trash2 className="size-4" />
             </Button>
           </div>
