@@ -13,8 +13,11 @@ const requireEnv = (key: string) => {
 
 export const getServerSupabaseClient = async (): Promise<ServerSupabaseClient> => {
   const cookieStore = await cookies()
+  const context = { cookies: () => cookieStore } as unknown as {
+    cookies: () => ReturnType<typeof cookies>
+  }
   return createServerComponentClient(
-    { cookies: () => cookieStore },
+    context,
     {
       supabaseUrl: requireEnv("NEXT_PUBLIC_SUPABASE_URL"),
       supabaseKey: requireEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"),

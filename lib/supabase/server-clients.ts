@@ -18,16 +18,23 @@ const resolveCookieStore = async () => {
 
 const createRouteClient = async () => {
   const cookieStore = await resolveCookieStore()
+  // The Supabase helper types still expect the legacy synchronous cookies() signature.
+  const context = { cookies: () => cookieStore } as unknown as {
+    cookies: () => ReturnType<typeof cookies>
+  }
   return createRouteHandlerClient(
-    { cookies: () => cookieStore },
+    context,
     { supabaseUrl, supabaseKey: supabaseAnonKey },
   )
 }
 
 const createServerAction = async () => {
   const cookieStore = await resolveCookieStore()
+  const context = { cookies: () => cookieStore } as unknown as {
+    cookies: () => ReturnType<typeof cookies>
+  }
   return createServerActionClient(
-    { cookies: () => cookieStore },
+    context,
     { supabaseUrl, supabaseKey: supabaseAnonKey },
   )
 }
