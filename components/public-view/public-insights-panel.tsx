@@ -58,22 +58,44 @@ export function PublicInsightsPanel({ insights, highlightedInsightId, onHighligh
   )
 
   const insightRefs = React.useRef(new Map<string, HTMLDivElement>())
+  const [allowAutoScroll, setAllowAutoScroll] = React.useState(false)
 
   React.useEffect(() => {
-    if (!highlightedInsightId) return
+    if (typeof window === "undefined") return
+    const query = window.matchMedia("(min-width: 1024px)")
+    const update = (event?: MediaQueryList | MediaQueryListEvent) =>
+      setAllowAutoScroll(event ? event.matches : query.matches)
+    update()
+    const handler = (event: MediaQueryListEvent) => update(event)
+    if (query.addEventListener) {
+      query.addEventListener("change", handler)
+    } else if (query.addListener) {
+      query.addListener(handler)
+    }
+    return () => {
+      if (query.removeEventListener) {
+        query.removeEventListener("change", handler)
+      } else if (query.removeListener) {
+        query.removeListener(handler)
+      }
+    }
+  }, [])
+
+  React.useEffect(() => {
+    if (!highlightedInsightId || !allowAutoScroll) return
     const target = insightRefs.current.get(highlightedInsightId)
     if (!target) return
     target.scrollIntoView({ block: "nearest", behavior: "smooth" })
-  }, [highlightedInsightId])
+  }, [highlightedInsightId, allowAutoScroll])
 
   return (
-    <section className="flex h-full flex-1 basis-0 min-h-0 flex-col rounded-xl border border-border/60 bg-card shadow-sm">
+    <section className="flex flex-col rounded-xl border border-border/60 bg-card shadow-sm lg:h-full lg:flex-1 lg:basis-0 lg:min-h-0">
       <header className="flex items-center justify-between border-b border-border/60 px-6 py-4">
         <p className="text-md font-semibold">Insights</p>
         <span className="text-xs text-muted-foreground">{getCountLabel(sortedInsights.length)}</span>
       </header>
-      <div className="flex flex-1 basis-0 min-h-0 flex-col px-2 py-0">
-        <ScrollArea className="flex-1 basis-0 min-h-0">
+      <div className="flex flex-col px-2 py-0 lg:flex-1 lg:basis-0 lg:min-h-0">
+        <ScrollArea className="lg:flex-1 lg:basis-0 lg:min-h-0">
           <div className="space-y-2 pb-4 pt-4">
             {sortedInsights.length ? (
               sortedInsights.map((insight, index) => {

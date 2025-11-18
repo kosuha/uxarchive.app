@@ -42,7 +42,7 @@ export function PublicPatternViewer({ pattern, captures, insights }: PublicPatte
 
   return (
     <div className="flex h-full w-full min-h-[600px] flex-1 flex-col gap-6 lg:min-h-0 lg:flex-row">
-      <aside className="order-2 flex w-full max-w-[360px] flex-shrink-0 flex-col gap-4 min-h-0 lg:order-1 lg:w-[320px] lg:h-full">
+      <aside className="order-1 flex w-full max-w-full flex-shrink-0 flex-col gap-4 min-h-0 lg:order-1 lg:h-full lg:w-[320px] lg:max-w-[360px]">
         <PublicPatternMetadataCard
           patternName={pattern.name}
           serviceName={pattern.serviceName}
@@ -52,7 +52,7 @@ export function PublicPatternViewer({ pattern, captures, insights }: PublicPatte
           updatedAt={pattern.updatedAt}
         />
       </aside>
-      <div className="order-1 flex h-full min-h-0 flex-1 lg:order-2">
+      <div className="order-2 flex h-full min-h-0 flex-1 lg:order-2">
         <CanvasSection
           activeCapture={activeCapture}
           activeCaptureId={activeCaptureId}
@@ -74,7 +74,7 @@ export function PublicPatternViewer({ pattern, captures, insights }: PublicPatte
           onDeleteCapture={noop}
         />
       </div>
-      <aside className="order-3 flex w-full max-w-[360px] flex-shrink-0 flex-col gap-4 lg:order-3 lg:w-[320px] lg:h-full">
+      <aside className="order-3 flex w-full max-w-full flex-shrink-0 flex-col gap-4 lg:order-3 lg:h-full lg:w-[320px] lg:max-w-[360px]">
         <PublicInsightsPanel
           insights={captureInsights}
           highlightedInsightId={highlightedInsightId}
