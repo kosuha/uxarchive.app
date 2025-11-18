@@ -106,6 +106,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
   const { user, loading: sessionLoading } = useSupabaseSession()
   const queryClient = useQueryClient()
   const [mutationError, setMutationError] = React.useState<string | null>(null)
+  const patternMutationVersionsRef = React.useRef<Map<string, number>>(new Map()) // drop stale mutation responses
 
   const fetchWorkspaceMembership = React.useCallback(async (): Promise<WorkspaceMembership> => {
     if (!user) {
@@ -351,7 +352,9 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
           tagIdsByPattern: previous.tagIdsByPattern,
         })
       }
-      return { previous }
+      const nextVersion = (patternMutationVersionsRef.current.get(patternId) ?? 0) + 1
+      patternMutationVersionsRef.current.set(patternId, nextVersion)
+      return { previous, version: nextVersion, patternId }
     },
     onError: (error, _input, context) => {
       setMutationError(toErrorMessage(error))
@@ -359,8 +362,16 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
         queryClient.setQueryData(patternsQueryKey, context.previous)
       }
     },
-    onSuccess: (record) => {
+    onSuccess: (record, _input, context) => {
       if (!patternsQueryKey) return
+      const latestVersion = context?.patternId ? patternMutationVersionsRef.current.get(context.patternId) : undefined
+      if (
+        typeof latestVersion === "number" &&
+        typeof context?.version === "number" &&
+        context.version !== latestVersion
+      ) {
+        return
+      }
       queryClient.setQueryData<PatternQueryData>(patternsQueryKey, (prev) => {
         if (!prev) {
           return { records: [record], tagIdsByPattern: { [record.id]: [] } }

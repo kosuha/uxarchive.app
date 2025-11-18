@@ -96,6 +96,7 @@ const resolveCaptureImageUrl = (record: CaptureRecord) => {
 export const usePatternDetail = (patternId?: string | null) => {
   const { workspaceId } = useWorkspaceData()
   const queryClient = useQueryClient()
+  const insightMutationVersionsRef = React.useRef<Map<string, number>>(new Map()) // prevent stale marker updates
 
   const mapCaptureRecord = React.useCallback((record: CaptureRecord) => {
     return {
@@ -509,6 +510,8 @@ export const usePatternDetail = (patternId?: string | null) => {
       if (!patternId) {
         throw new Error("Pattern information is missing.")
       }
+      const mutationVersion = (insightMutationVersionsRef.current.get(input.insightId) ?? 0) + 1
+      insightMutationVersionsRef.current.set(input.insightId, mutationVersion)
       setDetailData((current) => ({
         captures: current.captures,
         insights: current.insights.map((insight) => {
@@ -533,6 +536,11 @@ export const usePatternDetail = (patternId?: string | null) => {
           y: input.y,
           note: input.note,
         })
+
+        const latestVersion = insightMutationVersionsRef.current.get(record.id)
+        if (typeof latestVersion === "number" && mutationVersion !== latestVersion) {
+          return
+        }
 
         setDetailData((current) => ({
           captures: current.captures,
