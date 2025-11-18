@@ -181,7 +181,7 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
               onKeyDown={handleServiceKeyDown}
               placeholder="Enter a service name"
               maxLength={PATTERN_SERVICE_NAME_MAX_LENGTH}
-              className="text-muted-foreground rounded-none shadow-none hover:bg-primary/10 focus-visible:ring-0 focus-visible:border-none border-none bg-transparent px-0 py-0 !text-xs uppercase tracking-wide h-auto"
+              className="text-muted-foreground rounded-none shadow-none hover:bg-primary/10 focus-visible:ring-0 focus-visible:border-none border-none bg-transparent px-0 py-0 !text-xs tracking-wide h-auto"
             />
             <Input
               value={nameValue}

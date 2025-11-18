@@ -23,6 +23,7 @@ import type { FolderRecord } from "@/lib/repositories/folders"
 import type { PatternRecord } from "@/lib/repositories/patterns"
 import type { TagType, Pattern, Folder, Tag } from "@/lib/types"
 import { useSupabaseSession } from "@/lib/supabase/session-context"
+import { DEFAULT_PATTERN_SERVICE_NAME } from "@/lib/pattern-constants"
 
 type WorkspaceDataContextValue = {
   workspaceId: string | null
@@ -248,7 +249,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
         workspaceId,
         folderId: input.folderId ?? null,
         name: input.name,
-        serviceName: input.serviceName ?? input.name,
+        serviceName: input.serviceName ?? DEFAULT_PATTERN_SERVICE_NAME,
         summary: input.summary ?? "",
         author: getAuthorName(),
       })
@@ -267,7 +268,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
         workspaceId: ensureWorkspace(),
         folderId: input.folderId ?? null,
         name: input.name,
-        serviceName: input.serviceName ?? input.name,
+        serviceName: input.serviceName ?? DEFAULT_PATTERN_SERVICE_NAME,
         summary: input.summary ?? "",
         author: getAuthorName(),
         isPublic: false,

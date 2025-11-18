@@ -1,6 +1,8 @@
 "use client"
 
-import { LogOut, UserRound } from "lucide-react"
+import * as React from "react"
+import { LogOut, Moon, Sun, UserRound } from "lucide-react"
+import { useTheme } from "next-themes"
 
 import {
   Avatar,
@@ -15,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Switch } from "@/components/ui/switch"
 import {
   SidebarMenu,
   SidebarMenuButton,
@@ -51,6 +54,14 @@ const getInitials = (email?: string | null, fallback?: string) => {
 export function NavUser() {
   const { isMobile } = useSidebar()
   const { user, signOut, loading } = useSupabaseSession()
+  const { resolvedTheme, setTheme } = useTheme()
+  const [isMounted, setIsMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  const isDarkMode = isMounted && resolvedTheme === "dark"
 
   const metadata = (user?.user_metadata ?? {}) as {
     avatar_url?: string
@@ -66,6 +77,10 @@ export function NavUser() {
   const handleSignOut = async () => {
     if (!user) return
     await signOut()
+  }
+
+  const handleThemeToggle = (checked: boolean) => {
+    setTheme(checked ? "dark" : "light")
   }
 
   return (
@@ -105,6 +120,24 @@ export function NavUser() {
                 </div>
               </div>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="cursor-default focus:bg-transparent focus:text-foreground"
+              onSelect={(event) => event.preventDefault()}
+            >
+              <div className="flex w-full items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  {isDarkMode ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                  <span>Dark mode</span>
+                </div>
+                <Switch
+                  checked={isDarkMode}
+                  onCheckedChange={handleThemeToggle}
+                  disabled={!isMounted}
+                  aria-label="Toggle dark mode"
+                />
+              </div>
+            </DropdownMenuItem>
             {user ? (
               <>
                 <DropdownMenuSeparator />

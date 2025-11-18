@@ -46,7 +46,7 @@ export function PublicPatternMetadataCard({
     <section className="flex h-full min-h-0 flex-1 flex-col rounded-xl border border-border/60 bg-card p-6 shadow-sm">
       <div className="flex flex-col gap-2">
         {serviceName ? (
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{serviceName}</p>
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground">{serviceName}</p>
         ) : null}
         <h2 className="text-xl font-semibold leading-tight text-foreground">{patternName}</h2>
       </div>

@@ -12,15 +12,18 @@ import {
 import { SyncStatusProvider } from "@/lib/sync-status-context"
 import { SessionProvider } from "@/lib/supabase/session-context"
 import { SyncStatusListener } from "@/components/sync-status-listener"
+import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 
 const ProviderTree = ({ children }: { children: React.ReactNode }) => (
-  <SessionProvider>
-    <SyncStatusProvider>
-      {children}
-      <SyncStatusListener />
-    </SyncStatusProvider>
-  </SessionProvider>
+  <ThemeProvider>
+    <SessionProvider>
+      <SyncStatusProvider>
+        {children}
+        <SyncStatusListener />
+      </SyncStatusProvider>
+    </SessionProvider>
+  </ThemeProvider>
 )
 
 export function AppProviders({ children }: { children: React.ReactNode }) {

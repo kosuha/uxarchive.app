@@ -4,6 +4,7 @@ import type { CreatePatternInput } from "@/lib/repositories/patterns"
 import { createPatternsRepository } from "@/lib/repositories/patterns"
 import { RepositoryError } from "@/lib/repositories/types"
 import { PATTERN_NAME_MAX_LENGTH, PATTERN_SERVICE_NAME_MAX_LENGTH } from "@/lib/field-limits"
+import { DEFAULT_PATTERN_SERVICE_NAME } from "@/lib/pattern-constants"
 
 import {
   createActionSupabaseClient,
@@ -25,7 +26,8 @@ export const listWorkspacePatternsAction = async (workspaceId: string) => {
   return repo.list({ workspaceId })
 }
 
-type CreatePatternActionInput = Omit<CreatePatternInput, "createdBy"> & {
+type CreatePatternActionInput = Omit<CreatePatternInput, "createdBy" | "serviceName"> & {
+  serviceName?: string
   createdBy?: string | null
 }
 
@@ -34,15 +36,17 @@ export const createPatternAction = async (input: CreatePatternActionInput) => {
     throw new RepositoryError("workspaceId is required.")
   }
 
+  const serviceName = input.serviceName ?? DEFAULT_PATTERN_SERVICE_NAME
+
   ensureMaxLength(input.name, PATTERN_NAME_MAX_LENGTH, "Pattern name")
-  ensureMaxLength(input.serviceName, PATTERN_SERVICE_NAME_MAX_LENGTH, "Service name")
+  ensureMaxLength(serviceName, PATTERN_SERVICE_NAME_MAX_LENGTH, "Service name")
 
   const supabase = await createActionSupabaseClient()
   const user = await requireAuthenticatedUser(supabase)
   await ensureWorkspaceRole(supabase, input.workspaceId, "editor")
 
   const repo = createPatternsRepository(supabase)
-  return repo.create({ ...input, createdBy: input.createdBy ?? user.id })
+  return repo.create({ ...input, serviceName, createdBy: input.createdBy ?? user.id })
 }
 
 type UpdatePatternActionInput = {
