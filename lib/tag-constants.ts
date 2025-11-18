@@ -1,6 +1,6 @@
 import type { Tag } from "./types"
 
-export const DEFAULT_TAG_COLOR = "#6366F1"
+export const DEFAULT_TAG_COLOR = "#5ea500"
 
 export const TAG_TYPE_LABELS: Record<Tag["type"], string> = {
   "service-category": "Service",
