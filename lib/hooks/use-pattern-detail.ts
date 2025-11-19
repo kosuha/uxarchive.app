@@ -13,6 +13,7 @@ import {
 } from "@/app/actions/pattern-detail"
 import type { CaptureRecord } from "@/lib/repositories/captures"
 import type { Capture, Insight } from "@/lib/types"
+import { measureImageDimensions, optimizeCaptureFile } from "@/lib/utils/capture-optimizer"
 import { useWorkspaceData } from "@/lib/workspace-data-context"
 
 type UploadCaptureInput = {
@@ -97,6 +98,8 @@ export const usePatternDetail = (patternId?: string | null) => {
   const { workspaceId } = useWorkspaceData()
   const queryClient = useQueryClient()
   const insightMutationVersionsRef = React.useRef<Map<string, number>>(new Map()) // prevent stale marker updates
+  const pendingCaptureOrderRef = React.useRef<string[] | null>(null)
+  const pendingUploadCountRef = React.useRef(0)
 
   const mapCaptureRecord = React.useCallback((record: CaptureRecord) => {
     return {
@@ -173,6 +176,17 @@ export const usePatternDetail = (patternId?: string | null) => {
     [patternDetailQueryKey, queryClient],
   )
 
+  const getCachedCaptureOrder = React.useCallback(() => {
+    if (!patternDetailQueryKey) {
+      return []
+    }
+    const cached = queryClient.getQueryData<PatternDetailQueryData>(patternDetailQueryKey)
+    if (!cached) {
+      return []
+    }
+    return cached.captures.map((capture) => capture.id)
+  }, [patternDetailQueryKey, queryClient])
+
   const persistCaptureOrder = React.useCallback(
     async (orderedIds: string[], overridePatternId?: string) => {
       const targetPatternId = overridePatternId ?? patternId
@@ -229,6 +243,8 @@ export const usePatternDetail = (patternId?: string | null) => {
     patternId: string
     workspaceId: string
     orderedIds: string[]
+    width?: number
+    height?: number
   }
 
   type UploadCaptureMutationContext = {
@@ -279,7 +295,12 @@ export const usePatternDetail = (patternId?: string | null) => {
         throw new Error("Failed to upload capture file.")
       }
 
-      const { width, height } = await readImageDimensions(file)
+      const dimensionSource =
+        typeof variables.width === "number" || typeof variables.height === "number"
+          ? { width: variables.width, height: variables.height }
+          : await measureImageDimensions(file)
+      const width = typeof dimensionSource.width === "number" ? dimensionSource.width : undefined
+      const height = typeof dimensionSource.height === "number" ? dimensionSource.height : undefined
 
       const finalizeResponse = await fetch("/api/captures/finalize", {
         method: "POST",
@@ -392,24 +413,50 @@ export const usePatternDetail = (patternId?: string | null) => {
       }
 
       const captureId = globalThis.crypto?.randomUUID?.() ?? `capture-${Date.now()}`
-      const currentData = queryClient.getQueryData<PatternDetailQueryData>(patternDetailQueryKey) ?? createEmptyDetailData()
-      const currentIds = currentData.captures.map((capture) => capture.id)
+      const cachedOrder = getCachedCaptureOrder()
+      const currentIds = pendingCaptureOrderRef.current ?? cachedOrder
       const normalizedOrder = Math.min(Math.max(desiredOrder, 1), currentIds.length + 1)
       const orderedIds = [...currentIds]
       orderedIds.splice(normalizedOrder - 1, 0, captureId)
+      pendingCaptureOrderRef.current = orderedIds
+      pendingUploadCountRef.current += 1
 
-      await uploadCaptureMutation.mutateAsync({
-        file,
-        desiredOrder: normalizedOrder,
-        captureId,
-        patternId,
-        workspaceId,
-        orderedIds,
-      })
+      let optimizedFile = file
+      let optimizedWidth: number | undefined
+      let optimizedHeight: number | undefined
+      try {
+        const optimization = await optimizeCaptureFile(file)
+        optimizedFile = optimization.file
+        optimizedWidth = optimization.width
+        optimizedHeight = optimization.height
+      } catch (error) {
+        console.warn("[usePatternDetail] capture optimization failed, using original file", error)
+      }
+
+      try {
+        await uploadCaptureMutation.mutateAsync({
+          file: optimizedFile,
+          desiredOrder: normalizedOrder,
+          captureId,
+          patternId,
+          workspaceId,
+          orderedIds,
+          width: optimizedWidth,
+          height: optimizedHeight,
+        })
+      } finally {
+        pendingUploadCountRef.current = Math.max(0, pendingUploadCountRef.current - 1)
+        if (pendingUploadCountRef.current === 0) {
+          pendingCaptureOrderRef.current = null
+        } else {
+          const snapshot = getCachedCaptureOrder()
+          pendingCaptureOrderRef.current = snapshot.length ? snapshot : pendingCaptureOrderRef.current
+        }
+      }
 
       return captureId
     },
-    [patternDetailQueryKey, patternId, queryClient, uploadCaptureMutation, workspaceId],
+    [getCachedCaptureOrder, patternDetailQueryKey, patternId, uploadCaptureMutation, workspaceId],
   )
 
   const reorderCaptures = React.useCallback(
@@ -603,23 +650,4 @@ export const usePatternDetail = (patternId?: string | null) => {
     updateInsight,
     deleteInsight,
   }
-}
-
-const readImageDimensions = async (file: File): Promise<{ width?: number; height?: number }> => {
-  if (!file.type.startsWith("image/")) {
-    return {}
-  }
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file)
-    const image = new Image()
-    image.onload = () => {
-      URL.revokeObjectURL(url)
-      resolve({ width: Math.round(image.width), height: Math.round(image.height) })
-    }
-    image.onerror = () => {
-      URL.revokeObjectURL(url)
-      resolve({})
-    }
-    image.src = url
-  })
 }

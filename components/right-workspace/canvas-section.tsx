@@ -1184,9 +1184,10 @@ function CaptureUploadDialog({
     try {
       const maxOrder = captureCount + 1
       const baseOrder = Math.min(Math.max(order, 1), maxOrder)
-      for (const [index, item] of selectedFiles.entries()) {
-        await onUploadCapture({ file: item.file, order: baseOrder + index })
-      }
+      const uploadTasks = selectedFiles.map((item, index) =>
+        Promise.resolve(onUploadCapture({ file: item.file, order: baseOrder + index }))
+      )
+      await Promise.all(uploadTasks)
       setOpen(false)
     } catch (error) {
       console.error("capture upload preparation failed", error)
