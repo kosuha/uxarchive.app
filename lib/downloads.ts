@@ -65,11 +65,13 @@ export const downloadRemoteImage = async (url: string, filename: string) => {
   downloadBlob(blob, ensureExtension(normalizedFilename, extension ?? "png"))
 }
 
-let jsZipModulePromise: Promise<typeof import("jszip")> | null = null
+type JsZipModule = typeof import("jszip")
+
+let jsZipModulePromise: Promise<{ default: JsZipModule }> | null = null
 
 const getJsZipModule = () => {
   if (!jsZipModulePromise) {
-    jsZipModulePromise = import("jszip")
+    jsZipModulePromise = import("jszip") as Promise<{ default: JsZipModule }>
   }
   return jsZipModulePromise
 }
