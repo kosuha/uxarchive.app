@@ -502,7 +502,7 @@ function CaptureCanvas({
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden">
       <div className="absolute inset-x-0 -z-10 h-[25%] bg-gradient-to-b from-primary/10 to-transparent" />
-      <div className="relative flex h-full w-full max-w-[960px] items-center justify-center">
+      <div className="relative flex h-full w-full flex-1 items-center justify-center">
         <div
           ref={canvasRef}
           className={cn(
@@ -618,8 +618,11 @@ function CaptureCanvas({
                                   ) : (
                                     <TooltipTrigger asChild>{button}</TooltipTrigger>
                                   )}
-                                  <TooltipContent side="top">
-                                    <p className="max-w-[220px] text-xs">{noteText}</p>
+                                  <TooltipContent
+                                    side="top"
+                                    className="max-w-[240px] whitespace-pre-line break-words text-left [text-wrap:wrap]"
+                                  >
+                                    <p className="text-xs leading-relaxed w-full">{noteText}</p>
                                   </TooltipContent>
                                 </Tooltip>
                               )
