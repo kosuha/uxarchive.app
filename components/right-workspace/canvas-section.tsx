@@ -5,9 +5,10 @@ import Image from "next/image"
 import { Layer, Stage, Image as KonvaImage } from "react-konva"
 import { Html } from "react-konva-utils"
 import useImage from "use-image"
-import { GalleryHorizontalEnd, ImageUpscale, Loader2, MessageCircle, Minus, Plus, Trash2, UploadCloud } from "lucide-react"
+import { Download, FolderArchive, GalleryHorizontalEnd, ImageUpscale, Loader2, MessageCircle, Minus, Plus, Trash2, UploadCloud } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { useToast } from "@/components/ui/use-toast"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +38,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+import { downloadRemoteImage, downloadZipFromUrls, sanitizeFilename } from "@/lib/downloads"
 import type { Capture, Insight } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -56,6 +58,7 @@ type CanvasSectionProps = {
   highlightedInsightId: string | null
   isAddingInsight: boolean
   isPlacingInsight: boolean
+  patternName?: string
   readOnly?: boolean
   shareButton?: React.ReactNode
   onCanvasPlace: (point: CanvasPoint) => void
@@ -80,6 +83,7 @@ export function CanvasSection({
   highlightedInsightId,
   isAddingInsight,
   isPlacingInsight,
+  patternName,
   readOnly,
   shareButton,
   onCanvasPlace,
@@ -93,6 +97,58 @@ export function CanvasSection({
   onDeleteCapture,
 }: CanvasSectionProps) {
   const readOnlyMode = Boolean(readOnly)
+  const { toast } = useToast()
+  const [isCaptureDownloadPending, setCaptureDownloadPending] = React.useState(false)
+  const [isPatternDownloadPending, setPatternDownloadPending] = React.useState(false)
+  const patternFilenameToken = React.useMemo(() => sanitizeFilename(patternName ?? "pattern"), [patternName])
+  const hasDownloadablePattern = React.useMemo(() => captures.some((item) => Boolean(item.imageUrl)), [captures])
+
+  const handleDownloadActiveCapture = React.useCallback(async () => {
+    if (!activeCapture?.imageUrl) return
+    setCaptureDownloadPending(true)
+    const orderLabel = captureOrder > 0 ? String(captureOrder).padStart(2, "0") : String(activeCapture.order ?? 1).padStart(2, "0")
+    const baseFilename = `${patternFilenameToken}-capture-${orderLabel}`
+    try {
+      await downloadRemoteImage(activeCapture.imageUrl, baseFilename)
+      toast({ title: "다운로드 준비 중", description: "현재 캡처 이미지를 저장합니다." })
+    } catch (error) {
+      console.error("Failed to download capture image", error)
+      toast({
+        variant: "destructive",
+        title: "캡처 이미지 다운로드 실패",
+        description: error instanceof Error ? error.message : "다시 시도해주세요.",
+      })
+    } finally {
+      setCaptureDownloadPending(false)
+    }
+  }, [activeCapture, captureOrder, patternFilenameToken, toast])
+
+  const handleDownloadPatternImages = React.useCallback(async () => {
+    if (!hasDownloadablePattern) return
+    setPatternDownloadPending(true)
+    try {
+      const zipEntries = captures
+        .filter((item) => Boolean(item.imageUrl))
+        .map((item, index) => ({
+          url: item.imageUrl,
+          filename: `${patternFilenameToken}-capture-${String(index + 1).padStart(2, "0")}`,
+        }))
+      if (!zipEntries.length) {
+        throw new Error("다운로드 가능한 이미지가 없습니다.")
+      }
+      await downloadZipFromUrls(zipEntries, `${patternFilenameToken}-captures`)
+      toast({ title: "ZIP 준비 중", description: "모든 캡처 이미지를 묶어서 내려받습니다." })
+    } catch (error) {
+      console.error("Failed to download pattern images", error)
+      toast({
+        variant: "destructive",
+        title: "패턴 전체 이미지 다운로드 실패",
+        description: error instanceof Error ? error.message : "다시 시도해주세요.",
+      })
+    } finally {
+      setPatternDownloadPending(false)
+    }
+  }, [captures, hasDownloadablePattern, patternFilenameToken, toast])
   return (
     <section className="flex flex-1 basis-0 min-h-0 min-w-0 flex-col rounded-xl border border-border/60 bg-gradient-to-b from-card to-muted/20 shadow-sm md:min-h-[640px]">
       <CanvasHeader
@@ -113,6 +169,11 @@ export function CanvasSection({
         onCanvasPlace={onCanvasPlace}
         onUpdateInsightPosition={onUpdateInsightPosition}
         onDeleteInsight={onDeleteInsight}
+        onDownloadCapture={handleDownloadActiveCapture}
+        onDownloadPattern={handleDownloadPatternImages}
+        isCaptureDownloadPending={isCaptureDownloadPending}
+        isPatternDownloadPending={isPatternDownloadPending}
+        canDownloadPattern={hasDownloadablePattern}
         readOnly={readOnlyMode}
       />
       <CaptureStrip
@@ -184,6 +245,11 @@ function CaptureCanvas({
   onCanvasPlace,
   onUpdateInsightPosition,
   onDeleteInsight,
+  onDownloadCapture,
+  onDownloadPattern,
+  isCaptureDownloadPending,
+  isPatternDownloadPending,
+  canDownloadPattern,
   readOnly,
 }: {
   capture?: Capture
@@ -194,6 +260,11 @@ function CaptureCanvas({
   onCanvasPlace: (point: CanvasPoint) => void
   onUpdateInsightPosition: (insightId: string, point: CanvasPoint) => void
   onDeleteInsight: (insightId: string) => void
+  onDownloadCapture?: () => void
+  onDownloadPattern?: () => void
+  isCaptureDownloadPending?: boolean
+  isPatternDownloadPending?: boolean
+  canDownloadPattern?: boolean
   readOnly?: boolean
 }) {
   const canvasRef = React.useRef<HTMLDivElement>(null)
@@ -252,6 +323,8 @@ function CaptureCanvas({
   }, [capture?.id])
 
   const canEditInsights = !readOnly
+  const captureDownloadDisabled = !capture?.imageUrl || !onDownloadCapture || Boolean(isCaptureDownloadPending)
+  const patternDownloadDisabled = !canDownloadPattern || !onDownloadPattern || Boolean(isPatternDownloadPending)
 
   const handleCanvasClick = React.useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
@@ -502,19 +575,24 @@ function CaptureCanvas({
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden">
       <div className="absolute inset-x-0 -z-10 h-[25%] bg-gradient-to-b from-primary/10 to-transparent" />
-      <div className="relative flex h-full w-full flex-1 items-center justify-center">
-        <div
-          ref={canvasRef}
-          className={cn(
-            "relative h-full min-h-[420px] w-full overflow-hidden bg-gray-500 shadow-xl",
-            isPlacingInsight && !isSpacePressed && "cursor-crosshair",
-            isSpacePressed && !isPanning && "cursor-grab",
-            isPanning && "cursor-grabbing"
-          )}
-          onClick={handleCanvasClick}
-          onWheel={handleWheel}
-          onPointerDownCapture={startPanning}
-        >
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div
+            className="relative flex h-full w-full flex-1 items-center justify-center"
+            {...allowContextMenuProps}
+          >
+            <div
+              ref={canvasRef}
+              className={cn(
+                "relative h-full min-h-[420px] w-full overflow-hidden bg-gray-500 shadow-xl",
+                isPlacingInsight && !isSpacePressed && "cursor-crosshair",
+                isSpacePressed && !isPanning && "cursor-grab",
+                isPanning && "cursor-grabbing"
+              )}
+              onClick={handleCanvasClick}
+              onWheel={handleWheel}
+              onPointerDownCapture={startPanning}
+            >
           <Button
             type="button"
             size="icon"
@@ -674,8 +752,40 @@ function CaptureCanvas({
               Click on the canvas to set a position
             </div>
           )}
-        </div>
-      </div>
+            </div>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-60" align="end">
+          <ContextMenuItem
+            onSelect={() => {
+              if (captureDownloadDisabled || !onDownloadCapture) return
+              onDownloadCapture()
+            }}
+            disabled={captureDownloadDisabled}
+          >
+            {isCaptureDownloadPending ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Download className="size-3.5" />
+            )}
+            Download capture image
+          </ContextMenuItem>
+          <ContextMenuItem
+            onSelect={() => {
+              if (patternDownloadDisabled || !onDownloadPattern) return
+              onDownloadPattern()
+            }}
+            disabled={patternDownloadDisabled}
+          >
+            {isPatternDownloadPending ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <FolderArchive className="size-3.5" />
+            )}
+            Download all captures (ZIP)
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
     </div>
   )
 }
@@ -855,6 +965,7 @@ function CaptureStrip({
                   dropHint?.targetId === capture.id && dropHint.position === "before"
                 const isDropAfter =
                   dropHint?.targetId === capture.id && dropHint.position === "after"
+                const imageSrc = capture.imageUrl?.trim()
                 return (
                   <div className="flex flex-none items-center gap-1" key={capture.id}>
                     {allowDnD && isDropBefore && <DropIndicator position="before" />}
@@ -876,14 +987,20 @@ function CaptureStrip({
                           isDragging && "opacity-70 ring-2 ring-primary"
                         )}
                       >
-                        <Image
-                          src={capture.imageUrl}
-                          alt="Capture thumbnail"
-                          fill
-                          sizes="80px"
-                          unoptimized
-                          className="object-cover"
-                        />
+                        {imageSrc ? (
+                          <Image
+                            src={imageSrc}
+                            alt="Capture thumbnail"
+                            fill
+                            sizes="80px"
+                            unoptimized
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-muted text-[10px] font-medium text-muted-foreground">
+                            No image
+                          </div>
+                        )}
                         <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-1.5 text-[10px] font-medium text-white">
                           {capture.order}
                         </span>

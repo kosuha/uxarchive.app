@@ -59,6 +59,7 @@ export function PublicPatternViewer({ pattern, captures, insights }: PublicPatte
           captureInsights={captureInsights}
           captureOrder={captureIndex}
           captures={captures}
+          patternName={pattern.name}
           highlightedInsightId={highlightedInsightId}
           isAddingInsight={false}
           isPlacingInsight={false}

@@ -280,6 +280,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
           captureInsights={captureInsights}
           captureOrder={captureIndex}
           captures={patternCaptures}
+          patternName={pattern.name}
           highlightedInsightId={highlightedInsightId}
           isAddingInsight={isAddingInsight}
           isPlacingInsight={isPlacingInsight}
