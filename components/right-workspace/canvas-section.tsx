@@ -637,7 +637,7 @@ function CaptureCanvas({
                       const normalizedY = (position.y / 100) * imageDimensions.height
                       return (
                         <Html
-                          key={insight.id}
+                          key={insight.clientId ?? insight.id}
                           groupProps={{
                             x: normalizedX,
                             y: normalizedY,

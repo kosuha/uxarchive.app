@@ -45,6 +45,7 @@ export interface Insight extends IdentifiableEntity {
   y: number
   note: string
   createdAt: string
+  clientId?: string
 }
 
 export interface StorageCollections {

@@ -136,6 +136,7 @@ export const usePatternDetail = (patternId?: string | null) => {
         y: Number(row.y),
         note: row.note ?? "",
         createdAt: row.created_at,
+        clientId: row.id,
       }))
 
       return {
@@ -518,6 +519,7 @@ export const usePatternDetail = (patternId?: string | null) => {
         y: input.y,
         note: input.note ?? "",
         createdAt: new Date().toISOString(),
+        clientId: tempId,
       }
 
       setDetailData((current) => ({
@@ -540,10 +542,18 @@ export const usePatternDetail = (patternId?: string | null) => {
           y: record.y,
           note: record.note,
           createdAt: record.createdAt,
+          clientId: tempInsight.clientId ?? tempId,
         }
         setDetailData((current) => ({
           captures: current.captures,
-          insights: current.insights.map((insight) => (insight.id === tempId ? created : insight)),
+          insights: current.insights.map((insight) =>
+            insight.id === tempId
+              ? {
+                  ...created,
+                  clientId: insight.clientId ?? tempInsight.clientId ?? tempId,
+                }
+              : insight,
+          ),
         }))
         return created
       } catch (error) {
@@ -605,6 +615,7 @@ export const usePatternDetail = (patternId?: string | null) => {
                   y: record.y,
                   note: record.note,
                   createdAt: record.createdAt,
+                  clientId: insight.clientId ?? record.id,
                 }
               : insight,
           ),

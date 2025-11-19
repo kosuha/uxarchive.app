@@ -59,7 +59,7 @@ export function InsightsPanel({
               {insights.length ? (
                 insights.map((insight, index) => (
                   <InsightCard
-                    key={insight.id}
+                    key={insight.clientId ?? insight.id}
                     index={index + 1}
                     insight={insight}
                     isActive={highlightedInsightId === insight.id}
