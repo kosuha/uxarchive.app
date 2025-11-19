@@ -100,6 +100,7 @@ export const usePatternDetail = (patternId?: string | null) => {
   const insightMutationVersionsRef = React.useRef<Map<string, number>>(new Map()) // prevent stale marker updates
   const pendingCaptureOrderRef = React.useRef<string[] | null>(null)
   const pendingUploadCountRef = React.useRef(0)
+  const pendingDeletionCountRef = React.useRef(0)
 
   const mapCaptureRecord = React.useCallback((record: CaptureRecord) => {
     return {
@@ -471,6 +472,7 @@ export const usePatternDetail = (patternId?: string | null) => {
   const deleteCapture = React.useCallback(
     async (captureId: string) => {
       if (!patternId || !workspaceId) return
+      pendingDeletionCountRef.current += 1
       setDetailData((current) => {
         const nextCaptures = current.captures
           .filter((capture) => capture.id !== captureId)
@@ -482,19 +484,22 @@ export const usePatternDetail = (patternId?: string | null) => {
         }
       })
 
-      const response = await fetch("/api/captures/upload", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceId, patternId, captureId }),
-      })
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null)
-        await refresh({ silent: true })
-        throw new Error(payload?.error ?? "Failed to delete capture.")
-      }
-
-      if (patternDetailQueryKey) {
-        await queryClient.invalidateQueries({ queryKey: patternDetailQueryKey })
+      try {
+        const response = await fetch("/api/captures/upload", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workspaceId, patternId, captureId }),
+        })
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null)
+          await refresh({ silent: true })
+          throw new Error(payload?.error ?? "Failed to delete capture.")
+        }
+      } finally {
+        pendingDeletionCountRef.current = Math.max(0, pendingDeletionCountRef.current - 1)
+        if (pendingDeletionCountRef.current === 0 && patternDetailQueryKey) {
+          await queryClient.invalidateQueries({ queryKey: patternDetailQueryKey })
+        }
       }
     },
     [patternDetailQueryKey, patternId, queryClient, refresh, setDetailData, workspaceId],
