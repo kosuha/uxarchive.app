@@ -755,7 +755,7 @@ function CaptureCanvas({
             </div>
           </div>
         </ContextMenuTrigger>
-        <ContextMenuContent className="w-60" align="end">
+        <ContextMenuContent className="w-60">
           <ContextMenuItem
             onSelect={() => {
               if (captureDownloadDisabled || !onDownloadCapture) return
