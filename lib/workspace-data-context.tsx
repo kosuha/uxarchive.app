@@ -599,7 +599,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
         tagId,
         label: updates.label,
         type: updates.type,
-        color: updates.color ?? null,
+        color: updates.color,
       })
       return mapTagRecordToTag(record)
     },

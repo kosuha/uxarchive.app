@@ -362,6 +362,7 @@ function TagEditPanelContent({ tag, usageCount, onChange, onPreview, disabled }:
   const [labelValue, setLabelValue] = React.useState(tag?.label ?? "")
   const [colorValue, setColorValue] = React.useState(tag?.color ?? DEFAULT_TAG_COLOR)
   const debounceRefs = React.useRef<{ label?: number; color?: number }>({})
+  const previousTagIdRef = React.useRef<string | null>(null)
   type DebounceKey = keyof typeof debounceRefs.current
 
   const clearDebounce = React.useCallback((key: DebounceKey) => {
@@ -380,16 +381,34 @@ function TagEditPanelContent({ tag, usageCount, onChange, onPreview, disabled }:
   }, [clearDebounce, onChange])
 
   React.useEffect(() => {
-    if (!tag) {
-      setLabelValue("")
-      setColorValue(DEFAULT_TAG_COLOR)
-    } else {
-      setLabelValue(tag.label)
-      setColorValue(tag.color ?? DEFAULT_TAG_COLOR)
+    const nextTagId = tag?.id ?? null
+    const hasTagChanged = previousTagIdRef.current !== nextTagId
+
+    if (hasTagChanged) {
+      previousTagIdRef.current = nextTagId
+      clearDebounce("label")
+      clearDebounce("color")
     }
-    clearDebounce("label")
-    clearDebounce("color")
-  }, [tag, clearDebounce])
+
+    if (!tag) {
+      if (labelValue !== "") {
+        setLabelValue("")
+      }
+      if (colorValue !== DEFAULT_TAG_COLOR) {
+        setColorValue(DEFAULT_TAG_COLOR)
+      }
+      return
+    }
+
+    if (tag.label !== labelValue) {
+      setLabelValue(tag.label)
+    }
+
+    const normalizedColor = tag.color ?? DEFAULT_TAG_COLOR
+    if (normalizedColor !== colorValue) {
+      setColorValue(normalizedColor)
+    }
+  }, [tag, labelValue, colorValue, clearDebounce])
 
   React.useEffect(() => {
     return () => {

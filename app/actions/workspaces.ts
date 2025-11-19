@@ -255,7 +255,7 @@ export const updateTagAction = async (
     tagId: input.tagId,
     label: input.label,
     type: input.type as TagRecord["type"] | undefined,
-    color: input.color ?? null,
+    color: input.color,
   })
 }
 
