@@ -473,6 +473,7 @@ export const usePatternDetail = (patternId?: string | null) => {
   const deleteCapture = React.useCallback(
     async (captureId: string) => {
       if (!patternId || !workspaceId) return
+      const nextOrderedIds = getCachedCaptureOrder().filter((id) => id !== captureId)
       pendingDeletionCountRef.current += 1
       setDetailData((current) => {
         const nextCaptures = current.captures
@@ -496,6 +497,10 @@ export const usePatternDetail = (patternId?: string | null) => {
           await refresh({ silent: true })
           throw new Error(payload?.error ?? "Failed to delete capture.")
         }
+
+        if (nextOrderedIds.length > 0) {
+          await persistCaptureOrder(nextOrderedIds)
+        }
       } finally {
         pendingDeletionCountRef.current = Math.max(0, pendingDeletionCountRef.current - 1)
         if (pendingDeletionCountRef.current === 0 && patternDetailQueryKey) {
@@ -503,7 +508,7 @@ export const usePatternDetail = (patternId?: string | null) => {
         }
       }
     },
-    [patternDetailQueryKey, patternId, queryClient, refresh, setDetailData, workspaceId],
+    [getCachedCaptureOrder, patternDetailQueryKey, patternId, persistCaptureOrder, queryClient, refresh, setDetailData, workspaceId],
   )
 
   const createInsight = React.useCallback(

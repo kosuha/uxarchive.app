@@ -176,6 +176,47 @@ export function CanvasSection({
   const patternFilenameToken = React.useMemo(() => sanitizeFilename(patternName ?? "pattern"), [patternName])
   const hasDownloadablePattern = React.useMemo(() => captures.some((item) => Boolean(item.imageUrl)), [captures])
 
+  const selectAdjacentCapture = React.useCallback(
+    (direction: "prev" | "next") => {
+      if (!activeCaptureId || captures.length === 0) return
+      const currentIndex = captures.findIndex((item) => item.id === activeCaptureId)
+      if (currentIndex === -1) return
+      const nextIndex = direction === "next"
+        ? Math.min(currentIndex + 1, captures.length - 1)
+        : Math.max(currentIndex - 1, 0)
+      if (nextIndex !== currentIndex) {
+        onSelectCapture(captures[nextIndex].id)
+      }
+    },
+    [activeCaptureId, captures, onSelectCapture]
+  )
+
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+
+      const target = event.target as HTMLElement | null
+      const interactiveTags = ["INPUT", "TEXTAREA", "SELECT", "BUTTON"]
+      if (target && (interactiveTags.includes(target.tagName) || target.isContentEditable)) {
+        return
+      }
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault()
+        selectAdjacentCapture("prev")
+      }
+
+      if (event.key === "ArrowRight") {
+        event.preventDefault()
+        selectAdjacentCapture("next")
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [selectAdjacentCapture])
+
   const handleDownloadActiveCapture = React.useCallback(async () => {
     if (!activeCapture?.imageUrl) return
     setCaptureDownloadPending(true)
