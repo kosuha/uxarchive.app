@@ -4,7 +4,6 @@ import * as React from "react"
 import Image from "next/image"
 import { Layer, Stage, Image as KonvaImage } from "react-konva"
 import { Html } from "react-konva-utils"
-import useImage from "use-image"
 import { Download, FolderArchive, GalleryHorizontalEnd, ImageUpscale, Loader2, MessageCircle, Minus, Plus, Trash2, UploadCloud } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -43,6 +42,80 @@ import type { Capture, Insight } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 import { allowContextMenuProps, CanvasPoint, clampPercentage } from "./shared"
+
+const MAX_CAPTURE_IMAGE_CACHE = 5
+const captureImageCache = new Map<string, HTMLImageElement>()
+
+const getCachedImage = (url: string) => {
+  const cached = captureImageCache.get(url)
+  if (!cached) return null
+  // LRU 갱신
+  captureImageCache.delete(url)
+  captureImageCache.set(url, cached)
+  return cached
+}
+
+const putCachedImage = (url: string, image: HTMLImageElement) => {
+  if (captureImageCache.has(url)) {
+    captureImageCache.delete(url)
+  } else if (captureImageCache.size >= MAX_CAPTURE_IMAGE_CACHE) {
+    const oldestKey = captureImageCache.keys().next().value
+    if (oldestKey) {
+      captureImageCache.delete(oldestKey)
+    }
+  }
+  captureImageCache.set(url, image)
+}
+
+function useCachedImage(url?: string) {
+  const [image, setImage] = React.useState<HTMLImageElement | null>(null)
+
+  React.useEffect(() => {
+    if (!url) {
+      setImage(null)
+      return
+    }
+
+    const cached = getCachedImage(url)
+    if (cached && cached.complete && cached.naturalWidth > 0) {
+      setImage(cached)
+      return
+    }
+
+    let isMounted = true
+    const img = cached ?? new window.Image()
+    img.crossOrigin = "anonymous"
+    if (!cached) {
+      img.src = url
+    }
+
+    const handleLoad = () => {
+      if (!isMounted) return
+      putCachedImage(url, img)
+      setImage(img)
+    }
+
+    const handleError = () => {
+      if (!isMounted) return
+      setImage(null)
+    }
+
+    if (img.complete && img.naturalWidth > 0) {
+      handleLoad()
+    } else {
+      img.addEventListener("load", handleLoad)
+      img.addEventListener("error", handleError)
+    }
+
+    return () => {
+      isMounted = false
+      img.removeEventListener("load", handleLoad)
+      img.removeEventListener("error", handleError)
+    }
+  }, [url])
+
+  return image
+}
 
 export type CaptureUploadPayload = {
   file: File
@@ -278,12 +351,17 @@ function CaptureCanvas({
   const fitScaleRef = React.useRef(0.5)
   const hasUserAdjustedRef = React.useRef(false)
   const [imageDimensions, setImageDimensions] = React.useState<{ width: number; height: number } | null>(null)
-  const [imageElement] = useImage(capture?.imageUrl ?? "", "anonymous")
+  const [isImageReady, setIsImageReady] = React.useState(false)
+  const imageElement = useCachedImage(capture?.imageUrl ?? "")
   const [canvasSize, setCanvasSize] = React.useState<{ width: number; height: number }>({ width: 0, height: 0 })
 
   React.useEffect(() => {
     setDragging(null)
     draggingIdRef.current = null
+  }, [capture?.id])
+
+  React.useEffect(() => {
+    setIsImageReady(false)
   }, [capture?.id])
 
   const getRelativePosition = React.useCallback(
@@ -404,6 +482,12 @@ function CaptureCanvas({
     const height = imageElement.naturalHeight || imageElement.height
     if (!width || !height) return
     setImageDimensions({ width, height })
+  }, [imageElement])
+
+  React.useEffect(() => {
+    if (imageElement) {
+      setIsImageReady(true)
+    }
   }, [imageElement])
 
   const calculateFitTransform = React.useCallback(() => {
@@ -607,7 +691,10 @@ function CaptureCanvas({
           </Button>
           {canvasSize.width > 0 && canvasSize.height > 0 ? (
             <div
-              className="absolute left-0 top-0 origin-top-left"
+              className={cn(
+                "absolute left-0 top-0 origin-top-left transition-opacity duration-200 ease-out",
+                isImageReady ? "opacity-100" : "opacity-0"
+              )}
               style={{
                 width: contentWidth,
                 height: contentHeight,
@@ -741,7 +828,7 @@ function CaptureCanvas({
               Preparing the canvas...
             </div>
           )}
-          {!imageElement && (
+          {!isImageReady && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
               Loading image...
             </div>
