@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { LibraryBig, Search, Star, Tags } from "lucide-react"
+import { File, Search, Star } from "lucide-react"
 
 import { ExploreView } from "@/components/app-sidebar/nav-views/explore-view"
 import type { PendingFolderInput, PendingPatternInput } from "@/components/app-sidebar/folder-tree"
@@ -25,7 +25,7 @@ const PRIMARY_NAV_ITEMS: NavItem[] = [
     id: "explore",
     title: "EXPLORE",
     description: "",
-    icon: LibraryBig,
+    icon: File,
   },
   {
     id: "search",
@@ -38,12 +38,6 @@ const PRIMARY_NAV_ITEMS: NavItem[] = [
     title: "FAVORITES",
     description: "",
     icon: Star,
-  },
-  {
-    id: "tag-settings",
-    title: "TAG SETTINGS",
-    description: "",
-    icon: Tags,
   },
 ]
 
@@ -459,7 +453,7 @@ export function AppSidebar({
             <div className="flex flex-col gap-3 text-left">
               {activeNavItem && (
                 <div className="flex flex-col gap-1">
-                  <span className="text-base font-medium text-foreground">{activeNavItem.title}</span>
+                  <span className="text-base font-black text-foreground">{activeNavItem.title}</span>
                   {activeNavItem.description && (
                     <span className="text-xs text-muted-foreground">{activeNavItem.description}</span>
                   )}

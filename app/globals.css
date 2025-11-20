@@ -79,6 +79,16 @@
   --shell-panel: var(--background);
   --shell-divider: var(--border);
   --canvas-surface: var(--background);
+  --tag-color-default: #232323;
+  --tag-color-gray: #6b7280;
+  --tag-color-brown: #8d5524;
+  --tag-color-orange: #f97316;
+  --tag-color-yellow: #eab308;
+  --tag-color-green: #22c55e;
+  --tag-color-blue: #3b82f6;
+  --tag-color-purple: #8b5cf6;
+  --tag-color-pink: #ec4899;
+  --tag-color-red: #ef4444;
 }
 
 .dark {
@@ -116,4 +126,14 @@
   --shell-panel: var(--background);
   --shell-divider: color-mix(in oklab, var(--border) 80%, transparent);
   --canvas-surface: var(--background);
+  --tag-color-default: #e6e6e6;
+  --tag-color-gray: #a3a3a3;
+  --tag-color-brown: #d2a679;
+  --tag-color-orange: #ffb366;
+  --tag-color-yellow: #facc15;
+  --tag-color-green: #86efac;
+  --tag-color-blue: #93c5fd;
+  --tag-color-purple: #c4b5fd;
+  --tag-color-pink: #f9a8d4;
+  --tag-color-red: #fca5a5;
 }

@@ -328,6 +328,9 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
             onRemoveTag={(tagId) => mutations.removeTagFromPattern(pattern.id, tagId)}
             onToggleFavorite={(next) => mutations.setPatternFavorite(pattern.id, next)}
             onUpdateSummary={(summary) => mutations.updatePattern(pattern.id, { summary })}
+            onCreateTag={(input, options) => mutations.createTag(input, options)}
+            onUpdateTag={(tagId, updates) => mutations.updateTag(tagId, updates)}
+            onDeleteTag={(tagId) => mutations.deleteTag(tagId)}
           />
           <InsightsPanel
             insights={captureInsights}

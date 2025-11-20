@@ -90,7 +90,7 @@ export function NavUser() {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="flex items-center justify-center data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground md:h-8 md:p-0"
+              className="flex items-center justify-center hover:bg-transparent focus-visible:bg-transparent active:bg-transparent md:h-8 md:p-0"
             >
               <Avatar className="h-8 w-8 rounded-full">
                 {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName} /> : null}
