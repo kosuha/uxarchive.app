@@ -1068,7 +1068,7 @@ function CaptureStrip({
                         className={cn(
                           "relative h-24 w-20 shrink-0 overflow-hidden rounded-xl border text-left transition-all focus-visible:ring-2 focus-visible:ring-ring",
                           isActive
-                            ? "border-primary/70 shadow-md"
+                            ? "border-2 border-primary/70 shadow-md"
                             : "border-border/60 hover:border-primary/60",
                           isDragging && "opacity-70 ring-2 ring-primary"
                         )}
