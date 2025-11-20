@@ -16,17 +16,6 @@ type PublicInsightsPanelProps = {
 
 const EMPTY_NOTE_MESSAGE = "-"
 
-const formatTimestamp = (value?: string | null) => {
-  if (!value) return null
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return null
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(date)
-}
-
 const getTimestamp = (value?: string | null) => {
   if (!value) return null
   const time = Date.parse(value)
@@ -99,7 +88,6 @@ export function PublicInsightsPanel({ insights, highlightedInsightId, onHighligh
           <div className="space-y-2 pb-4 pt-4">
             {sortedInsights.length ? (
               sortedInsights.map((insight, index) => {
-                const createdLabel = formatTimestamp(insight.createdAt)
                 const note = insight.note?.trim() || EMPTY_NOTE_MESSAGE
                 const isHighlighted = highlightedInsightId === insight.id
                 return (

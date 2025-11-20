@@ -1,14 +1,14 @@
-<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="UX Archive icon">
-  <defs>
-    <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#d5ecff" />
-      <stop offset="1" stop-color="#7b5dff" />
-    </linearGradient>
-  </defs>
-  <rect width="128" height="128" rx="26" fill="url(#grad)" />
-  <path
-    d="M34 38h18v40c0 5.5 3.3 8.4 8 8.4s8-2.9 8-8.4V38h18v39.2c0 16-11.3 26.8-26 26.8S34 93.2 34 77.2V38Zm58 60 10-14 10 14h-8v14h-4V98h-8Z"
-    fill="#0f172a"
-    fill-opacity="0.85"
-  />
+<svg width="300" height="300" viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="300" height="300" rx="60" fill="url(#paint0_linear_1096_1252)"/>
+<rect x="46.3719" y="208.777" width="38.5099" height="82.087" transform="rotate(-90 46.3719 208.777)" fill="#5EA500"/>
+<rect x="128.459" y="208.777" width="38.5099" height="113.503" transform="rotate(180 128.459 208.777)" fill="#5EA500"/>
+<rect x="84.882" y="208.777" width="38.5099" height="113.503" transform="rotate(180 84.882 208.777)" fill="#5EA500"/>
+<rect x="253.628" y="189.522" width="38.5099" height="113.503" transform="rotate(150 253.628 189.522)" fill="#5EA500"/>
+<rect x="172.036" y="208.777" width="38.5099" height="113.503" transform="rotate(-180 172.036 208.777)" fill="#5EA500"/>
+<defs>
+<linearGradient id="paint0_linear_1096_1252" x1="61.8326" y1="3.19083e-06" x2="258.436" y2="300" gradientUnits="userSpaceOnUse">
+<stop offset="0.0480769" stop-color="#393939"/>
+<stop offset="1" stop-color="#1A1A1A"/>
+</linearGradient>
+</defs>
 </svg>
