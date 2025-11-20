@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Archive } from "lucide-react"
+import Image from "next/image"
 import type { LucideIcon } from "lucide-react"
 
 import { NavUser } from "@/components/nav-user"
@@ -33,14 +33,12 @@ export function SidebarNavRail({ items, activeNavId, onNavItemSelect }: SidebarN
       className="fixed inset-y-0 z-30 hidden border-r border-border/60 bg-sidebar py-2 md:flex md:flex-col"
       style={{ width: NAV_RAIL_WIDTH }}
     >
-      <div className="px-1 pb-2">
+      <div className="px-1 pb-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" className="justify-center" aria-label="Workspace home">
-              <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                <Archive className="size-4" />
-              </div>
-            </SidebarMenuButton>
+            <div className="flex w-full h-full text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+              <Image src="/favicon.svg" alt="Workspace logo" width={20} height={20} className="size-8" />
+            </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </div>
