@@ -30,9 +30,9 @@ export function Hero() {
       />
       
       {/* Grid Pattern */}
-      <div className="absolute inset-0 opacity-50">
+      <div className="absolute inset-0 opacity-40">
         <div className="h-full w-full" style={{
-          backgroundImage: `linear-gradient(#ffffff 1px, transparent 1px), linear-gradient(90deg, #ffffff 1px, transparent 1px)`,
+          backgroundImage: `linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)`,
           backgroundSize: '50px 50px'
         }} />
       </div>
