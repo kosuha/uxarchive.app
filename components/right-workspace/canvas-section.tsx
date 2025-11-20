@@ -43,7 +43,9 @@ import { cn } from "@/lib/utils"
 
 import { allowContextMenuProps, CanvasPoint, clampPercentage } from "./shared"
 
-const MAX_CAPTURE_IMAGE_CACHE = 5
+const CACHE_WINDOW_SIZE = 7
+const CACHE_RADIUS = Math.floor(CACHE_WINDOW_SIZE / 2)
+const MAX_CAPTURE_IMAGE_CACHE = CACHE_WINDOW_SIZE
 const captureImageCache = new Map<string, HTMLImageElement>()
 
 const getCachedImage = (url: string) => {
@@ -65,6 +67,83 @@ const putCachedImage = (url: string, image: HTMLImageElement) => {
     }
   }
   captureImageCache.set(url, image)
+}
+
+const pickCacheWindow = (captures: Capture[], activeId?: string): Capture[] => {
+  if (!activeId || captures.length === 0) return []
+
+  const activeIndex = captures.findIndex((capture) => capture.id === activeId)
+  if (activeIndex === -1) return []
+
+  const maxWindow = Math.min(CACHE_WINDOW_SIZE, captures.length)
+  let start = activeIndex - CACHE_RADIUS
+  let end = activeIndex + CACHE_RADIUS
+
+  if (start < 0) {
+    end = Math.min(end + Math.abs(start), captures.length - 1)
+    start = 0
+  }
+
+  if (end >= captures.length) {
+    const overshoot = end - captures.length + 1
+    start = Math.max(0, start - overshoot)
+    end = captures.length - 1
+  }
+
+  const window: Capture[] = []
+  for (let index = start; index <= end && window.length < maxWindow; index++) {
+    window.push(captures[index])
+  }
+
+  return window
+}
+
+function usePrefetchCaptureImages(captures: Capture[], activeId?: string) {
+  React.useEffect(() => {
+    if (!activeId || captures.length === 0) return
+
+    const windowCaptures = pickCacheWindow(captures, activeId)
+    const targetUrls = new Set(
+      windowCaptures
+        .map((capture) => capture.imageUrl?.trim())
+        .filter((url): url is string => Boolean(url))
+    )
+
+    for (const key of Array.from(captureImageCache.keys())) {
+      if (!targetUrls.has(key)) {
+        captureImageCache.delete(key)
+      }
+    }
+
+    const listeners: Array<{ img: HTMLImageElement; handleLoad: () => void; handleError: () => void }> = []
+
+    targetUrls.forEach((url) => {
+      const cached = getCachedImage(url)
+      if (cached && cached.complete && cached.naturalWidth > 0) {
+        return
+      }
+
+      const img = new window.Image()
+      img.crossOrigin = "anonymous"
+      img.src = url
+
+      const handleLoad = () => putCachedImage(url, img)
+      const handleError = () => {
+        captureImageCache.delete(url)
+      }
+
+      img.addEventListener("load", handleLoad)
+      img.addEventListener("error", handleError)
+      listeners.push({ img, handleLoad, handleError })
+    })
+
+    return () => {
+      listeners.forEach(({ img, handleLoad, handleError }) => {
+        img.removeEventListener("load", handleLoad)
+        img.removeEventListener("error", handleError)
+      })
+    }
+  }, [captures, activeId])
 }
 
 function useCachedImage(url?: string) {
@@ -175,6 +254,8 @@ export function CanvasSection({
   const [isPatternDownloadPending, setPatternDownloadPending] = React.useState(false)
   const patternFilenameToken = React.useMemo(() => sanitizeFilename(patternName ?? "pattern"), [patternName])
   const hasDownloadablePattern = React.useMemo(() => captures.some((item) => Boolean(item.imageUrl)), [captures])
+
+  usePrefetchCaptureImages(captures, activeCaptureId)
 
   const selectAdjacentCapture = React.useCallback(
     (direction: "prev" | "next") => {
