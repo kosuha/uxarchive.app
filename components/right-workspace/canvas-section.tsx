@@ -431,7 +431,7 @@ function CaptureCanvas({
     setIsPanning(false)
   }, [calculateFitTransform])
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     if (!capture?.id) return
     if (!imageDimensions) return
     if (canvasSize.width === 0 || canvasSize.height === 0) return
@@ -541,7 +541,6 @@ function CaptureCanvas({
   }, [isSpacePressed])
 
   React.useEffect(() => {
-    setCanvasTransform({ scale: 1, x: 0, y: 0 })
     setIsSpacePressed(false)
     setIsPanning(false)
     panCleanupRef.current?.()
