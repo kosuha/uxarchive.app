@@ -279,7 +279,8 @@ export function CanvasSection({
 
       const target = event.target as HTMLElement | null
       const interactiveTags = ["INPUT", "TEXTAREA", "SELECT", "BUTTON"]
-      if (target && (interactiveTags.includes(target.tagName) || target.isContentEditable)) {
+      const isInCaptureStrip = target?.closest("[data-capture-strip]")
+      if (!isInCaptureStrip && target && (interactiveTags.includes(target.tagName) || target.isContentEditable)) {
         return
       }
 
@@ -1018,6 +1019,7 @@ function CaptureStrip({
   const hasCaptures = captures.length > 0
   const isReadOnly = Boolean(readOnly)
   const allowDnD = !isReadOnly
+  const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
   const [draggingId, setDraggingId] = React.useState<string | null>(null)
   const [dropHint, setDropHint] = React.useState<{
     targetId: string
@@ -1140,8 +1142,24 @@ function CaptureStrip({
     [isReadOnly]
   )
 
+  React.useEffect(() => {
+    if (!activeId) return
+    const container = scrollContainerRef.current
+    if (!container) return
+    const activeButton = container.querySelector<HTMLElement>(`[data-capture-id="${activeId}"]`)
+    if (!activeButton) return
+
+    const containerRect = container.getBoundingClientRect()
+    const itemRect = activeButton.getBoundingClientRect()
+    const fullyVisible = itemRect.left >= containerRect.left && itemRect.right <= containerRect.right
+
+    if (!fullyVisible) {
+      activeButton.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" })
+    }
+  }, [activeId])
+
   return (
-    <div className="w-full min-w-0 border-t border-border/60 px-4 py-4">
+    <div className="w-full min-w-0 border-t border-border/60 px-4 py-4" data-capture-strip>
       <div className="w-full mb-3 flex items-center justify-between px-2">
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1164,6 +1182,7 @@ function CaptureStrip({
             onDragOver={allowDnD ? handleContainerDragOver : undefined}
             onDrop={allowDnD ? handleContainerDrop : undefined}
             onDragLeave={allowDnD ? handleContainerDragLeave : undefined}
+            ref={scrollContainerRef}
           >
             <div className="flex w-max max-w-none gap-2 px-2 pb-2">
               {captures.map((capture) => {
@@ -1182,6 +1201,7 @@ function CaptureStrip({
                         type="button"
                         draggable={allowDnD}
                         aria-grabbed={allowDnD ? isDragging : undefined}
+                        data-capture-id={capture.id}
                         onClick={() => onSelect(capture.id)}
                         onDragStart={allowDnD ? (event) => handleDragStart(event, capture.id) : undefined}
                         onDragEnd={allowDnD ? resetDragState : undefined}

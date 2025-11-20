@@ -347,8 +347,9 @@ export function AppSidebar({
         return
       }
       try {
-        await mutations.createPattern({ name: trimmed, folderId })
+        // 인풋은 즉시 닫아서 사용자에게 잔존 입력창이 보이지 않도록 처리
         setPendingPatternInput(null)
+        await mutations.createPattern({ name: trimmed, folderId })
       } catch (mutationError) {
         console.error("Failed to create pattern", mutationError)
       }
@@ -364,8 +365,9 @@ export function AppSidebar({
         return
       }
       try {
-        await mutations.createFolder({ name: trimmed, parentId })
+        // 폴더 생성도 엔터 입력 후 즉시 인풋을 숨겨 UX 지연을 제거
         setPendingFolderInput(null)
+        await mutations.createFolder({ name: trimmed, parentId })
       } catch (mutationError) {
         console.error("Failed to create folder", mutationError)
       }

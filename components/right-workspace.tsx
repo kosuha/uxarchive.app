@@ -17,8 +17,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
+import { Spinner } from "@/components/ui/spinner"
 import { useWorkspaceData } from "@/lib/workspace-data-context"
 import { usePatternDetail } from "@/lib/hooks/use-pattern-detail"
+import { Plus } from "lucide-react"
 
 type RightWorkspaceProps = {
   patternId?: string
@@ -26,6 +29,7 @@ type RightWorkspaceProps = {
 
 export function RightWorkspace({ patternId }: RightWorkspaceProps) {
   const { patterns, tags, loading: workspaceLoading, error: workspaceError, mutations, refresh: refreshWorkspace } = useWorkspaceData()
+  const [isCreatingPattern, setIsCreatingPattern] = React.useState(false)
 
   const resolvedPatternId = React.useMemo(
     () => patternId ?? patterns[0]?.id,
@@ -241,9 +245,23 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
     )
   }, [handleToggleShare, pattern])
 
+  const handleCreatePattern = React.useCallback(async () => {
+    if (isCreatingPattern) return
+    setIsCreatingPattern(true)
+    try {
+      await mutations.createPattern({ name: "New pattern", folderId: null })
+      await refreshWorkspace()
+    } catch (mutationError) {
+      console.error("Failed to create pattern", mutationError)
+    } finally {
+      setIsCreatingPattern(false)
+    }
+  }, [isCreatingPattern, mutations, refreshWorkspace])
+
   if (workspaceLoading || detailLoading) {
     return (
-      <div className="text-muted-foreground flex flex-1 items-center justify-center rounded-md border border-dashed">
+      <div className="text-muted-foreground flex flex-1 items-center justify-center gap-2 rounded-md border border-dashed">
+        <Spinner className="size-4" />
         Loading pattern data...
       </div>
     )
@@ -259,8 +277,15 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
 
   if (!pattern) {
     return (
-      <div className="text-muted-foreground flex flex-1 items-center justify-center rounded-md border border-dashed">
-        No pattern data to display.
+      <div className="flex flex-1 items-center justify-center rounded-md border border-dashed bg-muted/20 p-6 text-center">
+        <div className="flex max-w-sm flex-col items-center gap-3">
+          <p className="text-base font-semibold text-foreground">No patterns yet.</p>
+          <p className="text-sm text-muted-foreground">Create a new pattern to start working in this workspace.</p>
+          <Button onClick={handleCreatePattern} disabled={isCreatingPattern}>
+            {isCreatingPattern ? <Spinner className="mr-2 size-4" /> : <Plus className="mr-2 size-4" />}
+            {isCreatingPattern ? "Creating pattern..." : "Create new pattern"}
+          </Button>
+        </div>
       </div>
     )
   }
