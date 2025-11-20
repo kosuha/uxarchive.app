@@ -322,8 +322,6 @@ export const usePatternDetail = (patternId?: string | null) => {
         throw new Error(finalizePayload?.error ?? "Failed to update capture information.")
       }
 
-      await persistCaptureOrder(orderedIds, targetPatternId)
-
       const finalizePayload = (await finalizeResponse.json()) as { capture: CaptureRecord }
       return finalizePayload.capture
     },
@@ -449,6 +447,14 @@ export const usePatternDetail = (patternId?: string | null) => {
       } finally {
         pendingUploadCountRef.current = Math.max(0, pendingUploadCountRef.current - 1)
         if (pendingUploadCountRef.current === 0) {
+          const finalOrder = pendingCaptureOrderRef.current ?? getCachedCaptureOrder()
+          if (finalOrder.length) {
+            try {
+              await persistCaptureOrder(finalOrder)
+            } catch (orderError) {
+              console.warn("[usePatternDetail] failed to persist capture order after uploads", orderError)
+            }
+          }
           pendingCaptureOrderRef.current = null
         } else {
           const snapshot = getCachedCaptureOrder()

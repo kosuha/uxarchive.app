@@ -3,6 +3,7 @@
 const MAX_DIMENSION = 2048
 const TARGET_QUALITY = 0.82
 const TARGET_EXTENSION = "webp"
+const MIN_OPTIMIZE_BYTES = 900 * 1024 // skip heavy work for small files
 
 export type CaptureOptimizationResult = {
   file: File
@@ -228,6 +229,16 @@ export const measureImageDimensions = async (blob: Blob): Promise<{ width?: numb
 
 export const optimizeCaptureFile = async (file: File): Promise<CaptureOptimizationResult> => {
   if (!isOptimizableImage(file)) {
+    const dimensions = await measureImageDimensions(file)
+    return {
+      file,
+      ...dimensions,
+      optimized: false,
+    }
+  }
+
+  if (file.size <= MIN_OPTIMIZE_BYTES) {
+    // Small enough that the optimization cost likely outweighs savings; measure only.
     const dimensions = await measureImageDimensions(file)
     return {
       file,

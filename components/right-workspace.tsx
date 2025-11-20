@@ -165,12 +165,11 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
       try {
         const captureId = await uploadCaptureAction({ file, desiredOrder: order })
         setActiveCaptureId(captureId)
-        await refreshWorkspace()
       } catch (mutationError) {
         console.error("Failed to upload capture", mutationError)
       }
     },
-    [pattern, refreshWorkspace, uploadCaptureAction]
+    [pattern, uploadCaptureAction]
   )
 
   const handleReorderCapture = React.useCallback(
