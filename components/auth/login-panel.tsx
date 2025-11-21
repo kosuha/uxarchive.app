@@ -11,7 +11,7 @@ const resolveRedirectTo = () => {
     return process.env.NEXT_PUBLIC_SUPABASE_AUTH_REDIRECT_URL
   }
   if (typeof window === "undefined") return undefined
-  return `${window.location.origin}/api/auth/callback`
+  return `${window.location.origin}/api/auth/callback?next=/workspace`
 }
 
 export const LoginPanel = () => {
