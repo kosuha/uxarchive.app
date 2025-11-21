@@ -7,11 +7,10 @@ import { Button } from "@/components/ui/button"
 import { useSupabaseSession } from "@/lib/supabase/session-context"
 
 const resolveRedirectTo = () => {
-  if (process.env.NEXT_PUBLIC_SUPABASE_AUTH_REDIRECT_URL) {
-    return process.env.NEXT_PUBLIC_SUPABASE_AUTH_REDIRECT_URL
-  }
-  if (typeof window === "undefined") return undefined
-  return `${window.location.origin}/api/auth/callback?next=/workspace`
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "")
+  const origin = siteUrl || (typeof window !== "undefined" ? window.location.origin : undefined)
+  if (!origin) return undefined
+  return `${origin}/api/auth/callback?next=/workspace`
 }
 
 export const LoginPanel = () => {
