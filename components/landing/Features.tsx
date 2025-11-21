@@ -30,7 +30,7 @@ const features = [
   {
     icon: Zap,
     title: "Quick Access",
-    description: "Save instantly when inspiration strikes",
+    description: "When inspiration strikes, capture it and save it immediately.",
     gradient: "from-blue-500 to-indigo-500",
   },
   {
