@@ -89,6 +89,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
   const [highlightedInsightId, setHighlightedInsightId] = React.useState<string | null>(null)
   const [isPlacingInsight, setIsPlacingInsight] = React.useState(false)
   const [pendingInsightDeleteId, setPendingInsightDeleteId] = React.useState<string | null>(null)
+  const insightCreationPendingRef = React.useRef(false)
 
   const insightDeleteTarget = React.useMemo(() => {
     if (!pendingInsightDeleteId) return null
@@ -109,12 +110,16 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
   const handleCanvasPlacement = React.useCallback(
     async (point: CanvasPoint) => {
       if (!activeCapture) return
+      if (insightCreationPendingRef.current) return
+      insightCreationPendingRef.current = true
+      setIsPlacingInsight(false)
       try {
         const created = await createInsightAction({ captureId: activeCapture.id, x: point.x, y: point.y, note: "" })
         setHighlightedInsightId(created.id)
-        setIsPlacingInsight(false)
       } catch (mutationError) {
         console.error("Failed to create insight", mutationError)
+      } finally {
+        insightCreationPendingRef.current = false
       }
     },
     [activeCapture, createInsightAction]
