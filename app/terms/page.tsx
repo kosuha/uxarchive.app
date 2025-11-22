@@ -87,7 +87,7 @@ export default function TermsPage() {
 
         <div className="relative mx-auto max-w-4xl px-6 py-16 space-y-10">
           <header className="space-y-4">
-            <Badge variant="secondary">Last updated: 2025-01-07</Badge>
+            <Badge variant="secondary">Last updated: 2025-11-22</Badge>
             <h1 className="text-4xl font-bold tracking-tight">Terms of Service</h1>
             <p className="text-muted-foreground leading-relaxed">
               These terms govern your use of UX Archive. Please read them along with our
