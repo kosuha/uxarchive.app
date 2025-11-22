@@ -25,19 +25,32 @@ export function Footer() {
 
           {/* Links */}
           <div>
-            <h4 className="mb-4 text-sm text-muted-foreground"></h4>
             <ul className="space-y-2 text-sm">
             </ul>
           </div>
 
           <div>
-            <h4 className="mb-4 text-sm text-muted-foreground"></h4>
             <ul className="space-y-2 text-sm">
+              <li>
+                <a
+                  href="/"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Home
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/workspace"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Workspace
+                </a>
+              </li>
             </ul>
           </div>
 
           <div>
-            <h4 className="mb-4 text-sm text-muted-foreground">Support</h4>
             <ul className="space-y-2 text-sm">
               <li>
                 <a
