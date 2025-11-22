@@ -37,7 +37,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="mb-4 text-sm text-muted-foreground"></h4>
+            <h4 className="mb-4 text-sm text-muted-foreground">Support</h4>
             <ul className="space-y-2 text-sm">
               <li>
                 <a
@@ -53,6 +53,14 @@ export function Footer() {
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Privacy Policy
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/refund-policy"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Refund Policy
                 </a>
               </li>
             </ul>
