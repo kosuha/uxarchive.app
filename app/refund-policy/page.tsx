@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Footer } from "@/components/landing/Footer";
 
 export const metadata: Metadata = {
   title: "Refund Policy | UX Archive",
@@ -10,49 +11,47 @@ export const metadata: Metadata = {
 
 const sections = [
   {
-    title: "Eligibility",
+    title: "Required Information",
     description:
-      "We issue refunds when the product does not meet expectations and a request is made within the reasonable review window.",
+      "For faster handling, include the email used for payment and your order number.",
     bullets: [
-      "Requests must be made within 14 days of the original charge",
-      "Applies to first billing cycle for a plan or upgrade",
-      "Account must have no active chargeback or policy violations",
+      "Refund requests must be submitted by the original purchaser",
+      "If anything looks unusual, we may request extra details to verify your identity",
     ],
   },
   {
     title: "How to Request",
-    description:
-      "Send us the details below so we can investigate and respond quickly.",
+    description: "Email us with the details below and we'll guide you through next steps.",
     bullets: [
-      "Email okeydokekim@gmail.com with your account email and invoice ID",
-      "Include a brief description of the issue or mismatch",
-      "We confirm receipt within 2 business days and share next steps",
+      "Send your account email, order number, and a brief issue summary to okeydokekim@gmail.com",
+      "We confirm receipt and share next steps within 2 business days",
     ],
   },
   {
-    title: "Refund Method",
-    description:
-      "Approved refunds are returned to the original payment method unless required otherwise by the payment provider.",
+    title: "Eligibility",
+    description: "Full refunds are available within 14 days of purchase if there is no usage activity.",
     bullets: [
-      "Processing time is typically 5–10 business days after approval",
-      "Partial periods may be refunded on a prorated basis",
-      "Refund status is provided by email once initiated",
+      "After 14 days, unused time is not eligible for partial refunds",
+      "After cancellation, your membership stays active for the already paid period",
     ],
   },
   {
-    title: "Non-refundable Cases",
+    title: "Processing",
     description:
-      "Certain scenarios are not eligible for refunds.",
+      "Approved refunds return to the original payment method, and we'll email you status updates.",
     bullets: [
-      "Charges older than 30 days from the request date",
-      "Accounts with repeated abuse, policy violations, or chargebacks",
-      "One-time services or custom work delivered on request",
+      "Depending on your bank or card issuer, funds may take 5–10 business days to appear",
+      "We will notify you by email once the refund is processed",
     ],
   },
   {
-    title: "Need Help?",
-    description: "We are here to clarify anything about this policy.",
-    bullets: ["okeydokekim@gmail.com"],
+    title: "Additional Notes",
+    description:
+      "Terms may vary by region, and enterprise agreements follow the terms in the signed contract.",
+    bullets: [
+      "Local regulations may impose extra conditions",
+      "Enterprise contracts follow the refund terms specified in the agreement",
+    ],
   },
 ];
 
@@ -68,9 +67,8 @@ export default function RefundPolicyPage() {
             <Badge variant="secondary">Last updated: 2025-11-22</Badge>
             <h1 className="text-4xl font-bold tracking-tight">Refund Policy</h1>
             <p className="text-muted-foreground leading-relaxed">
-              We want you to feel confident using UX Archive. If the product is not
-              working for your team, this page explains when refunds are available
-              and how to request them.
+              Overview of UX Archive refund steps and criteria. Find required info, timelines, and
+              processing details below.
             </p>
           </header>
 
@@ -96,6 +94,7 @@ export default function RefundPolicyPage() {
           </div>
         </div>
       </div>
+      <Footer />
     </main>
   );
 }

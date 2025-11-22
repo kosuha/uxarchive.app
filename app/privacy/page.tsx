@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Footer } from "@/components/landing/Footer";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | UX Archive",
@@ -12,10 +13,10 @@ const sections = [
   {
     title: "Information We Collect",
     description:
-      "We only collect the minimum data required to operate and improve the service.",
+      "We only collect the minimum data required to operate and improve the service. Account sign-in is handled solely through Supabase with Google OAuth.",
     bullets: [
-      "Account: email, name, hashed password",
-      "Workspace content: project metadata, uploaded captures and files",
+      "Account: Google email and basic profile info returned by Google OAuth (no passwords stored)",
+      "Workspace content: project metadata, uploaded captures and files you add",
       "Usage: device/browser information and activity logs for quality and troubleshooting",
     ],
   },
@@ -105,6 +106,7 @@ export default function PrivacyPage() {
           </div>
         </div>
       </div>
+      <Footer />
     </main>
   );
 }
