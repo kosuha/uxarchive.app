@@ -1210,7 +1210,7 @@ function CaptureStrip({
                         className={cn(
                           "relative h-24 w-20 shrink-0 overflow-hidden rounded-xl border text-left transition-all focus-visible:ring-2 focus-visible:ring-ring",
                           isActive
-                            ? "border-2 border-primary/70 shadow-md"
+                            ? "border-3 border-primary shadow-md"
                             : "border-border/60 hover:border-primary/60",
                           isDragging && "opacity-70 ring-2 ring-primary"
                         )}
@@ -1229,7 +1229,14 @@ function CaptureStrip({
                             No image
                           </div>
                         )}
-                        <span className="absolute bottom-1 left-1 rounded-full bg-black/70 px-1.5 text-[10px] font-medium text-white">
+                        <span
+                          className={cn(
+                            "absolute bottom-1 left-1 rounded-full px-1.5 text-[10px] font-semibold shadow-sm",
+                            isActive
+                              ? "bg-primary text-primary-foreground shadow-[0_0_0_1px_rgba(255,255,255,0.4)]"
+                              : "bg-black/70 text-white"
+                          )}
+                        >
                           {capture.order}
                         </span>
                       </button>
