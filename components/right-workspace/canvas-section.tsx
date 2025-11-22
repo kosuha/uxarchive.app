@@ -1435,8 +1435,9 @@ function CaptureUploadDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Upload capture image">
+        <Button variant="default" size="sm" aria-label="Upload capture image">
           <Plus className="size-4" />
+          Upload
         </Button>
       </DialogTrigger>
       <DialogContent>

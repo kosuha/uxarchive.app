@@ -343,7 +343,7 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
               className="text-muted-foreground inline-flex items-center gap-1 rounded-full border border-dashed border-border/80 px-2.5 py-0.5 text-[11px] font-medium transition hover:border-foreground/70 hover:text-foreground"
             >
               <Plus className="size-3" />
-              Add tags
+              tags
             </button>
           </DialogTrigger>
         </div>
@@ -369,7 +369,11 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
                       className="rounded-full"
                       onClick={() => handleToggleTag(tag.id)}
                     >
-                      <TagBadge tag={tag} className="transition-colors hover:bg-muted/30" />
+                      <TagBadge
+                        tag={tag}
+                        showRemoveIcon
+                        className="transition-colors hover:bg-muted/30"
+                      />
                     </button>
                   ))}
                 </div>
