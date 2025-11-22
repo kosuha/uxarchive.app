@@ -372,7 +372,7 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
                       <TagBadge
                         tag={tag}
                         showRemoveIcon
-                        className="transition-colors hover:bg-muted/30"
+                        className="transition-colors"
                       />
                     </button>
                   ))}
