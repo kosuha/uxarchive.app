@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppProviders } from "@/components/app-providers";
 import { ContextMenuBlocker } from "@/components/context-menu-blocker";
@@ -14,6 +15,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "UX Archive",
+  url: "https://uxarchive.app",
+  logo: "https://uxarchive.app/logo.png",
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://uxarchive.app"),
   applicationName: "UX Archive",
@@ -22,7 +31,7 @@ export const metadata: Metadata = {
     template: "%s | UX Archive",
   },
   description:
-    "A pattern collection and insight archive tool for UX teams and product designers.",
+    "A pattern collection and insight archive tool for designers and product managers.",
   keywords: [
     "UX Archive",
     "UX patterns",
@@ -33,22 +42,37 @@ export const metadata: Metadata = {
   openGraph: {
     title: "UX Archive",
     description:
-      "Workspace for organizing service-specific UX patterns and captures and leaving insights with pins.",
+      "A pattern collection and insight archive tool for designers and product managers.",
     url: "https://uxarchive.app",
     siteName: "UX Archive",
     locale: "en_US",
     type: "website",
+    images: [
+      {
+        url: "/logo.png",
+        width: 300,
+        height: 300,
+        alt: "UX Archive logo",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "UX Archive",
     description:
-      "Designer-first workflow for managing pattern captures and insight notes in one place.",
+      "A pattern collection and insight archive tool for designers and product managers.",
+    images: ["/logo.png"],
   },
   icons: {
-    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
-    shortcut: ["/favicon.svg"],
-    apple: [{ url: "/favicon.svg" }],
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/logo.png", type: "image/png" },
+    ],
+    shortcut: ["/favicon.svg", "/logo.png"],
+    apple: [
+      { url: "/favicon.svg" },
+      { url: "/logo.png", type: "image/png" },
+    ],
   },
   manifest: "/site.webmanifest",
 };
@@ -63,6 +87,14 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <Script
+          id="org-ld"
+          type="application/ld+json"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationJsonLd),
+          }}
+        />
         <AppProviders>
           <ContextMenuBlocker />
           <div className="app-shell" data-app-shell>
