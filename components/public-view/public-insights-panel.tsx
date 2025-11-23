@@ -78,13 +78,13 @@ export function PublicInsightsPanel({ insights, highlightedInsightId, onHighligh
   }, [highlightedInsightId, allowAutoScroll])
 
   return (
-    <section className="flex flex-col rounded-xl border border-border/60 bg-card shadow-sm lg:h-full lg:flex-1 lg:basis-0 lg:min-h-0">
+    <section className="flex flex-1 min-h-0 flex-col rounded-xl border border-border/60 bg-card shadow-sm">
       <header className="flex items-center justify-between border-b border-border/60 px-6 py-4">
         <p className="text-md font-semibold">Insights</p>
         <span className="text-xs text-muted-foreground">{getCountLabel(sortedInsights.length)}</span>
       </header>
-      <div className="flex flex-col px-2 py-0 lg:flex-1 lg:basis-0 lg:min-h-0">
-        <ScrollArea className="lg:flex-1 lg:basis-0 lg:min-h-0">
+      <div className="flex flex-1 min-h-0 flex-col px-2 py-0">
+        <ScrollArea className="h-full">
           <div className="space-y-2 pb-4 pt-4">
             {sortedInsights.length ? (
               sortedInsights.map((insight, index) => {

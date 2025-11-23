@@ -194,8 +194,8 @@ export default async function SharePatternPage({ params }: SharePageProps) {
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/30">
-      <main className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 py-6 sm:px-6 lg:px-10 lg:overflow-hidden">
-        <div className="flex flex-1 flex-col lg:basis-0 lg:overflow-hidden">
+      <main className="flex flex-1 min-h-0 flex-col gap-6 overflow-y-auto px-4 py-6 sm:px-6 lg:px-10 lg:overflow-hidden">
+        <div className="flex flex-1 min-h-0 flex-col lg:basis-0 lg:overflow-hidden">
           <PublicPatternViewer pattern={data.pattern} captures={data.captures} insights={data.insights} />
         </div>
       </main>
