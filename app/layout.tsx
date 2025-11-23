@@ -19,19 +19,19 @@ const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "UX Archive",
-  url: "https://uxarchive.app",
-  logo: "https://uxarchive.app/logo.png",
+  url: "https://www.uxarchive.app",
+  logo: "https://www.uxarchive.app/logo.png",
 };
 
 const websiteJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   name: "UX Archive",
-  url: "https://uxarchive.app/",
+  url: "https://www.uxarchive.app/",
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://uxarchive.app"),
+  metadataBase: new URL("https://www.uxarchive.app"),
   applicationName: "UX Archive",
   title: {
     default: "UX Archive",
@@ -50,13 +50,13 @@ export const metadata: Metadata = {
     "Design reference",
   ],
   alternates: {
-    canonical: "https://uxarchive.app/",
+    canonical: "https://www.uxarchive.app/",
   },
   openGraph: {
     title: "UX Archive",
     description:
       "A pattern collection and insight archive tool for designers and product managers.",
-    url: "https://uxarchive.app",
+    url: "https://www.uxarchive.app",
     siteName: "UX Archive",
     locale: "en_US",
     type: "website",
