@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 const baseUrl = "https://uxarchive.app";
 
-const routes = [""];
+const routes = ["", "/privacy", "/terms", "/refund-policy"];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return routes.map((route) => ({

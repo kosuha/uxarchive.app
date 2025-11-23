@@ -41,6 +41,7 @@ export const metadata: Metadata = {
     "A pattern collection and insight archive tool for designers and product managers.",
   keywords: [
     "UX Archive",
+    "UX pattern archive",
     "UI Archive",
     "UX patterns",
     "UI patterns",
