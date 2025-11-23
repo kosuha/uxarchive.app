@@ -23,6 +23,13 @@ const organizationJsonLd = {
   logo: "https://uxarchive.app/logo.png",
 };
 
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "UX Archive",
+  url: "https://uxarchive.app/",
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://uxarchive.app"),
   applicationName: "UX Archive",
@@ -34,11 +41,17 @@ export const metadata: Metadata = {
     "A pattern collection and insight archive tool for designers and product managers.",
   keywords: [
     "UX Archive",
+    "UI Archive",
     "UX patterns",
+    "UI patterns",
     "Product design",
+    "User experience",
     "Insights",
     "Design reference",
   ],
+  alternates: {
+    canonical: "https://uxarchive.app/",
+  },
   openGraph: {
     title: "UX Archive",
     description:
@@ -93,6 +106,14 @@ export default function RootLayout({
           strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(organizationJsonLd),
+          }}
+        />
+        <Script
+          id="website-ld"
+          type="application/ld+json"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(websiteJsonLd),
           }}
         />
         <AppProviders>
