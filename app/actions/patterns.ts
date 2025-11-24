@@ -5,6 +5,7 @@ import { createPatternsRepository } from "@/lib/repositories/patterns"
 import { RepositoryError } from "@/lib/repositories/types"
 import { PATTERN_NAME_MAX_LENGTH, PATTERN_SERVICE_NAME_MAX_LENGTH } from "@/lib/field-limits"
 import { DEFAULT_PATTERN_SERVICE_NAME } from "@/lib/pattern-constants"
+import { ensurePatternCreationAllowed, ensureSharingAllowed } from "@/lib/plan-limits"
 
 import {
   createActionSupabaseClient,
@@ -44,6 +45,7 @@ export const createPatternAction = async (input: CreatePatternActionInput) => {
   const supabase = await createActionSupabaseClient()
   const user = await requireAuthenticatedUser(supabase)
   await ensureWorkspaceRole(supabase, input.workspaceId, "editor")
+  await ensurePatternCreationAllowed(supabase, user.id, input.workspaceId)
 
   const repo = createPatternsRepository(supabase)
   return repo.create({ ...input, serviceName, createdBy: input.createdBy ?? user.id })
@@ -74,8 +76,11 @@ export const updatePatternAction = async (input: UpdatePatternActionInput) => {
   }
 
   const supabase = await createActionSupabaseClient()
-  await requireAuthenticatedUser(supabase)
+  const user = await requireAuthenticatedUser(supabase)
   await ensureWorkspaceRole(supabase, input.workspaceId, "editor")
+  if (input.isPublic === true) {
+    await ensureSharingAllowed(supabase, user.id)
+  }
 
   const repo = createPatternsRepository(supabase)
   return repo.update(input)

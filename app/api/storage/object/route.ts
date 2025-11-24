@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import type { SupabaseClient, User } from "@supabase/supabase-js"
 
+import { ensureDownloadAllowed } from "@/lib/plan-limits"
+import { RepositoryError } from "@/lib/repositories/types"
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server-clients"
 
 const DEFAULT_BUCKET = "ux-archive-captures"
@@ -72,7 +74,8 @@ export const GET = async (request: Request) => {
     const bucket = resolveBucketName(url.searchParams.get("bucket"))
 
     const supabase = (await createSupabaseRouteHandlerClient()) as RouteSupabaseClient
-    await requireAuthenticatedUser(supabase)
+    const user = await requireAuthenticatedUser(supabase)
+    await ensureDownloadAllowed(supabase, user.id)
 
     const { data, error } = await supabase.storage.from(bucket).download(objectPath)
     if (error || !data) {
@@ -93,6 +96,9 @@ export const GET = async (request: Request) => {
     return new NextResponse(buffer, { headers })
   } catch (caught) {
     if (caught instanceof HttpError) {
+      return NextResponse.json({ error: caught.message }, { status: caught.status })
+    }
+    if (caught instanceof RepositoryError && caught.status) {
       return NextResponse.json({ error: caught.message }, { status: caught.status })
     }
     console.error("[storage-object] download failed", caught)
