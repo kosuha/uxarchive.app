@@ -12,26 +12,27 @@ const pricingTiers = [
     name: "Free",
     price: "$0",
     period: "/mo",
-    description: "",
-    badge: "Coming soon",
+    description: "Open to everyone",
+    badge: "Now available",
     highlight: false,
     features: ["Personal workspace", "Up to 5 patterns"],
-    ctaLabel: "Coming soon",
-    ctaHref: "#",
-    disabled: true,
+    ctaLabel: "Start free",
+    ctaHref: "/workspace",
+    disabled: false,
+    supportingText: "Start organizing your screenshots with the free plan.",
   },
   {
     name: "Plus",
-    price: "$0",
-    period: "during beta",
-    originalPrice: "$3/mo",
-    description: "",
-    badge: "Beta free",
+    price: "$3",
+    period: "/mo",
+    description: "More space",
+    badge: "Most popular",
     highlight: true,
     features: ["Personal workspace included", "Up to 30 patterns", "Image download"],
-    ctaLabel: "Start free (beta)",
-    ctaHref: "/workspace",
+    ctaLabel: "Upgrade to Plus",
+    ctaHref: "/price/plus",
     disabled: false,
+    supportingText: "Extra capacity and downloads for growing workspaces.",
   },
   {
     name: "Pro",
@@ -42,8 +43,9 @@ const pricingTiers = [
     highlight: false,
     features: ["Team workspace", "Unlimited patterns", "Image download", "Pattern prototyping"],
     ctaLabel: "Coming soon",
-    ctaHref: "#",
+    ctaHref: "/price/pro",
     disabled: true,
+    supportingText: "Team workspace and prototyping arrive soon.",
   },
 ];
 
@@ -63,7 +65,7 @@ export function Pricing() {
           </Badge>
           <h2 className="text-4xl font-black md:text-5xl">Flexible plans for your archiving flow</h2>
           <p className="text-lg text-muted-foreground">
-            Plus stays free during beta. From personal to team, choose what fits your product stage.
+            Free is now open to everyone. Start free and upgrade to Plus when you need more room.
           </p>
         </div>
 
@@ -122,19 +124,12 @@ function PricingCard({ tier }: PricingCardProps) {
             {tier.name} {tier.description && "·"} {tier.description}
           </p>
           <div className="flex items-baseline gap-3">
-            {tier.originalPrice ? (
-              <span className="text-sm text-muted-foreground line-through">{tier.originalPrice}</span>
-            ) : null}
             <p className="text-4xl font-black">
               {tier.price}
               <span className="ml-2 text-base font-normal text-muted-foreground">{tier.period}</span>
             </p>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {tier.highlight
-              ? "Enjoy every feature for free while we’re in beta."
-              : "Unlocks progressively after launch."}
-          </p>
+          <p className="text-sm text-muted-foreground">{tier.supportingText}</p>
         </div>
         <Badge variant={tier.highlight ? "outline" : "secondary"} className="h-8 rounded-full">
           {tier.badge}

@@ -90,7 +90,7 @@ export function Footer() {
 
         <div className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © 2025 UX Archive. All rights reserved.
+            © 2025 Gaepo Hitchhikers. All rights reserved.
           </p>
           <div className="flex gap-6 text-sm text-muted-foreground">
           </div>
