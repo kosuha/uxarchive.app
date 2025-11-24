@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 
 import { lemonSqueezyBilling } from "@/lib/billing-config"
 import { createLemonSqueezyCheckout } from "@/lib/lemonsqueezy"
+import { isPaidPlanActive } from "@/lib/plan-limits"
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server-clients"
 
 export const runtime = "nodejs"
@@ -37,6 +38,28 @@ export async function POST(request: Request) {
 
     if (requestedPlanCode && requestedPlanCode !== lemonSqueezyBilling.plans.plus.code) {
       return NextResponse.json({ error: "unsupported_plan" }, { status: 400 })
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("plan_code, plan_status, ls_subscription_id")
+      .eq("id", user.id)
+      .maybeSingle()
+
+    if (profileError) {
+      console.error("Checkout blocked: failed to load profile", profileError)
+      return NextResponse.json({ error: "profile_lookup_failed" }, { status: 500 })
+    }
+
+    if (profile && isPaidPlanActive(profile.plan_code, profile.plan_status)) {
+      return NextResponse.json(
+        {
+          error: "already_subscribed",
+          message:
+            "이미 Plus 플랜을 사용 중이에요. 구독 관리나 결제 변경은 고객 포털에서 진행해주세요.",
+        },
+        { status: 409 },
+      )
     }
 
     const url = await createLemonSqueezyCheckout({

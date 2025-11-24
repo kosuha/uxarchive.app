@@ -50,6 +50,10 @@ export const resolveEffectivePlan = (
   return DEFAULT_PLAN_CODE
 }
 
+export const isPaidPlanActive = (planCode?: string | null, planStatus?: string | null) => {
+  return resolveEffectivePlan(planCode, planStatus) !== DEFAULT_PLAN_CODE
+}
+
 export const loadPlanWithLimits = async (
   supabase: SupabaseClient,
   userId: string,

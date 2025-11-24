@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   assertPatternLimit,
+  isPaidPlanActive,
   ensureDownloadAllowed,
   planLimits,
   resolveEffectivePlan,
@@ -33,6 +34,22 @@ describe("resolveEffectivePlan", () => {
 
   it("알 수 없는 코드도 안전하게 free로 처리한다", () => {
     expect(resolveEffectivePlan("enterprise", "active")).toBe("free")
+  })
+})
+
+describe("isPaidPlanActive", () => {
+  it("무료 플랜이면 false", () => {
+    expect(isPaidPlanActive("free", "active")).toBe(false)
+  })
+
+  it("유료 플랜 + active/trialing이면 true", () => {
+    expect(isPaidPlanActive("plus", "active")).toBe(true)
+    expect(isPaidPlanActive("plus", "trialing")).toBe(true)
+  })
+
+  it("유료 플랜이어도 past_due/canceled면 false", () => {
+    expect(isPaidPlanActive("plus", "past_due")).toBe(false)
+    expect(isPaidPlanActive("plus", "canceled")).toBe(false)
   })
 })
 
