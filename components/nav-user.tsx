@@ -311,6 +311,34 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
       </SidebarMenuItem>
       <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
         <DialogContent className="sm:max-w-2xl overflow-hidden p-0">
+          <div className="flex flex-col items-start gap-2 border-b border-muted bg-muted/40 px-4 py-3 sm:hidden">
+            <span className="text-xs font-semibold text-muted-foreground">Settings</span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={activeTab === "account" ? "secondary" : "ghost"}
+                size="icon"
+                onClick={() => setActiveTab("account")}
+                aria-label="Account"
+                className="h-10 w-10 rounded-full"
+              >
+                <UserRound className="h-5 w-5" />
+              </Button>
+              <Button
+                variant={activeTab === "subscription" ? "secondary" : "ghost"}
+                size="icon"
+                onClick={() => {
+                  setActiveTab("subscription")
+                  if (!planInfo && !planLoading) {
+                    void fetchPlanInfo()
+                  }
+                }}
+                aria-label="Subscription"
+                className="h-10 w-10 rounded-full"
+              >
+                <Zap className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
           <div className="flex h-full min-h-[420px]">
             <aside className="hidden w-56 shrink-0 border-r border-muted bg-muted/40 p-4 sm:flex sm:flex-col gap-2 text-sm">
               <div className="px-2 py-1 text-xs font-semibold text-muted-foreground">Settings</div>
