@@ -55,7 +55,7 @@ export function Hero() {
           <h1 className="text-6xl font-black md:text-8xl mb-6 tracking-tight">
             <span className="block">Organize your</span>
             <span className="block leading-[1.15] bg-gradient-to-r from-primary via-green-400 to-primary bg-clip-text text-transparent">
-              UX Insights
+              UX Patterns
             </span>
           </h1>
 
