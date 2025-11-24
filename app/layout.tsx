@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     template: "%s | UX Archive",
   },
   description:
-    "A pattern collection and insight archive tool for designers and product managers.",
+    "From screenshots to structured insights — all in one clean workspace.",
   keywords: [
     "UX Archive",
     "UX pattern archive",
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "UX Archive",
     description:
-      "A pattern collection and insight archive tool for designers and product managers.",
+      "From screenshots to structured insights — all in one clean workspace.",
     url: "https://www.uxarchive.app",
     siteName: "UX Archive",
     locale: "en_US",
@@ -74,7 +74,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "UX Archive",
     description:
-      "A pattern collection and insight archive tool for designers and product managers.",
+      "From screenshots to structured insights — all in one clean workspace.",
     images: ["/logo.png"],
   },
   icons: {
