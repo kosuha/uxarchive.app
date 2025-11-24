@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 
 import {
   type LemonSqueezyWebhookPayload,
+  parseLemonSqueezyEvent,
   verifyLemonSqueezySignature,
 } from "@/lib/lemonsqueezy"
 
@@ -30,23 +31,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid_payload" }, { status: 400 })
   }
 
-  const eventName = payload.meta?.event_name ?? "unknown"
-  const subscriptionId = payload.data?.id
-  const attributes = (payload.data?.attributes ?? {}) as Record<string, unknown>
-  const status =
-    (attributes as { status?: string }).status ??
-    (attributes as { status_formatted?: string }).status_formatted
+  const parsed = parseLemonSqueezyEvent(payload)
 
   const logPayload = {
-    eventName,
-    subscriptionId,
-    status,
-    renews_at: (attributes as Record<string, unknown>).renews_at,
-    ends_at: (attributes as Record<string, unknown>).ends_at,
-    testMode: payload.meta?.test_mode,
+    eventName: parsed.eventName,
+    eventId: parsed.eventId,
+    subscriptionId: parsed.subscriptionId,
+    customerId: parsed.customerId,
+    userId: parsed.userId,
+    status: parsed.status,
+    renews_at: (parsed.raw.data?.attributes as Record<string, unknown> | undefined)
+      ?.renews_at,
+    ends_at: (parsed.raw.data?.attributes as Record<string, unknown> | undefined)
+      ?.ends_at,
+    testMode: parsed.testMode,
   }
 
-  switch (eventName) {
+  switch (parsed.eventName) {
     case "subscription_created":
     case "subscription_updated":
     case "subscription_plan_changed":
@@ -65,10 +66,13 @@ export async function POST(request: Request) {
     case "license_key_created":
     case "license_key_updated":
       // TODO: DB 반영 로직 추가 예정
-      console.info(`LemonSqueezy event handled: ${eventName}`, logPayload)
+      console.info(`LemonSqueezy event handled: ${parsed.eventName}`, logPayload)
       break
     default:
-      console.warn(`LemonSqueezy event ignored (unrecognized): ${eventName}`, logPayload)
+      console.warn(
+        `LemonSqueezy event ignored (unrecognized): ${parsed.eventName}`,
+        logPayload
+      )
   }
 
   return NextResponse.json({ received: true })

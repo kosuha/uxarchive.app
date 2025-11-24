@@ -19,7 +19,8 @@ const getEnv = (key: string, fallbackKey?: string) => {
 export type CreateCheckoutOptions = {
   email?: string
   redirectUrl?: string
-  custom?: Record<string, unknown>
+  userId?: string
+  metadata?: Record<string, unknown>
   variantId?: string
 }
 
@@ -34,6 +35,7 @@ type CheckoutResponse = {
 export type LemonSqueezyWebhookPayload = {
   meta?: {
     event_name?: string
+    event_id?: string
     test_mode?: boolean
   }
   data?: {
@@ -54,8 +56,11 @@ export async function createLemonSqueezyCheckout(
     getEnv("LEMONSQUEEZY_VARIANT_ID_PLUS")
 
   const checkoutData: Record<string, unknown> = {}
+  const custom: Record<string, unknown> = {}
   if (options.email) checkoutData.email = options.email
-  if (options.custom) checkoutData.custom = options.custom
+  if (options.userId) custom.userId = options.userId
+  if (options.metadata) Object.assign(custom, options.metadata)
+  if (Object.keys(custom).length > 0) checkoutData.custom = custom
 
   const productOptions: Record<string, unknown> = {}
   const redirectUrl = options.redirectUrl ?? lemonSqueezyBilling.plans.plus.redirectUrl
@@ -64,6 +69,10 @@ export async function createLemonSqueezyCheckout(
   }
 
   const attributes: Record<string, unknown> = {}
+  if (options.userId) {
+    const passThroughPayload = { userId: options.userId }
+    attributes.pass_through = JSON.stringify(passThroughPayload)
+  }
   if (Object.keys(checkoutData).length > 0) attributes.checkout_data = checkoutData
   if (Object.keys(productOptions).length > 0) attributes.product_options = productOptions
 
@@ -125,5 +134,149 @@ export function verifyLemonSqueezySignature(
     return timingSafeEqual(expectedBuffer, providedBuffer)
   } catch {
     return false
+  }
+}
+
+type PortalResponse = {
+  data?: {
+    id?: string
+    attributes?: {
+      url?: string
+    }
+  }
+}
+
+export async function createLemonSqueezyPortal(options: {
+  customerId: string
+  returnUrl?: string
+}): Promise<PortalResponse> {
+  const apiKey = lemonSqueezyBilling.apiKey ?? getEnv("LEMONSQUEEZY_API_KEY")
+
+  const payload = {
+    data: {
+      type: "customer-portals",
+      attributes: {
+        customer_id: options.customerId,
+        ...(options.returnUrl ? { return_url: options.returnUrl } : {}),
+      },
+    },
+  }
+
+  const response = await fetch(`${LEMONSQUEEZY_API_BASE}/customer-portal`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      Accept: "application/vnd.api+json",
+    },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(
+      `Failed to create LemonSqueezy customer portal: ${response.status} ${errorText}`
+    )
+  }
+
+  return (await response.json()) as PortalResponse
+}
+
+type SubscriptionResponse = {
+  data?: {
+    id?: string
+    attributes?: Record<string, unknown>
+  }
+}
+
+export async function getLemonSqueezySubscription(subscriptionId: string) {
+  const apiKey = lemonSqueezyBilling.apiKey ?? getEnv("LEMONSQUEEZY_API_KEY")
+
+  const response = await fetch(
+    `${LEMONSQUEEZY_API_BASE}/subscriptions/${subscriptionId}`,
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/vnd.api+json",
+      },
+      cache: "no-store",
+    }
+  )
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(
+      `Failed to fetch LemonSqueezy subscription: ${response.status} ${errorText}`
+    )
+  }
+
+  return (await response.json()) as SubscriptionResponse
+}
+
+export type LemonSqueezyPlanStatus = "active" | "trialing" | "past_due" | "canceled"
+
+export function mapLemonSqueezyStatus(status?: string): LemonSqueezyPlanStatus {
+  const normalized = status?.toLowerCase() ?? ""
+  switch (normalized) {
+    case "on_trial":
+    case "trialing":
+      return "trialing"
+    case "past_due":
+    case "unpaid":
+      return "past_due"
+    case "cancelled":
+    case "canceled":
+    case "expired":
+    case "paused":
+      return "canceled"
+    default:
+      return "active"
+  }
+}
+
+export function parseLemonSqueezyEvent(payload: LemonSqueezyWebhookPayload) {
+  const attributes = (payload.data?.attributes ?? {}) as Record<string, unknown>
+  const eventName = payload.meta?.event_name ?? "unknown"
+  const rawStatus =
+    (attributes as { status?: string }).status ??
+    (attributes as { status_formatted?: string }).status_formatted
+  const status = mapLemonSqueezyStatus(rawStatus)
+
+  const passThroughRaw = (attributes as { pass_through?: string }).pass_through
+  let userIdFromPassThrough: string | undefined
+  if (typeof passThroughRaw === "string") {
+    try {
+      const parsed = JSON.parse(passThroughRaw) as { userId?: string }
+      if (parsed && typeof parsed.userId === "string") {
+        userIdFromPassThrough = parsed.userId
+      }
+    } catch {
+      // pass_through이 JSON이 아닌 경우 그대로 무시
+    }
+  }
+
+  const custom = attributes as { custom?: Record<string, unknown> }
+  const userIdFromCustom =
+    typeof custom.custom?.userId === "string" ? custom.custom.userId : undefined
+
+  const eventId =
+    (payload.meta as { event_id?: string })?.event_id ??
+    (payload.meta as { eventId?: string })?.eventId ??
+    (attributes as { event_id?: string }).event_id ??
+    (attributes as { identifier?: string }).identifier ??
+    payload.data?.id
+
+  return {
+    eventName,
+    eventId,
+    subscriptionId: payload.data?.id,
+    customerId: (attributes as { customer_id?: string }).customer_id,
+    orderId: (attributes as { order_id?: string }).order_id,
+    status,
+    rawStatus,
+    userId: userIdFromCustom ?? userIdFromPassThrough,
+    testMode: Boolean(payload.meta?.test_mode),
+    raw: payload,
   }
 }

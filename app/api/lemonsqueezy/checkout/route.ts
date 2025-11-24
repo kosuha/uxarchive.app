@@ -33,6 +33,11 @@ export async function POST(request: Request) {
     const url = await createLemonSqueezyCheckout({
       email: typeof body.email === "string" ? body.email : undefined,
       redirectUrl: successRedirectUrl,
+      userId: user.id,
+      metadata:
+        body && typeof body === "object" && !Array.isArray(body)
+          ? (body.metadata as Record<string, unknown> | undefined)
+          : undefined,
     })
 
     return NextResponse.json({ url })
