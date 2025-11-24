@@ -182,7 +182,7 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
 
   const handleUpgradePlan = () => {
     setIsProfileDialogOpen(false)
-    router.push("/#price")
+    router.push("/#pricing")
   }
 
   const handleDeleteAccount = async () => {
