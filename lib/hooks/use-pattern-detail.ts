@@ -278,7 +278,7 @@ export const usePatternDetail = (patternId?: string | null) => {
 
   const uploadCaptureMutation = useMutation<CaptureRecord, Error, UploadCaptureMutationVariables, UploadCaptureMutationContext>({
     mutationFn: async (variables) => {
-      const { file, captureId, workspaceId: targetWorkspaceId, patternId: targetPatternId, orderedIds } = variables
+      const { file, captureId, workspaceId: targetWorkspaceId, patternId: targetPatternId } = variables
 
       const filename = file.name || `${captureId}.dat`
       const contentType = file.type || "application/octet-stream"
@@ -486,7 +486,7 @@ export const usePatternDetail = (patternId?: string | null) => {
 
       return captureId
     },
-    [getCachedCaptureOrder, patternDetailQueryKey, patternId, uploadCaptureMutation, workspaceId],
+    [getCachedCaptureOrder, patternDetailQueryKey, patternId, persistCaptureOrder, uploadCaptureMutation, workspaceId],
   )
 
   const reorderCaptures = React.useCallback(

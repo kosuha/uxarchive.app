@@ -1,4 +1,5 @@
-import Image from "next/image";
+import Image from "next/image"
+import Link from "next/link"
 
 export function Footer() {
   return (
@@ -32,20 +33,14 @@ export function Footer() {
           <div>
             <ul className="space-y-2 text-sm">
               <li>
-                <a
-                  href="/"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
+                <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
                   Home
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="/workspace"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
+                <Link href="/workspace" className="text-muted-foreground hover:text-foreground transition-colors">
                   Workspace
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -61,28 +56,19 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a
-                  href="/terms"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
+                <Link href="/terms" className="text-muted-foreground hover:text-foreground transition-colors">
                   Terms
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="/privacy"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
+                <Link href="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
                   Privacy Policy
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="/refund-policy"
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
+                <Link href="/refund-policy" className="text-muted-foreground hover:text-foreground transition-colors">
                   Refund Policy
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

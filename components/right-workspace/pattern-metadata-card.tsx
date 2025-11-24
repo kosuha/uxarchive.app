@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/dialog"
 import {
   Command,
-  CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
@@ -111,7 +110,6 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
     return !sortedTags.some((tag) => tag.label.toLowerCase() === normalizedTagSearch)
   }, [normalizedTagSearch, onCreateTag, sortedTags])
 
-  const patternTagIds = React.useMemo(() => new Set(pattern.tags.map((tag) => tag.id)), [pattern.tags])
   const orderedPatternTags = React.useMemo(() => {
     const tagMap = new Map(pattern.tags.map((tag) => [tag.id, tag]))
     const ordered = tagOrder
@@ -127,7 +125,7 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
 
   React.useEffect(() => {
     setTagOrder(pattern.tags.map((tag) => tag.id))
-  }, [pattern.id])
+  }, [pattern.id, pattern.tags])
 
   React.useEffect(() => {
     const currentIds = pattern.tags.map((tag) => tag.id)
@@ -404,7 +402,7 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
                       >
                         <Plus className="size-4" />
                         <div className="flex flex-1 flex-col text-left">
-                          <span className="text-sm">Create "{tagSearch.trim()}"</span>
+                          <span className="text-sm">Create &quot;{tagSearch.trim()}&quot;</span>
                         </div>
                       </CommandItem>
                     )}

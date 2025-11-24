@@ -1179,7 +1179,7 @@ function InlineCreateInput({ placeholder, onSubmit, onCancel, className, maxLeng
     }
     finishedRef.current = true
     onSubmit(trimmed)
-  }, [cancel, onSubmit, value])
+  }, [cancel, onCancel, onSubmit, value])
 
   return (
     <Input

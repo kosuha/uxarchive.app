@@ -8,7 +8,7 @@ export const runtime = "nodejs"
 const PROFILE_COLUMNS =
   "plan_code, plan_status, renewal_at, cancel_at, ls_customer_id, ls_subscription_id"
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
     const supabase = await createSupabaseRouteHandlerClient()
     const {

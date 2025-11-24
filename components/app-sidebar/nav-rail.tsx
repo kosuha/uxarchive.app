@@ -7,7 +7,6 @@ import type { LucideIcon } from "lucide-react"
 import { NavUser } from "@/components/nav-user"
 import {
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"

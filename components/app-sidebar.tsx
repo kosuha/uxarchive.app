@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Image from "next/image"
 import { File, Search, Star } from "lucide-react"
 
 import { ExploreView } from "@/components/app-sidebar/nav-views/explore-view"
@@ -151,23 +150,26 @@ export function AppSidebar({
     }
   }, [pendingFolderInput, folders])
 
-  const beginPatternCreation = React.useCallback((folderId: string | null) => {
-    if (patternLimitMessage) {
-      toast({
-        variant: "destructive",
-        title: "패턴 한도 도달",
-        description: patternLimitMessage,
-      })
-      return
-    }
-    setPendingFolderInput(null)
-    setPendingPatternInput({ folderId, token: createId() })
-    if (folderId) {
-      setSelectedFolderId(folderId)
-    } else {
-      setSelectedFolderId(null)
-    }
-  }, [])
+  const beginPatternCreation = React.useCallback(
+    (folderId: string | null) => {
+      if (patternLimitMessage) {
+        toast({
+          variant: "destructive",
+          title: "패턴 한도 도달",
+          description: patternLimitMessage,
+        })
+        return
+      }
+      setPendingFolderInput(null)
+      setPendingPatternInput({ folderId, token: createId() })
+      if (folderId) {
+        setSelectedFolderId(folderId)
+      } else {
+        setSelectedFolderId(null)
+      }
+    },
+    [patternLimitMessage, toast]
+  )
 
   const beginFolderCreation = React.useCallback((parentId: string | null) => {
     setPendingPatternInput(null)
@@ -385,7 +387,7 @@ export function AppSidebar({
         console.error("Failed to create pattern", mutationError)
       }
     },
-    [mutations]
+    [mutations, patternLimitMessage, toast]
   )
 
   const handleFolderInputSubmit = React.useCallback(

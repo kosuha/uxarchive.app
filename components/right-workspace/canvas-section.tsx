@@ -362,7 +362,18 @@ export function CanvasSection({
     } finally {
       setCaptureDownloadPending(false)
     }
-  }, [activeCapture, allowDownloads, captureOrder, downloadsBlocked, isForbiddenError, patternFilenameToken, showDownloadBlockedToast, toast])
+  }, [
+    activeCapture,
+    allowDownloads,
+    captureOrder,
+    downloadsBlocked,
+    isForbiddenError,
+    isPlanLoading,
+    patternFilenameToken,
+    showDownloadBlockedToast,
+    showPlanLoadingToast,
+    toast,
+  ])
 
   const handleDownloadPatternImages = React.useCallback(async () => {
     if (!hasDownloadablePattern) return
@@ -402,7 +413,18 @@ export function CanvasSection({
     } finally {
       setPatternDownloadPending(false)
     }
-  }, [allowDownloads, captures, downloadsBlocked, hasDownloadablePattern, isForbiddenError, patternFilenameToken, showDownloadBlockedToast, toast])
+  }, [
+    allowDownloads,
+    captures,
+    downloadsBlocked,
+    hasDownloadablePattern,
+    isForbiddenError,
+    isPlanLoading,
+    patternFilenameToken,
+    showDownloadBlockedToast,
+    showPlanLoadingToast,
+    toast,
+  ])
   return (
     <section className="flex flex-1 basis-0 min-h-0 min-w-0 flex-col rounded-xl border border-border/60 bg-gradient-to-b from-card to-muted/20 shadow-sm md:min-h-[640px]">
       <CanvasHeader

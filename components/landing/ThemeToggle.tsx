@@ -16,7 +16,8 @@ export function LandingThemeToggle({ className }: LandingThemeToggleProps) {
   const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
-    setIsMounted(true)
+    const raf = requestAnimationFrame(() => setIsMounted(true))
+    return () => cancelAnimationFrame(raf)
   }, [])
 
   const isDarkMode = isMounted && resolvedTheme === "dark"
