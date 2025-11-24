@@ -9,6 +9,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { cn } from "@/lib/utils"
 
@@ -69,10 +70,23 @@ type NavRailButtonProps = {
 }
 
 function NavRailButton({ item, isActive, onSelect }: NavRailButtonProps) {
+  const { state, setOpen, setOpenMobile, isMobile, openMobile } = useSidebar()
+
+  const handleClick = React.useCallback(() => {
+    if (!isMobile && state === "collapsed") {
+      setOpen(true)
+    }
+    if (isMobile && !openMobile) {
+      setOpenMobile(true)
+    }
+
+    onSelect()
+  }, [isMobile, onSelect, openMobile, setOpen, setOpenMobile, state])
+
   return (
     <button
       type="button"
-      onClick={onSelect}
+      onClick={handleClick}
       aria-label={item.title}
       className={cn(
         "flex items-center gap-2 rounded-md px-2.5 py-2 text-xs font-medium transition-colors",

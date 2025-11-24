@@ -530,6 +530,7 @@ function SidebarMenuButton({
   size = "default",
   tooltip,
   className,
+  onClick,
   ...props
 }: React.ComponentProps<"button"> & {
   asChild?: boolean
@@ -537,7 +538,22 @@ function SidebarMenuButton({
   tooltip?: string | React.ComponentProps<typeof TooltipContent>
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const Comp = asChild ? Slot : "button"
-  const { isMobile, state } = useSidebar()
+  const { isMobile, state, setOpen, setOpenMobile, openMobile } = useSidebar()
+
+  const handleClick = React.useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      // nav rail에서 아이콘을 클릭하면 사이드바를 펼쳐 보여준다.
+      if (!isMobile && state === "collapsed") {
+        setOpen(true)
+      }
+      if (isMobile && !openMobile) {
+        setOpenMobile(true)
+      }
+
+      onClick?.(event)
+    },
+    [isMobile, onClick, openMobile, setOpen, setOpenMobile, state]
+  )
 
   const button = (
     <Comp
@@ -546,6 +562,7 @@ function SidebarMenuButton({
       data-size={size}
       data-active={isActive}
       className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+      onClick={handleClick}
       {...props}
     />
   )
