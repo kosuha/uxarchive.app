@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 
+import { lemonSqueezyBilling } from "@/lib/billing-config"
 import { createLemonSqueezyCheckout } from "@/lib/lemonsqueezy"
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server-clients"
 
@@ -30,10 +31,19 @@ export async function POST(request: Request) {
       process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || `${requestUrl.origin}`
     const successRedirectUrl = `${origin}/workspace`
 
+    const requestedPlanCode =
+      typeof body.planCode === "string" ? body.planCode.trim() : undefined
+    const planCode = requestedPlanCode || lemonSqueezyBilling.plans.plus.code
+
+    if (requestedPlanCode && requestedPlanCode !== lemonSqueezyBilling.plans.plus.code) {
+      return NextResponse.json({ error: "unsupported_plan" }, { status: 400 })
+    }
+
     const url = await createLemonSqueezyCheckout({
       email: typeof body.email === "string" ? body.email : undefined,
       redirectUrl: successRedirectUrl,
       userId: user.id,
+      planCode,
       metadata:
         body && typeof body === "object" && !Array.isArray(body)
           ? (body.metadata as Record<string, unknown> | undefined)

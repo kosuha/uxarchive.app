@@ -22,6 +22,7 @@ export type CreateCheckoutOptions = {
   userId?: string
   metadata?: Record<string, unknown>
   variantId?: string
+  planCode?: string
 }
 
 type CheckoutResponse = {
@@ -56,10 +57,10 @@ export async function createLemonSqueezyCheckout(
     getEnv("LEMONSQUEEZY_VARIANT_ID_PLUS")
 
   const checkoutData: Record<string, unknown> = {}
-  const custom: Record<string, unknown> = {}
-  if (options.email) checkoutData.email = options.email
+  const custom: Record<string, unknown> = options.metadata ? { ...options.metadata } : {}
+  if (options.planCode) custom.planCode = options.planCode
   if (options.userId) custom.userId = options.userId
-  if (options.metadata) Object.assign(custom, options.metadata)
+  if (options.email) checkoutData.email = options.email
   if (Object.keys(custom).length > 0) checkoutData.custom = custom
 
   const productOptions: Record<string, unknown> = {}
@@ -69,8 +70,10 @@ export async function createLemonSqueezyCheckout(
   }
 
   const attributes: Record<string, unknown> = {}
-  if (options.userId) {
-    const passThroughPayload = { userId: options.userId }
+  if (options.userId || options.planCode) {
+    const passThroughPayload: Record<string, string> = {}
+    if (options.userId) passThroughPayload.userId = options.userId
+    if (options.planCode) passThroughPayload.planCode = options.planCode
     attributes.pass_through = JSON.stringify(passThroughPayload)
   }
   if (Object.keys(checkoutData).length > 0) attributes.checkout_data = checkoutData
@@ -245,11 +248,15 @@ export function parseLemonSqueezyEvent(payload: LemonSqueezyWebhookPayload) {
 
   const passThroughRaw = (attributes as { pass_through?: string }).pass_through
   let userIdFromPassThrough: string | undefined
+  let planCodeFromPassThrough: string | undefined
   if (typeof passThroughRaw === "string") {
     try {
-      const parsed = JSON.parse(passThroughRaw) as { userId?: string }
+      const parsed = JSON.parse(passThroughRaw) as { userId?: string; planCode?: string }
       if (parsed && typeof parsed.userId === "string") {
         userIdFromPassThrough = parsed.userId
+      }
+      if (parsed && typeof parsed.planCode === "string") {
+        planCodeFromPassThrough = parsed.planCode
       }
     } catch {
       // pass_through이 JSON이 아닌 경우 그대로 무시
@@ -259,6 +266,8 @@ export function parseLemonSqueezyEvent(payload: LemonSqueezyWebhookPayload) {
   const custom = attributes as { custom?: Record<string, unknown> }
   const userIdFromCustom =
     typeof custom.custom?.userId === "string" ? custom.custom.userId : undefined
+  const planCodeFromCustom =
+    typeof custom.custom?.planCode === "string" ? custom.custom.planCode : undefined
 
   const eventId =
     (payload.meta as { event_id?: string })?.event_id ??
@@ -276,6 +285,7 @@ export function parseLemonSqueezyEvent(payload: LemonSqueezyWebhookPayload) {
     status,
     rawStatus,
     userId: userIdFromCustom ?? userIdFromPassThrough,
+    planCode: planCodeFromCustom ?? planCodeFromPassThrough,
     testMode: Boolean(payload.meta?.test_mode),
     raw: payload,
   }
