@@ -71,7 +71,8 @@ export function AppSidebar({
   const [activeNavId, setActiveNavId] = React.useState(PRIMARY_NAV_ITEMS[0]?.id ?? "")
   const [searchQuery, setSearchQuery] = React.useState("")
   const [searchSelectedTagIds, setSearchSelectedTagIds] = React.useState<string[]>([])
-  const isSidebarCollapsed = sidebarState === "collapsed"
+  // 모바일 시트에서는 접힘 상태를 적용하지 않아야 내용이 보인다.
+  const isSidebarCollapsed = !isMobile && sidebarState === "collapsed"
 
   const navOffsetValue = React.useMemo(
     () => (isMobile ? "0px" : NAV_RAIL_WIDTH),
