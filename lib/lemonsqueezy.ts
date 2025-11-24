@@ -1,5 +1,7 @@
 import { createHmac, timingSafeEqual } from "crypto"
 
+import { lemonSqueezyBilling } from "./billing-config"
+
 const LEMONSQUEEZY_API_BASE = "https://api.lemonsqueezy.com/v1"
 
 const getEnv = (key: string, fallbackKey?: string) => {
@@ -44,17 +46,22 @@ export type LemonSqueezyWebhookPayload = {
 export async function createLemonSqueezyCheckout(
   options: CreateCheckoutOptions = {}
 ): Promise<string> {
-  const apiKey = getEnv("LEMONSQUEEZY_API_KEY")
-  const storeId = getEnv("LEMONSQUEEZY_STORE_ID")
+  const apiKey = lemonSqueezyBilling.apiKey ?? getEnv("LEMONSQUEEZY_API_KEY")
+  const storeId = lemonSqueezyBilling.storeId ?? getEnv("LEMONSQUEEZY_STORE_ID")
   const variantId =
-    options.variantId ?? getEnv("LEMONSQUEEZY_VARIANT_ID_PLUS", "LEMONSQUEEZY_VARIANT_ID")
+    options.variantId ??
+    lemonSqueezyBilling.plans.plus.variantId ??
+    getEnv("LEMONSQUEEZY_VARIANT_ID_PLUS")
 
   const checkoutData: Record<string, unknown> = {}
   if (options.email) checkoutData.email = options.email
   if (options.custom) checkoutData.custom = options.custom
 
   const productOptions: Record<string, unknown> = {}
-  if (options.redirectUrl) productOptions.redirect_url = options.redirectUrl
+  const redirectUrl = options.redirectUrl ?? lemonSqueezyBilling.plans.plus.redirectUrl
+  if (redirectUrl) {
+    productOptions.redirect_url = redirectUrl
+  }
 
   const attributes: Record<string, unknown> = {}
   if (Object.keys(checkoutData).length > 0) attributes.checkout_data = checkoutData
@@ -102,7 +109,7 @@ export function verifyLemonSqueezySignature(
   rawBody: string,
   signature: string | null
 ) {
-  const secret = getEnv("LEMONSQUEEZY_WEBHOOK_SECRET")
+  const secret = lemonSqueezyBilling.webhookSecret ?? getEnv("LEMONSQUEEZY_WEBHOOK_SECRET")
   if (!signature) return false
 
   const expected = createHmac("sha256", secret).update(rawBody, "utf8").digest("hex")
