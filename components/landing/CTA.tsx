@@ -38,9 +38,9 @@ export function CTA() {
           </motion.div>
 
           <h2 className="text-5xl font-black md:text-7xl mb-6">
-            <span className="block mb-2">Make Your Archive</span>
+            <span className="block mb-2">The Simplest Way</span>
             <span className="bg-gradient-to-r from-primary via-green-400 to-primary bg-clip-text text-transparent">
-              More Systematic
+              To Organize UX Thinking
             </span>
           </h2>
 

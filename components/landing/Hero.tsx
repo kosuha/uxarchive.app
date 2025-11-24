@@ -53,16 +53,16 @@ export function Hero() {
           </motion.div>
 
           <h1 className="text-6xl font-black md:text-8xl mb-6 tracking-tight">
-            <span className="block">Archive Your</span>
+            <span className="block">Organize your</span>
             <span className="block leading-[1.15] bg-gradient-to-r from-primary via-green-400 to-primary bg-clip-text text-transparent">
               UX Insights
             </span>
           </h1>
 
           <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto">
-            Collect and organize UX patterns,
+            From screenshots to structured insights
             <br />
-            and capture insights with markers
+            — all in one clean workspace.
           </p>
 
           <div className="flex items-center justify-center gap-4 md:flex-row flex-col">
