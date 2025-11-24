@@ -21,6 +21,8 @@ import { RightWorkspace } from "@/components/right-workspace"
 import { WorkspaceDataProvider, useWorkspaceData } from "@/lib/workspace-data-context"
 import type { Folder, Pattern } from "@/lib/types"
 import { FolderIcon, LibraryBig } from "lucide-react"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { cn } from "@/lib/utils"
 
 export default function Page() {
   return (
@@ -35,6 +37,7 @@ export default function Page() {
 function WorkspaceShell() {
   const { patterns, folders, loading, error } = useWorkspaceData()
   const [selectedPatternId, setSelectedPatternId] = React.useState<string | undefined>(undefined)
+  const isMobile = useIsMobile()
 
   React.useEffect(() => {
     setSelectedPatternId((current) => {
@@ -63,6 +66,8 @@ function WorkspaceShell() {
     return buildFolderPath(selectedPattern?.folderId, foldersById)
   }, [selectedPattern?.folderId, foldersById])
 
+  const patternLimitStatus = null
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-muted-foreground">
@@ -84,42 +89,81 @@ function WorkspaceShell() {
       <AppSidebar
         selectedPatternId={selectedPatternId}
         onPatternSelect={setSelectedPatternId}
+        patternLimitMessage={patternLimitStatus?.message ?? null}
         className="p-0 pr-2"
       />
       <SidebarInset>
-        <header className="flex h-12 shrink-0 items-center justify-between gap-2">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
-            />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="flex justify-center items-center">
-                  <LibraryBig className="h-4 w-4" />
-                  <span>My Archive</span>
-                </BreadcrumbItem>
-                {folderPath.map((folder) => (
-                  <React.Fragment key={folder.id}>
-                    <BreadcrumbSeparator />
-                    <BreadcrumbItem className="flex justify-center items-center">
-                      <FolderIcon className="h-4 w-4" />
-                      <span>{folder.name}</span>
-                    </BreadcrumbItem>
-                  </React.Fragment>
-                ))}
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>
-                    {selectedPattern?.name ?? "No pattern selected"}
-                  </BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
+        <header
+          className={cn(
+            "flex shrink-0 items-center gap-2",
+            isMobile ? "flex-col items-start border-b border-border/60 px-3 py-3" : "h-12 justify-between px-4"
+          )}
+        >
+          <div className="flex w-full items-center gap-2">
+            <SidebarTrigger className={cn("-ml-1", isMobile && "mr-1")} />
+            {!isMobile && (
+              <Separator
+                orientation="vertical"
+                className="mr-2 data-[orientation=vertical]:h-4"
+              />
+            )}
+            {!isMobile ? (
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem className="flex items-center gap-1">
+                    <LibraryBig className="h-4 w-4" />
+                    <span>My Archive</span>
+                  </BreadcrumbItem>
+                  {folderPath.map((folder) => (
+                    <React.Fragment key={folder.id}>
+                      <BreadcrumbSeparator />
+                      <BreadcrumbItem className="flex items-center gap-1">
+                        <FolderIcon className="h-4 w-4" />
+                        <span>{folder.name}</span>
+                      </BreadcrumbItem>
+                    </React.Fragment>
+                  ))}
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>
+                      {selectedPattern?.name ?? "No pattern selected"}
+                    </BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+            ) : (
+              <div className="flex flex-1 items-center gap-2 text-sm font-semibold">
+                <LibraryBig className="h-4 w-4 text-muted-foreground" />
+                <span className="truncate text-foreground">
+                  {selectedPattern?.name ?? "패턴 미선택"}
+                </span>
+              </div>
+            )}
           </div>
+          {isMobile ? (
+            folderPath.length ? (
+              <div className="flex w-full flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+                <span className="font-semibold text-foreground">경로</span>
+                {folderPath.map((folder) => (
+                  <span
+                    key={folder.id}
+                    className="rounded-full bg-muted px-2 py-1"
+                  >
+                    {folder.name}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className="text-[11px] text-muted-foreground">My Archive</div>
+            )
+          ) : null}
         </header>
-        <div className="flex flex-1 basis-0 min-h-0 flex-col gap-4 overflow-hidden p-4 pt-0">
+        <div
+          className={cn(
+            "flex flex-1 basis-0 min-h-0 flex-col gap-4 overflow-hidden",
+            isMobile ? "p-3 pt-0 overflow-auto" : "p-4 pt-0"
+          )}
+        >
           <RightWorkspace patternId={selectedPatternId} />
         </div>
       </SidebarInset>

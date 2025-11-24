@@ -207,6 +207,7 @@ type CanvasSectionProps = {
   captureInsights: Insight[]
   captureOrder: number
   captures: Capture[]
+  allowDownloads?: boolean | null
   highlightedInsightId: string | null
   isAddingInsight: boolean
   isPlacingInsight: boolean
@@ -232,6 +233,7 @@ export function CanvasSection({
   captureInsights,
   captureOrder,
   captures,
+  allowDownloads,
   highlightedInsightId,
   isAddingInsight,
   isPlacingInsight,
@@ -250,10 +252,14 @@ export function CanvasSection({
 }: CanvasSectionProps) {
   const readOnlyMode = Boolean(readOnly)
   const { toast } = useToast()
+  const [downloadsBlocked, setDownloadsBlocked] = React.useState(false)
   const [isCaptureDownloadPending, setCaptureDownloadPending] = React.useState(false)
   const [isPatternDownloadPending, setPatternDownloadPending] = React.useState(false)
   const patternFilenameToken = React.useMemo(() => sanitizeFilename(patternName ?? "pattern"), [patternName])
-  const hasDownloadablePattern = React.useMemo(() => captures.some((item) => Boolean(item.imageUrl)), [captures])
+  const hasDownloadablePattern = React.useMemo(
+    () => captures.some((item) => Boolean(item.downloadUrl ?? item.imageUrl)),
+    [captures]
+  )
 
   usePrefetchCaptureImages(captures, activeCaptureId)
 
@@ -299,34 +305,81 @@ export function CanvasSection({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [selectAdjacentCapture])
 
+  const isForbiddenError = React.useCallback((error: unknown) => {
+    if (!error) return false
+    if (typeof error === "object" && "status" in (error as { status?: unknown })) {
+      return (error as { status?: unknown }).status === 403
+    }
+    return error instanceof Error && /\(403\)/.test(error.message)
+  }, [])
+
+  const showDownloadBlockedToast = React.useCallback(() => {
+    toast({
+      variant: "destructive",
+      title: "다운로드가 제한돼요",
+      description: "현재 플랜에서는 이미지 다운로드가 불가능합니다.",
+    })
+  }, [toast])
+
+  const showPlanLoadingToast = React.useCallback(() => {
+    toast({
+      title: "플랜 확인 중",
+      description: "잠시 후 다시 시도해주세요.",
+    })
+  }, [toast])
+
+  const isPlanLoading = allowDownloads == null
+
   const handleDownloadActiveCapture = React.useCallback(async () => {
-    if (!activeCapture?.imageUrl) return
+    const downloadUrl = activeCapture?.downloadUrl ?? activeCapture?.imageUrl
+    if (!downloadUrl) return
+    if (isPlanLoading) {
+      showPlanLoadingToast()
+      return
+    }
+    if (downloadsBlocked || allowDownloads === false) {
+      showDownloadBlockedToast()
+      return
+    }
     setCaptureDownloadPending(true)
     const orderLabel = captureOrder > 0 ? String(captureOrder).padStart(2, "0") : String(activeCapture.order ?? 1).padStart(2, "0")
     const baseFilename = `${patternFilenameToken}-capture-${orderLabel}`
     try {
-      await downloadRemoteImage(activeCapture.imageUrl, baseFilename)
+      await downloadRemoteImage(downloadUrl, baseFilename)
       toast({ title: "다운로드 준비 중", description: "현재 캡처 이미지를 저장합니다." })
     } catch (error) {
       console.error("Failed to download capture image", error)
-      toast({
-        variant: "destructive",
-        title: "캡처 이미지 다운로드 실패",
-        description: error instanceof Error ? error.message : "다시 시도해주세요.",
-      })
+      if (isForbiddenError(error)) {
+        showDownloadBlockedToast()
+        setDownloadsBlocked(true)
+      } else {
+        toast({
+          variant: "destructive",
+          title: "캡처 이미지 다운로드 실패",
+          description: error instanceof Error ? error.message : "다시 시도해주세요.",
+        })
+      }
     } finally {
       setCaptureDownloadPending(false)
     }
-  }, [activeCapture, captureOrder, patternFilenameToken, toast])
+  }, [activeCapture, allowDownloads, captureOrder, downloadsBlocked, isForbiddenError, patternFilenameToken, showDownloadBlockedToast, toast])
 
   const handleDownloadPatternImages = React.useCallback(async () => {
     if (!hasDownloadablePattern) return
+    if (isPlanLoading) {
+      showPlanLoadingToast()
+      return
+    }
+    if (downloadsBlocked || allowDownloads === false) {
+      showDownloadBlockedToast()
+      return
+    }
     setPatternDownloadPending(true)
     try {
       const zipEntries = captures
-        .filter((item) => Boolean(item.imageUrl))
+        .filter((item) => Boolean(item.downloadUrl ?? item.imageUrl))
         .map((item, index) => ({
-          url: item.imageUrl,
+          url: item.downloadUrl ?? item.imageUrl,
           filename: `${patternFilenameToken}-capture-${String(index + 1).padStart(2, "0")}`,
         }))
       if (!zipEntries.length) {
@@ -336,15 +389,20 @@ export function CanvasSection({
       toast({ title: "ZIP 준비 중", description: "모든 캡처 이미지를 묶어서 내려받습니다." })
     } catch (error) {
       console.error("Failed to download pattern images", error)
-      toast({
-        variant: "destructive",
-        title: "패턴 전체 이미지 다운로드 실패",
-        description: error instanceof Error ? error.message : "다시 시도해주세요.",
-      })
+      if (isForbiddenError(error)) {
+        showDownloadBlockedToast()
+        setDownloadsBlocked(true)
+      } else {
+        toast({
+          variant: "destructive",
+          title: "패턴 전체 이미지 다운로드 실패",
+          description: error instanceof Error ? error.message : "다시 시도해주세요.",
+        })
+      }
     } finally {
       setPatternDownloadPending(false)
     }
-  }, [captures, hasDownloadablePattern, patternFilenameToken, toast])
+  }, [allowDownloads, captures, downloadsBlocked, hasDownloadablePattern, isForbiddenError, patternFilenameToken, showDownloadBlockedToast, toast])
   return (
     <section className="flex flex-1 basis-0 min-h-0 min-w-0 flex-col rounded-xl border border-border/60 bg-gradient-to-b from-card to-muted/20 shadow-sm md:min-h-[640px]">
       <CanvasHeader

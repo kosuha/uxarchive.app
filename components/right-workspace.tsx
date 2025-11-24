@@ -21,7 +21,9 @@ import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { useWorkspaceData } from "@/lib/workspace-data-context"
 import { usePatternDetail } from "@/lib/hooks/use-pattern-detail"
+import { planLimits, resolveEffectivePlan } from "@/lib/plan-limits"
 import { Plus } from "lucide-react"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 type RightWorkspaceProps = {
   patternId?: string
@@ -29,6 +31,9 @@ type RightWorkspaceProps = {
 
 export function RightWorkspace({ patternId }: RightWorkspaceProps) {
   const { patterns, tags, loading: workspaceLoading, error: workspaceError, mutations, refresh: refreshWorkspace } = useWorkspaceData()
+  const isMobile = useIsMobile()
+  const [allowDownloads, setAllowDownloads] = React.useState<boolean | null>(null)
+  const [patternLimitStatus, setPatternLimitStatus] = React.useState<{ canCreate: boolean; message?: string } | null>(null)
   const [isCreatingPattern, setIsCreatingPattern] = React.useState(false)
 
   const resolvedPatternId = React.useMemo(
@@ -40,6 +45,45 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
     () => patterns.find((item) => item.id === resolvedPatternId),
     [patterns, resolvedPatternId]
   )
+
+  React.useEffect(() => {
+    let cancelled = false
+    const fetchPlan = async () => {
+      try {
+        const response = await fetch("/api/profile/plan")
+        if (!response.ok) throw new Error(`Plan load failed: ${response.status}`)
+        const data = (await response.json()) as {
+          effectivePlan?: string
+          planStatus?: string
+        }
+
+        const effectivePlan = resolveEffectivePlan(data.planCode, data.planStatus)
+        const limits = planLimits[effectivePlan] ?? planLimits.free
+        const maxPatterns = limits.maxPatterns
+        const usageCount = patterns.length
+        const canCreate = typeof maxPatterns === "number" ? usageCount < maxPatterns : true
+        const limitMessage = !canCreate
+          ? (effectivePlan === "free"
+              ? `무료 플랜에서는 최대 ${maxPatterns}개의 패턴만 저장할 수 있어요. 업그레이드하면 더 추가할 수 있습니다.`
+              : `현재 플랜의 패턴 한도(${maxPatterns}개)를 초과했어요.`)
+          : undefined
+
+        if (!cancelled) {
+          setAllowDownloads(limits.allowDownloads)
+          setPatternLimitStatus({ canCreate, message: limitMessage })
+        }
+      } catch {
+        if (!cancelled) {
+          setAllowDownloads(false)
+          setPatternLimitStatus({ canCreate: false, message: "플랜 정보를 확인할 수 없어 새 패턴을 잠시 생성할 수 없습니다." })
+        }
+      }
+    }
+    void fetchPlan()
+    return () => {
+      cancelled = true
+    }
+  }, [patterns.length])
 
   const {
     captures: captureList,
@@ -252,6 +296,12 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
 
   const handleCreatePattern = React.useCallback(async () => {
     if (isCreatingPattern) return
+    if (patternLimitStatus && !patternLimitStatus.canCreate) {
+      if (patternLimitStatus.message) {
+        window.dispatchEvent(new CustomEvent("toast", { detail: { variant: "destructive", title: "패턴 한도 도달", description: patternLimitStatus.message } }))
+      }
+      return
+    }
     setIsCreatingPattern(true)
     try {
       await mutations.createPattern({ name: "New pattern", folderId: null })
@@ -261,7 +311,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
     } finally {
       setIsCreatingPattern(false)
     }
-  }, [isCreatingPattern, mutations, refreshWorkspace])
+  }, [isCreatingPattern, mutations, patternLimitStatus, refreshWorkspace])
 
   if (workspaceLoading || detailLoading) {
     return (
@@ -286,7 +336,26 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
         <div className="flex max-w-sm flex-col items-center gap-3">
           <p className="text-base font-semibold text-foreground">No patterns yet.</p>
           <p className="text-sm text-muted-foreground">Create a new pattern to start working in this workspace.</p>
-          <Button onClick={handleCreatePattern} disabled={isCreatingPattern}>
+          <Button
+            onClick={() => {
+              if (patternLimitStatus && !patternLimitStatus.canCreate) {
+                if (patternLimitStatus.message) {
+                  window.dispatchEvent(
+                    new CustomEvent("toast", {
+                      detail: {
+                        variant: "destructive",
+                        title: "패턴 한도 도달",
+                        description: patternLimitStatus.message,
+                      },
+                    })
+                  )
+                }
+                return
+              }
+              void handleCreatePattern()
+            }}
+            disabled={isCreatingPattern}
+          >
             {isCreatingPattern ? <Spinner className="mr-2 size-4" /> : <Plus className="mr-2 size-4" />}
             {isCreatingPattern ? "Creating pattern..." : "Create new pattern"}
           </Button>
@@ -300,52 +369,97 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
       ? patternCaptures.findIndex((capture) => capture.id === activeCaptureId) + 1
       : 0
 
+  const detailPanels = (
+    <>
+      <PatternMetadataCard
+        pattern={pattern}
+        allTags={tags}
+        onUpdatePattern={(updates) => mutations.updatePattern(pattern.id, updates)}
+        onAssignTag={(tagId) => mutations.assignTagToPattern(pattern.id, tagId)}
+        onRemoveTag={(tagId) => mutations.removeTagFromPattern(pattern.id, tagId)}
+        onToggleFavorite={(next) => mutations.setPatternFavorite(pattern.id, next)}
+        onUpdateSummary={(summary) => mutations.updatePattern(pattern.id, { summary })}
+        onCreateTag={(input, options) => mutations.createTag(input, options)}
+        onUpdateTag={(tagId, updates) => mutations.updateTag(tagId, updates)}
+        onDeleteTag={(tagId) => mutations.deleteTag(tagId)}
+      />
+      <InsightsPanel
+        insights={captureInsights}
+        highlightedInsightId={highlightedInsightId}
+        onHighlight={setHighlightedInsightId}
+        onDeleteInsight={handleDeleteInsight}
+        onUpdateInsightNote={handleUpdateInsightNote}
+      />
+    </>
+  )
+
+  const canvasSection = (
+    <CanvasSection
+      activeCapture={activeCapture}
+      activeCaptureId={activeCaptureId}
+      captureInsights={captureInsights}
+      captureOrder={captureIndex}
+      captures={patternCaptures}
+      patternName={pattern.name}
+      highlightedInsightId={highlightedInsightId}
+      isAddingInsight={isAddingInsight}
+      isPlacingInsight={isPlacingInsight}
+      shareButton={isMobile ? null : shareControl}
+      onCanvasPlace={handleCanvasPlacement}
+      onDeleteInsight={handleDeleteInsight}
+      onHighlight={setHighlightedInsightId}
+      onSelectCapture={(id) => setActiveCaptureId(id)}
+      onToggleAddMode={handleToggleAddMode}
+      onUpdateInsightPosition={handleUpdateInsightPosition}
+      onUploadCapture={handleUploadCapture}
+      onReorderCapture={handleReorderCapture}
+      onDeleteCapture={handleDeleteCapture}
+      allowDownloads={allowDownloads}
+      patternLimitMessage={patternLimitStatus?.message ?? null}
+    />
+  )
+
+  const desktopLayout = (
+    <div className="flex h-full min-h-0 min-w-0 flex-1 basis-0 gap-4 overflow-hidden">
+      {canvasSection}
+      <aside className="flex h-full w-full max-w-[360px] flex-1 basis-0 min-h-0 flex-col gap-4 overflow-hidden">
+        {detailPanels}
+      </aside>
+    </div>
+  )
+
+  const mobileLayout = (
+    <div className="flex flex-col gap-3">
+      <PatternMetadataCard
+        pattern={pattern}
+        allTags={tags}
+        onUpdatePattern={(updates) => mutations.updatePattern(pattern.id, updates)}
+        onAssignTag={(tagId) => mutations.assignTagToPattern(pattern.id, tagId)}
+        onRemoveTag={(tagId) => mutations.removeTagFromPattern(pattern.id, tagId)}
+        onToggleFavorite={(next) => mutations.setPatternFavorite(pattern.id, next)}
+        onUpdateSummary={(summary) => mutations.updatePattern(pattern.id, { summary })}
+        onCreateTag={(input, options) => mutations.createTag(input, options)}
+        onUpdateTag={(tagId, updates) => mutations.updateTag(tagId, updates)}
+        onDeleteTag={(tagId) => mutations.deleteTag(tagId)}
+      />
+      <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+        <div className="flex min-h-[480px] flex-col">
+          {canvasSection}
+        </div>
+      </div>
+      <InsightsPanel
+        insights={captureInsights}
+        highlightedInsightId={highlightedInsightId}
+        onHighlight={setHighlightedInsightId}
+        onDeleteInsight={handleDeleteInsight}
+        onUpdateInsightNote={handleUpdateInsightNote}
+      />
+    </div>
+  )
+
   return (
     <>
-      <div className="flex h-full min-h-0 min-w-0 flex-1 basis-0 gap-4 overflow-hidden">
-        <CanvasSection
-          activeCapture={activeCapture}
-          activeCaptureId={activeCaptureId}
-          captureInsights={captureInsights}
-          captureOrder={captureIndex}
-          captures={patternCaptures}
-          patternName={pattern.name}
-          highlightedInsightId={highlightedInsightId}
-          isAddingInsight={isAddingInsight}
-          isPlacingInsight={isPlacingInsight}
-          shareButton={shareControl}
-          onCanvasPlace={handleCanvasPlacement}
-          onDeleteInsight={handleDeleteInsight}
-          onHighlight={setHighlightedInsightId}
-          onSelectCapture={(id) => setActiveCaptureId(id)}
-          onToggleAddMode={handleToggleAddMode}
-          onUpdateInsightPosition={handleUpdateInsightPosition}
-          onUploadCapture={handleUploadCapture}
-          onReorderCapture={handleReorderCapture}
-          onDeleteCapture={handleDeleteCapture}
-        />
-        <aside className="flex h-full w-full max-w-[360px] flex-1 basis-0 min-h-0 flex-col gap-4 overflow-hidden">
-          <PatternMetadataCard
-            pattern={pattern}
-            allTags={tags}
-            onUpdatePattern={(updates) => mutations.updatePattern(pattern.id, updates)}
-            onAssignTag={(tagId) => mutations.assignTagToPattern(pattern.id, tagId)}
-            onRemoveTag={(tagId) => mutations.removeTagFromPattern(pattern.id, tagId)}
-            onToggleFavorite={(next) => mutations.setPatternFavorite(pattern.id, next)}
-            onUpdateSummary={(summary) => mutations.updatePattern(pattern.id, { summary })}
-            onCreateTag={(input, options) => mutations.createTag(input, options)}
-            onUpdateTag={(tagId, updates) => mutations.updateTag(tagId, updates)}
-            onDeleteTag={(tagId) => mutations.deleteTag(tagId)}
-          />
-          <InsightsPanel
-            insights={captureInsights}
-            highlightedInsightId={highlightedInsightId}
-            onHighlight={setHighlightedInsightId}
-            onDeleteInsight={handleDeleteInsight}
-            onUpdateInsightNote={handleUpdateInsightNote}
-          />
-        </aside>
-      </div>
+      {isMobile ? mobileLayout : desktopLayout}
       <AlertDialog
         open={Boolean(pendingInsightDeleteId)}
         onOpenChange={(open) => {

@@ -72,10 +72,13 @@ export const GET = async (request: Request) => {
     const url = new URL(request.url)
     const objectPath = sanitizeObjectPath(url.searchParams.get("path"))
     const bucket = resolveBucketName(url.searchParams.get("bucket"))
+    const mode = url.searchParams.get("mode")?.toLowerCase() === "download" ? "download" : "view"
 
     const supabase = (await createSupabaseRouteHandlerClient()) as RouteSupabaseClient
     const user = await requireAuthenticatedUser(supabase)
-    await ensureDownloadAllowed(supabase, user.id)
+    if (mode === "download") {
+      await ensureDownloadAllowed(supabase, user.id)
+    }
 
     const { data, error } = await supabase.storage.from(bucket).download(objectPath)
     if (error || !data) {

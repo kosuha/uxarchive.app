@@ -24,6 +24,8 @@ import type { PatternRecord } from "@/lib/repositories/patterns"
 import type { TagType, Pattern, Folder, Tag } from "@/lib/types"
 import { useSupabaseSession } from "@/lib/supabase/session-context"
 import { DEFAULT_PATTERN_SERVICE_NAME } from "@/lib/pattern-constants"
+import { planLimits, resolveEffectivePlan } from "@/lib/plan-limits"
+import { toast } from "@/components/ui/use-toast"
 
 type WorkspaceDataContextValue = {
   workspaceId: string | null
@@ -32,6 +34,7 @@ type WorkspaceDataContextValue = {
   patterns: Pattern[]
   folders: Folder[]
   tags: Tag[]
+  planInfo: { code: string; maxPatterns: number; allowDownloads: boolean } | null
   refresh: () => Promise<void>
   mutations: WorkspaceMutations
 }
@@ -292,7 +295,17 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
       return { previous, tempId }
     },
     onError: (error, _input, context) => {
-      setMutationError(toErrorMessage(error))
+      const status = (error as { status?: number })?.status
+      const derivedMessage = toErrorMessage(error)
+      if (status === 403) {
+        toast({
+          variant: "destructive",
+          title: "패턴 한도 도달",
+          description: derivedMessage,
+        })
+      } else {
+        setMutationError(derivedMessage)
+      }
       if (context?.previous && patternsQueryKey) {
         queryClient.setQueryData(patternsQueryKey, context.previous)
       }
@@ -835,8 +848,30 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
   }, [mutationError, queryError, sessionLoading, user])
 
   const createPattern = React.useCallback<WorkspaceMutations["createPattern"]>(
-    (input) => createPatternMutation.mutateAsync(input).then(() => undefined),
-    [createPatternMutation],
+    async (input) => {
+      const response = await fetch("/api/profile/plan")
+      if (response.ok) {
+        const data = (await response.json()) as { planCode?: string; planStatus?: string }
+        const effectivePlan = resolveEffectivePlan(data.planCode, data.planStatus)
+        const limits = planLimits[effectivePlan] ?? planLimits.free
+        const maxPatterns = limits.maxPatterns
+        const usageCount = patterns.length
+        if (typeof maxPatterns === "number" && usageCount >= maxPatterns) {
+          const message =
+            effectivePlan === "free"
+              ? `무료 플랜에서는 최대 ${maxPatterns}개의 패턴만 저장할 수 있어요. 업그레이드하면 더 추가할 수 있습니다.`
+              : `현재 플랜의 패턴 한도(${maxPatterns}개)를 초과했어요. 불필요한 패턴을 정리하거나 플랜을 조정해주세요.`
+          toast({
+            variant: "destructive",
+            title: "패턴 한도 도달",
+            description: message,
+          })
+          return
+        }
+      }
+      await createPatternMutation.mutateAsync(input)
+    },
+    [createPatternMutation, patterns.length],
   )
 
   const updatePattern = React.useCallback<WorkspaceMutations["updatePattern"]>(

@@ -38,12 +38,13 @@ const normalizeObjectPath = (path: string) => path.replace(/^\/+/, "").trim()
 
 const buildStorageProxyUrl = (() => {
   const bucketParam = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET?.trim()
-  return (path: string) => {
+  return (path: string, mode: "view" | "download" = "view") => {
     const params = new URLSearchParams()
     params.set("path", normalizeObjectPath(path))
     if (bucketParam) {
       params.set("bucket", bucketParam)
     }
+    params.set("mode", mode)
     return `${STORAGE_OBJECT_ROUTE}?${params.toString()}`
   }
 })()
@@ -64,7 +65,7 @@ const resolveCaptureImageUrl = (record: CaptureRecord) => {
     if (isAbsoluteUrl(storagePath)) {
       return storagePath
     }
-    const proxyUrl = buildStorageProxyUrl(storagePath)
+    const proxyUrl = buildStorageProxyUrl(storagePath, "view")
     if (process.env.NODE_ENV === "development") {
       console.log("[usePatternDetail] capture storage proxy url", {
         captureId: record.id,
@@ -94,6 +95,26 @@ const resolveCaptureImageUrl = (record: CaptureRecord) => {
   return ""
 }
 
+const resolveCaptureDownloadUrl = (record: CaptureRecord) => {
+  const storagePath = record.storagePath?.trim()
+  if (storagePath) {
+    if (isAbsoluteUrl(storagePath)) {
+      return storagePath
+    }
+    return buildStorageProxyUrl(storagePath, "download")
+  }
+
+  const publicUrl = record.publicUrl?.trim()
+  if (publicUrl) {
+    if (isAbsoluteUrl(publicUrl)) {
+      return publicUrl
+    }
+    return `/${publicUrl}`
+  }
+
+  return ""
+}
+
 export const usePatternDetail = (patternId?: string | null) => {
   const { workspaceId } = useWorkspaceData()
   const queryClient = useQueryClient()
@@ -107,6 +128,7 @@ export const usePatternDetail = (patternId?: string | null) => {
       id: record.id,
       patternId: record.patternId,
       imageUrl: resolveCaptureImageUrl(record),
+      downloadUrl: resolveCaptureDownloadUrl(record),
       order: record.orderIndex ?? 0,
       createdAt: record.createdAt,
     } satisfies Capture

@@ -49,7 +49,9 @@ const downloadBlob = (blob: Blob, filename: string) => {
 const fetchBlobFromUrl = async (url: string) => {
   const response = await fetch(url)
   if (!response.ok) {
-    throw new Error(`Failed to download resource (${response.status})`)
+    const error = new Error(`Failed to download resource (${response.status})`)
+    ;(error as { status?: number }).status = response.status
+    throw error
   }
   const blob = await response.blob()
   const mimeType = response.headers.get("content-type") || blob.type || undefined

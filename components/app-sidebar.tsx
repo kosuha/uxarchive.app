@@ -17,6 +17,7 @@ import {
   SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { useToast } from "@/components/ui/use-toast"
 import { useWorkspaceData } from "@/lib/workspace-data-context"
 import { cn } from "@/lib/utils"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -53,16 +54,19 @@ const createId = () => {
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   selectedPatternId?: string
   onPatternSelect?: (patternId?: string) => void
+  patternLimitMessage?: string | null
 }
 
 export function AppSidebar({
   selectedPatternId,
   onPatternSelect,
+  patternLimitMessage,
   style: incomingStyle,
   side: sideProp = "left",
   className,
   ...props
 }: AppSidebarProps) {
+  const { toast } = useToast()
   const isMobile = useIsMobile()
   const { state: sidebarState } = useSidebar()
   const { folders, patterns, loading, error, mutations } = useWorkspaceData()
@@ -148,6 +152,14 @@ export function AppSidebar({
   }, [pendingFolderInput, folders])
 
   const beginPatternCreation = React.useCallback((folderId: string | null) => {
+    if (patternLimitMessage) {
+      toast({
+        variant: "destructive",
+        title: "패턴 한도 도달",
+        description: patternLimitMessage,
+      })
+      return
+    }
     setPendingFolderInput(null)
     setPendingPatternInput({ folderId, token: createId() })
     if (folderId) {
@@ -351,6 +363,15 @@ export function AppSidebar({
 
   const handlePatternInputSubmit = React.useCallback(
     async (rawName: string, folderId: string | null) => {
+      if (patternLimitMessage) {
+        toast({
+          variant: "destructive",
+          title: "패턴 한도 도달",
+          description: patternLimitMessage,
+        })
+        setPendingPatternInput(null)
+        return
+      }
       const trimmed = rawName.trim()
       if (!trimmed) {
         setPendingPatternInput(null)
@@ -404,7 +425,7 @@ export function AppSidebar({
       handlers={{
         onPatternSelect: handlePatternSelect,
         onFolderSelect: handleFolderSelect,
-        onPatternInputSubmit: handlePatternInputSubmit,
+      onPatternInputSubmit: handlePatternInputSubmit,
         onFolderInputSubmit: handleFolderInputSubmit,
         onPatternInputCancel: () => setPendingPatternInput(null),
         onFolderInputCancel: () => setPendingFolderInput(null),

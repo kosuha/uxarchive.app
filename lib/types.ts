@@ -35,6 +35,7 @@ export interface Pattern extends IdentifiableEntity {
 export interface Capture extends IdentifiableEntity {
   patternId: string
   imageUrl: string
+  downloadUrl?: string
   order: number
   createdAt: string
 }
