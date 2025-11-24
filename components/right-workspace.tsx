@@ -53,11 +53,12 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
         const response = await fetch("/api/profile/plan")
         if (!response.ok) throw new Error(`Plan load failed: ${response.status}`)
         const data = (await response.json()) as {
-          effectivePlan?: string
+          planCode?: string
           planStatus?: string
+          effectivePlan?: string
         }
 
-        const effectivePlan = resolveEffectivePlan(data.planCode, data.planStatus)
+        const effectivePlan = resolveEffectivePlan(data.planCode ?? data.effectivePlan, data.planStatus)
         const limits = planLimits[effectivePlan] ?? planLimits.free
         const maxPatterns = limits.maxPatterns
         const usageCount = patterns.length

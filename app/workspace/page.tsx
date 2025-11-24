@@ -66,7 +66,7 @@ function WorkspaceShell() {
     return buildFolderPath(selectedPattern?.folderId, foldersById)
   }, [selectedPattern?.folderId, foldersById])
 
-  const patternLimitStatus = null
+  const patternLimitMessage: string | null = null
 
   if (loading) {
     return (
@@ -89,7 +89,7 @@ function WorkspaceShell() {
       <AppSidebar
         selectedPatternId={selectedPatternId}
         onPatternSelect={setSelectedPatternId}
-        patternLimitMessage={patternLimitStatus?.message ?? null}
+        patternLimitMessage={patternLimitMessage}
         className="p-0 pr-2"
       />
       <SidebarInset>

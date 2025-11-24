@@ -36,7 +36,7 @@ const parseDate = (value: unknown) => {
   return date.toISOString()
 }
 
-async function findProfile(client: ServiceSupabaseClient, parsed: ParsedEvent) {
+async function findProfile(client: ServiceSupabaseClient, parsed: ParsedEvent): Promise<ProfileRow | null> {
   const lookups: Array<{ column: string; value: string }> = []
 
   if (parsed.userId) lookups.push({ column: "id", value: parsed.userId })
@@ -73,7 +73,8 @@ async function resolvePlanCode(
       .maybeSingle()
 
     if (error) throw error
-    if (data?.plan_code) return data.plan_code
+    const variantRow = data as { plan_code?: string | null } | null
+    if (variantRow?.plan_code) return variantRow.plan_code
     if (variantId === lemonSqueezyBilling.plans.plus.variantId) {
       return lemonSqueezyBilling.plans.plus.code
     }
@@ -127,10 +128,15 @@ export async function POST(request: Request) {
   }
 
   const supabase = getServiceRoleSupabaseClient()
+  const planEventsTable = supabase.from("plan_events") as unknown as {
+    insert: (values: { event_id: string }) => Promise<{ error: { code?: string } | null }>
+    delete: () => { eq: (column: string, value: string) => Promise<unknown> }
+  }
+  const profilesTable = supabase.from("profiles") as unknown as {
+    update: (values: Record<string, unknown>) => { eq: (column: string, value: string) => Promise<{ error: unknown | null }> }
+  }
 
-  const { error: eventInsertError } = await supabase
-    .from("plan_events")
-    .insert({ event_id: parsed.eventId })
+  const { error: eventInsertError } = await planEventsTable.insert({ event_id: parsed.eventId })
 
   if (eventInsertError) {
     if (eventInsertError.code === "23505") {
@@ -141,7 +147,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const profile = await findProfile(supabase, parsed)
+    const profile = (await findProfile(supabase, parsed)) as ProfileRow | null
 
     if (!profile) {
       await supabase.from("plan_events").delete().eq("event_id", parsed.eventId)
@@ -164,10 +170,10 @@ export async function POST(request: Request) {
       parseDate((attributes as { billing_anchor?: string }).billing_anchor)
     const trialEndsAt = parseDate((attributes as { trial_ends_at?: string }).trial_ends_at)
 
-    let renewalAt =
+    let renewalAt: string | null | undefined =
       renewsAt ?? (parsed.status === "trialing" ? trialEndsAt : undefined)
 
-    let cancelAt =
+    let cancelAt: string | null | undefined =
       parseDate((attributes as { ends_at?: string }).ends_at) ??
       parseDate((attributes as { expires_at?: string }).expires_at) ??
       parseDate((attributes as { canceled_at?: string }).canceled_at) ??
@@ -198,8 +204,7 @@ export async function POST(request: Request) {
     if (parsed.customerId) updates.ls_customer_id = parsed.customerId
     if (parsed.subscriptionId) updates.ls_subscription_id = parsed.subscriptionId
 
-    const { error: updateError } = await supabase
-      .from("profiles")
+    const { error: updateError } = await profilesTable
       .update(updates)
       .eq("id", profile.id)
 
@@ -212,7 +217,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true })
   } catch (error) {
     console.error("LemonSqueezy webhook handling failed", error)
-    await supabase.from("plan_events").delete().eq("event_id", parsed.eventId)
+    await planEventsTable.delete().eq("event_id", parsed.eventId)
     return NextResponse.json({ error: "webhook_processing_failed" }, { status: 500 })
   }
 }

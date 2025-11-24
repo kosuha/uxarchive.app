@@ -156,7 +156,8 @@ export function CanvasSection({
       return
     }
     setCaptureDownloadPending(true)
-    const orderLabel = captureOrder > 0 ? String(captureOrder).padStart(2, "0") : String(activeCapture.order ?? 1).padStart(2, "0")
+    const orderSource = captureOrder > 0 ? captureOrder : activeCapture?.order ?? 1
+    const orderLabel = String(orderSource).padStart(2, "0")
     const baseFilename = `${patternFilenameToken}-capture-${orderLabel}`
     try {
       await downloadRemoteImage(downloadUrl, baseFilename)

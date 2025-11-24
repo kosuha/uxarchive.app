@@ -851,8 +851,8 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
     async (input) => {
       const response = await fetch("/api/profile/plan")
       if (response.ok) {
-        const data = (await response.json()) as { planCode?: string; planStatus?: string }
-        const effectivePlan = resolveEffectivePlan(data.planCode, data.planStatus)
+        const data = (await response.json()) as { planCode?: string; planStatus?: string; effectivePlan?: string }
+        const effectivePlan = resolveEffectivePlan(data.planCode ?? data.effectivePlan, data.planStatus)
         const limits = planLimits[effectivePlan] ?? planLimits.free
         const maxPatterns = limits.maxPatterns
         const usageCount = patterns.length
@@ -934,6 +934,8 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
     [removeTagMutation],
   )
 
+  const planInfo: WorkspaceDataContextValue["planInfo"] = null
+
   const value = React.useMemo<WorkspaceDataContextValue>(
     () => ({
       workspaceId,
@@ -942,6 +944,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
       patterns,
       folders,
       tags,
+      planInfo,
       refresh,
       mutations: {
         createPattern,
