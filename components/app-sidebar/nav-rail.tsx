@@ -67,9 +67,10 @@ type NavRailButtonProps = {
   item: NavItem
   isActive: boolean
   onSelect: () => void
+  className?: string
 }
 
-function NavRailButton({ item, isActive, onSelect }: NavRailButtonProps) {
+export function NavRailButton({ item, isActive, onSelect, className }: NavRailButtonProps) {
   const { state, setOpen, setOpenMobile, isMobile, openMobile } = useSidebar()
 
   const handleClick = React.useCallback(() => {
@@ -91,7 +92,8 @@ function NavRailButton({ item, isActive, onSelect }: NavRailButtonProps) {
       className={cn(
         "flex items-center gap-2 rounded-md px-2.5 py-2 text-xs font-medium transition-colors",
         "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        isActive && "bg-sidebar-accent text-sidebar-accent-foreground"
+        isActive && "bg-sidebar-accent text-sidebar-accent-foreground",
+        className
       )}
     >
       <item.icon className="size-4" />

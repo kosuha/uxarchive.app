@@ -58,7 +58,7 @@ const getInitials = (email?: string | null, fallback?: string) => {
   return "UX"
 }
 
-export function NavUser() {
+export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
   const router = useRouter()
   const { isMobile } = useSidebar()
   const { user, signOut, loading } = useSupabaseSession()
@@ -223,7 +223,12 @@ export function NavUser() {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="flex items-center justify-center hover:bg-transparent focus-visible:bg-transparent active:bg-transparent md:h-8 md:p-0"
+              className={cn(
+                "flex items-center justify-center hover:bg-transparent focus-visible:bg-transparent active:bg-transparent",
+                showUserInfo
+                  ? "w-full justify-start gap-3 rounded-lg px-2.5 py-2.5 text-left"
+                  : "md:h-8 md:p-0"
+              )}
             >
               <Avatar className="h-8 w-8 rounded-full">
                 {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName} /> : null}
@@ -231,6 +236,12 @@ export function NavUser() {
                   {avatarUrl ? initials : <UserRound className="h-4 w-4" />}
                 </AvatarFallback>
               </Avatar>
+              {showUserInfo && (
+                <div className="min-w-0 text-left leading-tight">
+                  <div className="truncate text-sm font-medium text-foreground">{displayName}</div>
+                  <div className="truncate text-xs text-muted-foreground">{email}</div>
+                </div>
+              )}
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent

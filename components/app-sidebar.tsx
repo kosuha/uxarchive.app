@@ -1,14 +1,16 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import { File, Search, Star } from "lucide-react"
 
 import { ExploreView } from "@/components/app-sidebar/nav-views/explore-view"
 import type { PendingFolderInput, PendingPatternInput } from "@/components/app-sidebar/folder-tree"
-import { SidebarNavRail, NAV_RAIL_WIDTH, type NavItem } from "@/components/app-sidebar/nav-rail"
+import { NavRailButton, SidebarNavRail, NAV_RAIL_WIDTH, type NavItem } from "@/components/app-sidebar/nav-rail"
 import { NavViewContainer } from "@/components/app-sidebar/nav-views/nav-view-container"
 import { SyncStatusIndicator } from "@/components/app-sidebar/sync-status-indicator"
 import { useSidebarResize } from "@/components/app-sidebar/use-sidebar-resize"
+import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
   SidebarContent,
@@ -457,6 +459,25 @@ export function AppSidebar({
         offset={isMobile ? 0 : "var(--nav-rail-width)"}
         {...props}
       >
+        {isMobile && (
+          <div className="border-b border-border/60 px-1 py-1 md:hidden">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 overflow-x-auto">
+                <div className="flex items-center gap-1">
+                  {PRIMARY_NAV_ITEMS.map((item) => (
+                    <NavRailButton
+                      key={item.id}
+                      item={item}
+                      isActive={activeNavId === item.id}
+                      onSelect={() => handleNavItemSelect(item.id)}
+                      className="h-9 w-9 justify-center rounded-full p-0"
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         <div
           className={cn(
             "flex min-h-0 flex-1 flex-col transition-opacity duration-200",
@@ -494,6 +515,11 @@ export function AppSidebar({
             />
           </SidebarContent>
         </div>
+        {isMobile && (
+          <div className="rounded-b-xl border-t border-border/60 p-1 md:hidden hover:bg-sidebar-accent">
+            <NavUser showUserInfo />
+          </div>
+        )}
       </Sidebar>
       {!isSidebarCollapsed && (
         <div
