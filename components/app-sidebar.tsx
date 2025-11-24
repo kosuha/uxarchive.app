@@ -333,6 +333,19 @@ export function AppSidebar({
     [collectFolderBranch, mutations]
   )
 
+  const handleFolderRename = React.useCallback(
+    async (folderId: string, rawName: string) => {
+      const trimmed = rawName.trim()
+      if (!trimmed) return
+      try {
+        await mutations.updateFolder(folderId, { name: trimmed })
+      } catch (mutationError) {
+        console.error("Failed to rename folder", mutationError)
+      }
+    },
+    [mutations]
+  )
+
   const handlePatternInputSubmit = React.useCallback(
     async (rawName: string, folderId: string | null) => {
       const trimmed = rawName.trim()
@@ -398,6 +411,7 @@ export function AppSidebar({
         onFolderDelete: handleFolderDelete,
         onPatternMove: handlePatternMove,
         onFolderMove: handleFolderMove,
+        onFolderRename: handleFolderRename,
         onBackgroundClick: handleTreeBackgroundClick,
         onBackgroundContextMenu: handleTreeBackgroundContextMenu,
         onRootPatternClick: () => openPatternInput(null),

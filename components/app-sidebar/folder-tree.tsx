@@ -100,6 +100,7 @@ type FolderTreeProps = {
   onFolderDelete?: (folderId: string) => void
   onPatternMove?: (patternId: string, destinationFolderId: string | null) => void
   onFolderMove?: (folderId: string, destinationFolderId: string | null) => void
+  onFolderRename?: (folderId: string, name: string) => void
 }
 
 export function FolderTree({
@@ -121,10 +122,12 @@ export function FolderTree({
   onFolderDelete,
   onPatternMove,
   onFolderMove,
+  onFolderRename,
 }: FolderTreeProps) {
   const [pendingFolderDelete, setPendingFolderDelete] = React.useState<Folder | null>(null)
   const [moveDialogTarget, setMoveDialogTarget] = React.useState<MoveDialogTarget | null>(null)
   const [moveDestinationId, setMoveDestinationId] = React.useState<string | null>(null)
+  const [renamingFolderId, setRenamingFolderId] = React.useState<string | null>(null)
 
   const handleFolderDeleteRequest = React.useCallback((folder: Folder) => {
     setPendingFolderDelete(folder)
@@ -150,6 +153,40 @@ export function FolderTree({
     setMoveDialogTarget(null)
     setMoveDestinationId(null)
   }, [])
+
+  const handleFolderRenameRequest = React.useCallback(
+    (folder: Folder) => {
+      onFolderSelect?.(folder.id)
+      if (pendingFolderInput) {
+        onFolderInputCancel?.()
+      }
+      if (pendingPatternInput) {
+        onPatternInputCancel?.()
+      }
+      setRenamingFolderId(folder.id)
+    },
+    [onFolderInputCancel, onFolderSelect, onPatternInputCancel, pendingFolderInput, pendingPatternInput]
+  )
+
+  const handleFolderRenameCancel = React.useCallback(() => {
+    setRenamingFolderId(null)
+  }, [])
+
+  const handleFolderRenameSubmit = React.useCallback(
+    (folderId: string, name: string) => {
+      const trimmed = name.trim()
+      if (!trimmed) return
+      onFolderRename?.(folderId, trimmed)
+      setRenamingFolderId(null)
+    },
+    [onFolderRename]
+  )
+
+  React.useEffect(() => {
+    if (renamingFolderId && !folders.some((folder) => folder.id === renamingFolderId)) {
+      setRenamingFolderId(null)
+    }
+  }, [folders, renamingFolderId])
 
   const tree = React.useMemo(() => buildFolderTree(folders, patterns), [folders, patterns])
   const folderOptions = React.useMemo(() => flattenFolderTreeNodes(tree), [tree])
@@ -242,12 +279,12 @@ export function FolderTree({
             nodes={tree}
             parentId={null}
             selectedPatternId={selectedPatternId}
-          onPatternSelect={onPatternSelect}
-          pendingPatternInput={pendingPatternInput}
-          pendingFolderInput={pendingFolderInput}
-          onPatternInputSubmit={onPatternInputSubmit}
-          onPatternInputCancel={onPatternInputCancel}
-          onFolderInputSubmit={onFolderInputSubmit}
+            onPatternSelect={onPatternSelect}
+            pendingPatternInput={pendingPatternInput}
+            pendingFolderInput={pendingFolderInput}
+            onPatternInputSubmit={onPatternInputSubmit}
+            onPatternInputCancel={onPatternInputCancel}
+            onFolderInputSubmit={onFolderInputSubmit}
             onFolderInputCancel={onFolderInputCancel}
             selectedFolderId={selectedFolderId}
             onFolderSelect={onFolderSelect}
@@ -258,25 +295,29 @@ export function FolderTree({
             onFolderDeleteRequest={handleFolderDeleteRequest}
             onPatternMoveRequest={openPatternMoveDialog}
             onFolderMoveRequest={openFolderMoveDialog}
+            renamingFolderId={renamingFolderId}
+            onFolderRenameRequest={handleFolderRenameRequest}
+            onFolderRenameSubmit={handleFolderRenameSubmit}
+            onFolderRenameCancel={handleFolderRenameCancel}
           />
         )}
-      {shouldShowRootPatterns && (
-        <PatternList
-          folderId={null}
-          patterns={rootPatterns}
-          showEmpty
-          nested={false}
-          selectedPatternId={selectedPatternId}
-          onPatternSelect={onPatternSelect}
-          pendingPatternInput={pendingPatternInput}
-          onPatternInputSubmit={onPatternInputSubmit}
-          onPatternInputCancel={onPatternInputCancel}
-          onPatternCreateRequest={onPatternCreateRequest}
-          onPatternDelete={onPatternDelete}
-          onFolderCreateRequest={onFolderCreateRequest}
-          onPatternMoveRequest={openPatternMoveDialog}
-        />
-      )}
+        {shouldShowRootPatterns && (
+          <PatternList
+            folderId={null}
+            patterns={rootPatterns}
+            showEmpty
+            nested={false}
+            selectedPatternId={selectedPatternId}
+            onPatternSelect={onPatternSelect}
+            pendingPatternInput={pendingPatternInput}
+            onPatternInputSubmit={onPatternInputSubmit}
+            onPatternInputCancel={onPatternInputCancel}
+            onPatternCreateRequest={onPatternCreateRequest}
+            onPatternDelete={onPatternDelete}
+            onFolderCreateRequest={onFolderCreateRequest}
+            onPatternMoveRequest={openPatternMoveDialog}
+          />
+        )}
       </div>
       <AlertDialog
         open={Boolean(pendingFolderDelete)}
@@ -529,6 +570,10 @@ type FolderMenuListProps = {
   onFolderDeleteRequest?: (folder: Folder) => void
   onPatternMoveRequest?: (pattern: Pattern) => void
   onFolderMoveRequest?: (folder: Folder) => void
+  renamingFolderId?: string | null
+  onFolderRenameRequest?: (folder: Folder) => void
+  onFolderRenameSubmit?: (folderId: string, name: string) => void
+  onFolderRenameCancel?: () => void
 }
 
 function FolderMenuList({
@@ -552,6 +597,10 @@ function FolderMenuList({
   onFolderDeleteRequest,
   onPatternMoveRequest,
   onFolderMoveRequest,
+  renamingFolderId,
+  onFolderRenameRequest,
+  onFolderRenameSubmit,
+  onFolderRenameCancel,
 }: FolderMenuListProps) {
   const showFolderInput =
     pendingFolderInput && pendingFolderInput.parentId === (parentId ?? null)
@@ -579,6 +628,10 @@ function FolderMenuList({
             onFolderDeleteRequest={onFolderDeleteRequest}
             onPatternMoveRequest={onPatternMoveRequest}
             onFolderMoveRequest={onFolderMoveRequest}
+            renamingFolderId={renamingFolderId}
+            onFolderRenameRequest={onFolderRenameRequest}
+            onFolderRenameSubmit={onFolderRenameSubmit}
+            onFolderRenameCancel={onFolderRenameCancel}
           />
         </SidebarMenuItem>
       ))}
@@ -629,6 +682,10 @@ type FolderNodeItemProps = {
   onFolderDeleteRequest?: (folder: Folder) => void
   onPatternMoveRequest?: (pattern: Pattern) => void
   onFolderMoveRequest?: (folder: Folder) => void
+  renamingFolderId?: string | null
+  onFolderRenameRequest?: (folder: Folder) => void
+  onFolderRenameSubmit?: (folderId: string, name: string) => void
+  onFolderRenameCancel?: () => void
 }
 
 function FolderNodeItem({
@@ -650,12 +707,17 @@ function FolderNodeItem({
   onFolderDeleteRequest,
   onPatternMoveRequest,
   onFolderMoveRequest,
+  renamingFolderId,
+  onFolderRenameRequest,
+  onFolderRenameSubmit,
+  onFolderRenameCancel,
 }: FolderNodeItemProps) {
   const hasChildren = node.children.length > 0
   const shouldShowChildFolderInput = pendingFolderInput?.parentId === node.folder.id
   const shouldRenderChildList = hasChildren || shouldShowChildFolderInput
   const totalPatterns = getPatternCount(node)
   const isSelected = node.folder.id === selectedFolderId
+  const isRenaming = renamingFolderId === node.folder.id
   const [isOpen, setIsOpen] = React.useState(() => {
     if (pendingFolderInput?.parentId && nodeContainsFolder(node, pendingFolderInput.parentId)) {
       return true
@@ -712,28 +774,57 @@ function FolderNodeItem({
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="group/collapsible">
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <CollapsibleTrigger asChild>
+          <CollapsibleTrigger asChild disabled={isRenaming}>
             <SidebarMenuButton
               {...allowContextMenuProps}
+              asChild={isRenaming}
               data-tree-interactive="true"
               className={cn(
                 "justify-between",
-                isSelected && "text-primary bg-primary/10 ring-1 ring-primary/40"
+                isSelected && "text-primary bg-primary/10 ring-1 ring-primary/40",
+                isRenaming && "cursor-text"
               )}
-              onClick={() => onFolderSelect?.(node.folder.id)}
-              onPointerDown={(event) => {
-                if (event.button === 2) {
-                  onFolderSelect?.(node.folder.id)
-                }
-              }}
-              onContextMenu={() => onFolderSelect?.(node.folder.id)}
+              onClick={
+                isRenaming
+                  ? undefined
+                  : () => {
+                      onFolderSelect?.(node.folder.id)
+                    }
+              }
+              onPointerDown={
+                isRenaming
+                  ? undefined
+                  : (event) => {
+                      if (event.button === 2) {
+                        onFolderSelect?.(node.folder.id)
+                      }
+                    }
+              }
+              onContextMenu={isRenaming ? undefined : () => onFolderSelect?.(node.folder.id)}
             >
-              <span className="flex flex-1 items-center gap-2">
-                <ChevronDown className="size-3.5 text-muted-foreground transition-transform group-data-[state=closed]/collapsible:-rotate-90" />
-                <FolderIcon className="size-4 text-muted-foreground" />
-                <span className="truncate font-medium">{node.folder.name}</span>
-              </span>
-              <span className="text-xs text-muted-foreground">{totalPatterns}</span>
+              {isRenaming ? (
+                <div className="flex w-full items-center gap-2">
+                  <ChevronDown className="size-3.5 text-muted-foreground transition-transform group-data-[state=closed]/collapsible:-rotate-90" />
+                  <FolderIcon className="size-4 text-muted-foreground" />
+                  <InlineCreateInput
+                    placeholder="Rename folder"
+                    initialValue={node.folder.name}
+                    onSubmit={(value) => onFolderRenameSubmit?.(node.folder.id, value)}
+                    onCancel={onFolderRenameCancel ?? (() => {})}
+                    className="px-0"
+                    maxLength={FOLDER_NAME_MAX_LENGTH}
+                  />
+                </div>
+              ) : (
+                <>
+                  <span className="flex flex-1 items-center gap-2">
+                    <ChevronDown className="size-3.5 text-muted-foreground transition-transform group-data-[state=closed]/collapsible:-rotate-90" />
+                    <FolderIcon className="size-4 text-muted-foreground" />
+                    <span className="truncate font-medium">{node.folder.name}</span>
+                  </span>
+                  <span className="text-xs text-muted-foreground">{totalPatterns}</span>
+                </>
+              )}
             </SidebarMenuButton>
           </CollapsibleTrigger>
         </ContextMenuTrigger>
@@ -746,6 +837,9 @@ function FolderNodeItem({
           </ContextMenuItem>
           <ContextMenuItem onSelect={() => onFolderCreateRequest?.(node.folder.id)}>
             New folder
+          </ContextMenuItem>
+          <ContextMenuItem onSelect={() => onFolderRenameRequest?.(node.folder)}>
+            Rename
           </ContextMenuItem>
           <ContextMenuItem onSelect={() => onFolderMoveRequest?.(node.folder)}>
             Move
@@ -790,6 +884,10 @@ function FolderNodeItem({
               onFolderDeleteRequest={onFolderDeleteRequest}
               onPatternMoveRequest={onPatternMoveRequest}
               onFolderMoveRequest={onFolderMoveRequest}
+              renamingFolderId={renamingFolderId}
+              onFolderRenameRequest={onFolderRenameRequest}
+              onFolderRenameSubmit={onFolderRenameSubmit}
+              onFolderRenameCancel={onFolderRenameCancel}
             />
           )}
           <PatternList
@@ -1047,12 +1145,14 @@ type InlineCreateInputProps = {
   onCancel: () => void
   className?: string
   maxLength?: number
+  initialValue?: string
 }
 
-function InlineCreateInput({ placeholder, onSubmit, onCancel, className, maxLength }: InlineCreateInputProps) {
-  const [value, setValue] = React.useState("")
+function InlineCreateInput({ placeholder, onSubmit, onCancel, className, maxLength, initialValue }: InlineCreateInputProps) {
+  const [value, setValue] = React.useState(initialValue ?? "")
   const inputRef = React.useRef<HTMLInputElement | null>(null)
   const finishedRef = React.useRef(false)
+  const initialTrimmedRef = React.useRef(initialValue?.trim() ?? "")
 
   React.useEffect(() => {
     const id = requestAnimationFrame(() => inputRef.current?.focus())
@@ -1072,6 +1172,11 @@ function InlineCreateInput({ placeholder, onSubmit, onCancel, className, maxLeng
       cancel()
       return
     }
+    if (trimmed === initialTrimmedRef.current) {
+      finishedRef.current = true
+      onCancel()
+      return
+    }
     finishedRef.current = true
     onSubmit(trimmed)
   }, [cancel, onSubmit, value])
@@ -1087,13 +1192,7 @@ function InlineCreateInput({ placeholder, onSubmit, onCancel, className, maxLeng
         "h-8 w-full border-none bg-transparent px-0 text-sm shadow-none focus-visible:ring-0 focus-visible:outline-none",
         className
       )}
-      onBlur={() => {
-        if (!value.trim()) {
-          cancel()
-        } else {
-          submit()
-        }
-      }}
+      onBlur={() => submit()}
       onKeyDown={(event) => {
         if (event.key === "Enter") {
           event.preventDefault()
