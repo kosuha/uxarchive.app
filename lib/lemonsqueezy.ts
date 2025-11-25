@@ -286,10 +286,13 @@ export function parseLemonSqueezyEvent(payload: LemonSqueezyWebhookPayload) {
     (attributes as { identifier?: string }).identifier ??
     payload.data?.id
 
+  const subscriptionIdFromAttributes = (attributes as { subscription_id?: string }).subscription_id
+
   return {
     eventName,
     eventId,
-    subscriptionId: payload.data?.id,
+    // payment 이벤트 등에서는 data.id가 구독 ID가 아니므로 attributes.subscription_id를 우선 사용
+    subscriptionId: subscriptionIdFromAttributes ?? payload.data?.id,
     customerId: (attributes as { customer_id?: string }).customer_id,
     orderId: (attributes as { order_id?: string }).order_id,
     status,
