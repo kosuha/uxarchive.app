@@ -280,6 +280,7 @@ export function parseLemonSqueezyEvent(payload: LemonSqueezyWebhookPayload) {
       : undefined
 
   const eventId =
+    (payload.meta as { webhook_id?: string })?.webhook_id ??
     (payload.meta as { event_id?: string })?.event_id ??
     (payload.meta as { eventId?: string })?.eventId ??
     (attributes as { event_id?: string }).event_id ??
