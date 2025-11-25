@@ -7,6 +7,7 @@ import {
   parseLemonSqueezyEvent,
   verifyLemonSqueezySignature,
 } from "@/lib/lemonsqueezy"
+import { notifyDiscord } from "@/lib/notifications/discord"
 import {
   type ServiceSupabaseClient,
   getServiceRoleSupabaseClient,
@@ -92,6 +93,38 @@ const revalidateCachedPaths = () => {
       console.warn(`Failed to revalidate cache for ${path}`, error)
     }
   }
+}
+
+const isProdEnvironment = () =>
+  (process.env.APP_ENV ?? process.env.NODE_ENV ?? "development").toLowerCase() === "production"
+
+const resolvePaymentSeverity = (status?: string) => {
+  switch (status) {
+    case "past_due":
+      return "warning" as const
+    case "canceled":
+      return "error" as const
+    default:
+      return "success" as const
+  }
+}
+
+const resolveAmountDetails = (attributes: Record<string, unknown>) => {
+  const amount = typeof (attributes as { total?: number }).total === "number"
+    ? (attributes as { total?: number }).total
+    : undefined
+  const currency =
+    typeof (attributes as { currency?: string }).currency === "string"
+      ? (attributes as { currency?: string }).currency
+      : typeof (attributes as { store_currency?: string }).store_currency === "string"
+        ? (attributes as { store_currency?: string }).store_currency
+        : undefined
+  const formattedTotal =
+    typeof (attributes as { formatted_total?: string }).formatted_total === "string"
+      ? (attributes as { formatted_total?: string }).formatted_total
+      : undefined
+
+  return { amount, currency, formattedTotal }
 }
 
 export async function POST(request: Request) {
@@ -210,6 +243,43 @@ export async function POST(request: Request) {
 
     if (updateError) {
       throw updateError
+    }
+
+    const { amount, currency, formattedTotal } = resolveAmountDetails(attributes)
+    const paymentTitle = parsed.eventName
+      ? `Payment event: ${parsed.eventName}`
+      : "Payment event"
+
+    if (isProdEnvironment()) {
+      await notifyDiscord(
+        {
+          type: "payment",
+          title: paymentTitle,
+          message: formattedTotal
+            ? `${formattedTotal} (${planCode})`
+            : `Plan ${planCode} status: ${parsed.status ?? "unknown"}`,
+          severity: resolvePaymentSeverity(parsed.status),
+          status: parsed.rawStatus ?? parsed.status,
+          userId: profile.id,
+          transactionId: parsed.orderId ?? parsed.subscriptionId ?? parsed.eventId,
+          amount,
+          currency,
+          context: {
+            planCode,
+            status: parsed.status,
+            rawStatus: parsed.rawStatus,
+            eventId: parsed.eventId,
+            eventName: parsed.eventName,
+            subscriptionId: parsed.subscriptionId,
+            customerId: parsed.customerId,
+            testMode: parsed.testMode ?? false,
+          },
+        },
+        {
+          channel: "payment",
+          sample: () => !parsed.testMode,
+        },
+      )
     }
 
     revalidateCachedPaths()

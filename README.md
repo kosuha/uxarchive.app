@@ -50,6 +50,26 @@ UX Archive 웹앱은 Next.js 14 + shadcn/ui 기반으로 제작되며, Supabase 
 2. `error`, `warning`, `payment` 용도로 채널별 웹훅을 각각 생성해 알림 범위를 분리합니다.
 3. 프로덕션 시크릿 저장소에 각 웹훅 URL을 해당 환경 변수에 넣어 적용합니다.
 
+### Discord staging webhook manual checklist (error/warning/payment)
+
+이 섹션은 스테이징 채널에서 세 가지 이벤트 타입을 눈으로 확인하기 위한 절차입니다. 프로덕션 웹훅과는 절대 혼동하지 말고, `.env.example`를 참고해 별도의 스테이징 웹훅을 사용하세요.
+
+1. Pre-flight
+   - 터미널 세션에서만 `DISCORD_NOTIFY_ENABLED=true` 로 설정하고, 스테이징 웹훅 URL 3종을 환경 변수에 채웁니다.
+   - `NODE_ENV=production pnpm test`로 유닛 테스트(재시도/타임아웃/비활성화 경로)를 통과시킵니다.
+2. Manual sends (각 명령은 한 번씩 실행)
+   - Error:  
+     `curl -X POST "$DISCORD_WEBHOOK_URL_ERROR" -H "Content-Type: application/json" -d '{"embeds":[{"title":"Staging error","description":"Simulated processing failure","color":15548997,"fields":[{"name":"Type","value":"error","inline":true},{"name":"Severity","value":"critical","inline":true},{"name":"Workspace","value":"staging-lab","inline":true},{"name":"User","value":"qa-user","inline":true},{"name":"Context","value":"{\"step\":\"sync\",\"action\":\"retry\"}"}],"timestamp":"2024-01-01T00:00:00.000Z"}]}'`
+   - Warning:  
+     `curl -X POST "$DISCORD_WEBHOOK_URL_WARNING" -H "Content-Type: application/json" -d '{"embeds":[{"title":"Staging warning","description":"Slow response detected","color":16705372,"fields":[{"name":"Type","value":"warning","inline":true},{"name":"Status","value":"degraded","inline":true},{"name":"Workspace","value":"staging-lab","inline":true},{"name":"Context","value":"{\"latency_ms\":1200}"}],"timestamp":"2024-01-01T00:00:10.000Z"}]}'`
+   - Payment:  
+     `curl -X POST "$DISCORD_WEBHOOK_URL_PAYMENT" -H "Content-Type: application/json" -d '{"embeds":[{"title":"Staging payment","description":"Test invoice paid","color":5763719,"fields":[{"name":"Type","value":"payment","inline":true},{"name":"Status","value":"succeeded","inline":true},{"name":"Transaction","value":"txn_stg_123","inline":true},{"name":"Amount","value":"49 USD","inline":true},{"name":"Workspace","value":"staging-lab","inline":true}],"timestamp":"2024-01-01T00:00:20.000Z"}]}'`
+3. 기대 결과
+   - Error는 붉은색, Warning은 노란색, Payment는 초록색 임베드 컬러로 표시되고 필드가 모두 보이는지 확인합니다.
+   - 메시지 타임스탬프와 필드 순서가 `buildDiscordPayload`와 동일하게 유지되는지 체크합니다.
+4. 종료
+   - 스테이징 검증이 끝나면 `DISCORD_NOTIFY_ENABLED=false`로 돌려놓고, 스테이징 웹훅 키를 별도 보관소에만 유지합니다.
+
 ## 배포 환경 비밀 관리
 
 - Vercel, Netlify 등 배포 플랫폼의 프로젝트 설정 페이지에서 위 변수들을 `Environment Variables`로 추가합니다.

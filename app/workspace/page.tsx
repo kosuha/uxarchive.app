@@ -18,6 +18,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { RightWorkspace } from "@/components/right-workspace"
+import { WorkspaceEventContext } from "@/components/workspace-event-context"
 import { WorkspaceDataProvider, useWorkspaceData } from "@/lib/workspace-data-context"
 import type { Folder, Pattern } from "@/lib/types"
 import { FolderIcon, LibraryBig } from "lucide-react"
@@ -28,6 +29,7 @@ export default function Page() {
   return (
     <AuthGuard>
       <WorkspaceDataProvider>
+        <WorkspaceEventContext />
         <WorkspaceShell />
       </WorkspaceDataProvider>
     </AuthGuard>

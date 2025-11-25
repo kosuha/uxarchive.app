@@ -11,6 +11,7 @@ import {
 } from "@/lib/query-client"
 import { SyncStatusProvider } from "@/lib/sync-status-context"
 import { SessionProvider } from "@/lib/supabase/session-context"
+import { ClientEventListener } from "@/components/client-event-listener"
 import { SyncStatusListener } from "@/components/sync-status-listener"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
@@ -18,6 +19,7 @@ import { Toaster } from "@/components/ui/toaster"
 const ProviderTree = ({ children }: { children: React.ReactNode }) => (
   <ThemeProvider>
     <SessionProvider>
+      <ClientEventListener />
       <SyncStatusProvider>
         {children}
         <SyncStatusListener />
