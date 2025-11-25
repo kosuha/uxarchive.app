@@ -38,6 +38,10 @@ export type LemonSqueezyWebhookPayload = {
     event_name?: string
     event_id?: string
     test_mode?: boolean
+    custom_data?: {
+      userId?: string
+      planCode?: string
+    }
   }
   data?: {
     id?: string
@@ -263,6 +267,18 @@ export function parseLemonSqueezyEvent(payload: LemonSqueezyWebhookPayload) {
   const planCodeFromCustom =
     typeof custom.custom?.planCode === "string" ? custom.custom.planCode : undefined
 
+  const metaCustom = (payload.meta ?? {}) as {
+    custom_data?: { userId?: string; planCode?: string }
+  }
+  const userIdFromMetaCustom =
+    typeof metaCustom.custom_data?.userId === "string"
+      ? metaCustom.custom_data.userId
+      : undefined
+  const planCodeFromMetaCustom =
+    typeof metaCustom.custom_data?.planCode === "string"
+      ? metaCustom.custom_data.planCode
+      : undefined
+
   const eventId =
     (payload.meta as { event_id?: string })?.event_id ??
     (payload.meta as { eventId?: string })?.eventId ??
@@ -278,8 +294,8 @@ export function parseLemonSqueezyEvent(payload: LemonSqueezyWebhookPayload) {
     orderId: (attributes as { order_id?: string }).order_id,
     status,
     rawStatus,
-    userId: userIdFromCustom ?? userIdFromPassThrough,
-    planCode: planCodeFromCustom ?? planCodeFromPassThrough,
+    userId: userIdFromCustom ?? userIdFromPassThrough ?? userIdFromMetaCustom,
+    planCode: planCodeFromCustom ?? planCodeFromPassThrough ?? planCodeFromMetaCustom,
     testMode: Boolean(payload.meta?.test_mode),
     raw: payload,
   }
