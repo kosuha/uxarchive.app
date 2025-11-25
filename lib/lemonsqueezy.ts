@@ -57,11 +57,11 @@ export async function createLemonSqueezyCheckout(
     getEnv("LEMONSQUEEZY_VARIANT_ID_PLUS")
 
   const checkoutData: Record<string, unknown> = {}
-  const custom: Record<string, unknown> = options.metadata ? { ...options.metadata } : {}
-  if (options.planCode) custom.planCode = options.planCode
-  if (options.userId) custom.userId = options.userId
+  const customData: Record<string, unknown> = options.metadata ? { ...options.metadata } : {}
+  if (options.planCode) customData.planCode = options.planCode
+  if (options.userId) customData.userId = options.userId
+  if (Object.keys(customData).length > 0) checkoutData.custom = customData
   if (options.email) checkoutData.email = options.email
-  if (Object.keys(custom).length > 0) checkoutData.custom = custom
 
   const productOptions: Record<string, unknown> = {}
   const redirectUrl = options.redirectUrl ?? lemonSqueezyBilling.plans.plus.redirectUrl
@@ -70,12 +70,6 @@ export async function createLemonSqueezyCheckout(
   }
 
   const attributes: Record<string, unknown> = {}
-  if (options.userId || options.planCode) {
-    const passThroughPayload: Record<string, string> = {}
-    if (options.userId) passThroughPayload.userId = options.userId
-    if (options.planCode) passThroughPayload.planCode = options.planCode
-    attributes.pass_through = JSON.stringify(passThroughPayload)
-  }
   if (Object.keys(checkoutData).length > 0) attributes.checkout_data = checkoutData
   if (Object.keys(productOptions).length > 0) attributes.product_options = productOptions
 
@@ -94,7 +88,7 @@ export async function createLemonSqueezyCheckout(
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
+      "Content-Type": "application/vnd.api+json",
       Accept: "application/vnd.api+json",
     },
     body: JSON.stringify(payload),
