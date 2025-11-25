@@ -30,6 +30,26 @@ UX Archive 웹앱은 Next.js 14 + shadcn/ui 기반으로 제작되며, Supabase 
 | `SUPABASE_STORAGE_BUCKET` | 업로드에 사용할 Storage 버킷 이름 |
 | `SUPABASE_STORAGE_REGION` | 선택 사항, 버킷이 위치한 리전(예: `ap-northeast-2`) |
 
+### Discord 알림 (서비스는 영어권 대상)
+
+- 로컬/스테이징에서는 **비활성 유지**: `DISCORD_NOTIFY_ENABLED=false`로 두고 웹훅 URL은 비워 둡니다.
+- **프로덕션에서만 활성화**: `DISCORD_NOTIFY_ENABLED=true`로 설정하고 아래 웹훅 URL을 채웁니다.
+- 프론트엔드에서 데이터베이스에 직접 접근하지 말고 항상 서버 액션/API 라우트를 통해 호출하세요.
+
+| 변수 | 용도 | 권장 기본값 |
+| --- | --- | --- |
+| `DISCORD_NOTIFY_ENABLED` | Discord 알림 전체 스위치 | 로컬/스테이징은 `false` |
+| `DISCORD_WEBHOOK_URL_ERROR` | 오류 알림용 웹훅 (프로덕션) | 로컬에서는 비워 둠 |
+| `DISCORD_WEBHOOK_URL_WARNING` | 경고 알림용 웹훅 (프로덕션) | 로컬에서는 비워 둠 |
+| `DISCORD_WEBHOOK_URL_PAYMENT` | 결제/청구 알림용 웹훅 (프로덕션) | 로컬에서는 비워 둠 |
+| `DISCORD_TIMEOUT_MS` | 웹훅 호출 타임아웃(ms) | `5000` |
+| `DISCORD_RETRY_COUNT` | 실패 시 재시도 횟수 | `2` |
+
+**Discord 웹훅 발급 방법**
+1. Discord 서버에서 대상 채널을 열고 `Settings → Integrations → Webhooks`로 이동합니다.
+2. `error`, `warning`, `payment` 용도로 채널별 웹훅을 각각 생성해 알림 범위를 분리합니다.
+3. 프로덕션 시크릿 저장소에 각 웹훅 URL을 해당 환경 변수에 넣어 적용합니다.
+
 ## 배포 환경 비밀 관리
 
 - Vercel, Netlify 등 배포 플랫폼의 프로젝트 설정 페이지에서 위 변수들을 `Environment Variables`로 추가합니다.
