@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import type { SupabaseClient, User } from "@supabase/supabase-js"
 
+import { withApiErrorReporting } from "@/lib/notifications/api-error-wrapper"
 import { ensureDownloadAllowed } from "@/lib/plan-limits"
 import { RepositoryError } from "@/lib/repositories/types"
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server-clients"
@@ -67,7 +68,7 @@ const requireAuthenticatedUser = async (supabase: RouteSupabaseClient): Promise<
   return user
 }
 
-export const GET = async (request: Request) => {
+const handler = async (request: Request) => {
   try {
     const url = new URL(request.url)
     const objectPath = sanitizeObjectPath(url.searchParams.get("path"))
@@ -108,3 +109,5 @@ export const GET = async (request: Request) => {
     return NextResponse.json({ error: "Failed to proxy the storage object." }, { status: 500 })
   }
 }
+
+export const GET = withApiErrorReporting(handler, { name: "storage-object" })

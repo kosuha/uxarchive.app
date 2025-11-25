@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 
+import { withApiErrorReporting } from "@/lib/notifications/api-error-wrapper"
 import { resolveEffectivePlan } from "@/lib/plan-limits"
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server-clients"
 
@@ -8,7 +9,7 @@ export const runtime = "nodejs"
 const PROFILE_COLUMNS =
   "plan_code, plan_status, renewal_at, cancel_at, ls_customer_id, ls_subscription_id"
 
-export async function GET() {
+const handler = async (_request: Request) => {
   try {
     const supabase = await createSupabaseRouteHandlerClient()
     const {
@@ -47,3 +48,5 @@ export async function GET() {
     return NextResponse.json({ error: "plan_lookup_failed" }, { status: 500 })
   }
 }
+
+export const GET = withApiErrorReporting(handler, { name: "profile-plan" })

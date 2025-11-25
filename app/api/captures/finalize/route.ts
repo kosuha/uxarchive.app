@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { finalizeCaptureUpload } from "@/app/actions/captures"
+import { withApiErrorReporting } from "@/lib/notifications/api-error-wrapper"
 
 type FinalizePayload = {
   workspaceId: string
@@ -60,7 +61,7 @@ const parseRequest = async (request: Request): Promise<FinalizePayload> => {
   }
 }
 
-export async function POST(request: Request) {
+const handler = async (request: Request) => {
   try {
     const payload = await parseRequest(request)
     const capture = await finalizeCaptureUpload(payload)
@@ -73,3 +74,5 @@ export async function POST(request: Request) {
 }
 
 export const runtime = "nodejs"
+
+export const POST = withApiErrorReporting(handler, { name: "captures-finalize" })

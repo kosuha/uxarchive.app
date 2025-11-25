@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server"
 
 import { cancelLemonSqueezySubscription } from "@/lib/lemonsqueezy"
+import { withApiErrorReporting } from "@/lib/notifications/api-error-wrapper"
 import { getServiceRoleSupabaseClient } from "@/lib/supabase/service-client"
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server-clients"
 
 export const runtime = "nodejs"
 
-export async function DELETE() {
+const handler = async (_request: Request) => {
   try {
     const supabase = await createSupabaseRouteHandlerClient()
     const {
@@ -55,3 +56,5 @@ export async function DELETE() {
     return NextResponse.json({ error: "account_delete_failed" }, { status: 500 })
   }
 }
+
+export const DELETE = withApiErrorReporting(handler, { name: "account-delete" })

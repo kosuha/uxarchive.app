@@ -3,6 +3,7 @@ import type { SupabaseClient, User } from "@supabase/supabase-js"
 import { getServiceRoleSupabaseClient } from "@/lib/supabase/service-client"
 import type { CaptureRecord } from "@/lib/captures/types"
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server-clients"
+import { withApiErrorReporting } from "@/lib/notifications/api-error-wrapper"
 
 const SAFE_SEGMENT = /^[A-Za-z0-9_-]+$/
 const DEFAULT_VARIANT = "original"
@@ -272,7 +273,7 @@ const removeStorageObjectIfExists = async (bucket: string, storagePath: string) 
 
 export const runtime = "nodejs"
 
-export async function POST(request: Request) {
+const postHandler = async (request: Request) => {
   try {
     const payload = await parseRequest(request)
     const supabase = await createSupabaseRouteHandlerClient()
@@ -320,7 +321,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+const deleteHandler = async (request: Request) => {
   try {
     const payload = await parseCancelRequest(request)
     const supabase = await createSupabaseRouteHandlerClient()
@@ -354,3 +355,6 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "An error occurred while processing the upload cancellation." }, { status: 500 })
   }
 }
+
+export const POST = withApiErrorReporting(postHandler, { name: "captures-upload" })
+export const DELETE = withApiErrorReporting(deleteHandler, { name: "captures-upload-cancel" })

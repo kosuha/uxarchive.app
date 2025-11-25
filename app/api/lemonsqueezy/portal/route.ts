@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server"
 
 import { getLemonSqueezySubscription } from "@/lib/lemonsqueezy"
+import { withApiErrorReporting } from "@/lib/notifications/api-error-wrapper"
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server-clients"
 
 export const runtime = "nodejs"
 
-export async function GET(request: Request) {
+const handler = async (request: Request) => {
   try {
     const supabase = await createSupabaseRouteHandlerClient()
     const {
@@ -60,3 +61,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "portal_failed" }, { status: 500 })
   }
 }
+
+export const GET = withApiErrorReporting(handler, { name: "lemonsqueezy-portal" })

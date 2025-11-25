@@ -2,12 +2,13 @@ import { NextResponse } from "next/server"
 
 import { lemonSqueezyBilling } from "@/lib/billing-config"
 import { createLemonSqueezyCheckout } from "@/lib/lemonsqueezy"
+import { withApiErrorReporting } from "@/lib/notifications/api-error-wrapper"
 import { isPaidPlanActive } from "@/lib/plan-limits"
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server-clients"
 
 export const runtime = "nodejs"
 
-export async function POST(request: Request) {
+const handler = async (request: Request) => {
   let body: Record<string, unknown> = {}
 
   try {
@@ -79,3 +80,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "checkout_failed" }, { status: 500 })
   }
 }
+
+export const POST = withApiErrorReporting(handler, { name: "lemonsqueezy-checkout" })

@@ -8,6 +8,7 @@ import {
   verifyLemonSqueezySignature,
 } from "@/lib/lemonsqueezy"
 import { notifyDiscord } from "@/lib/notifications/discord"
+import { withApiErrorReporting } from "@/lib/notifications/api-error-wrapper"
 import {
   type ServiceSupabaseClient,
   getServiceRoleSupabaseClient,
@@ -127,7 +128,7 @@ const resolveAmountDetails = (attributes: Record<string, unknown>) => {
   return { amount, currency, formattedTotal }
 }
 
-export async function POST(request: Request) {
+const handler = async (request: Request) => {
   const signature = request.headers.get("x-signature")
   const rawBody = await request.text()
 
@@ -291,3 +292,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "webhook_processing_failed" }, { status: 500 })
   }
 }
+
+export const POST = withApiErrorReporting(handler, { name: "lemonsqueezy-webhook" })

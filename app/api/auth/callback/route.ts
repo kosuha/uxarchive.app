@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server-clients"
+import { withApiErrorReporting } from "@/lib/notifications/api-error-wrapper"
 
 const handler = async (request: Request) => {
   const requestUrl = new URL(request.url)
@@ -15,5 +16,5 @@ const handler = async (request: Request) => {
   return NextResponse.redirect(new URL(next, request.url))
 }
 
-export const GET = handler
-export const POST = handler
+export const GET = withApiErrorReporting(handler, { name: "auth-callback" })
+export const POST = withApiErrorReporting(handler, { name: "auth-callback" })
