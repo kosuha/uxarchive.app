@@ -10,6 +10,7 @@ const PROFILE_COLUMNS =
   "plan_code, plan_status, renewal_at, cancel_at, ls_customer_id, ls_subscription_id"
 
 const handler = async (_request: Request) => {
+  void _request
   try {
     const supabase = await createSupabaseRouteHandlerClient()
     const {

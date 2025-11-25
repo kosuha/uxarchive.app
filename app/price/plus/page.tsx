@@ -46,7 +46,7 @@ export default function PlusPage() {
 
             <div className="grid gap-6 md:grid-cols-[2fr,1fr]">
               <div className="space-y-4">
-                <h2 className="text-lg font-semibold">What's included</h2>
+                <h2 className="text-lg font-semibold">What&apos;s included</h2>
                 <ul className="space-y-3 text-sm text-muted-foreground">
                   {features.map((item) => (
                     <li key={item} className="flex items-center gap-2">

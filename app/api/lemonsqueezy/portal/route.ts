@@ -7,6 +7,7 @@ import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server-clients"
 export const runtime = "nodejs"
 
 const handler = async (request: Request) => {
+  void request
   try {
     const supabase = await createSupabaseRouteHandlerClient()
     const {

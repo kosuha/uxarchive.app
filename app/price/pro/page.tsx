@@ -25,7 +25,7 @@ export default function ProPage() {
 
         <div className="rounded-3xl border border-border/70 bg-card/90 p-8 text-center backdrop-blur">
           <p className="text-sm text-muted-foreground">
-            We'll offer Pro billing here soon. Start with Plus for now.
+            We&apos;ll offer Pro billing here soon. Start with Plus for now.
           </p>
           <div className="mt-6 flex justify-center">
             <Button variant="outline" onClick={() => router.push("/price/plus")}>
