@@ -118,7 +118,7 @@ export const withApiErrorReporting = (handler: Handler, meta: ErrorMeta = {}): H
               stack: normalizedError.stack,
             },
           },
-          { channel },
+          channel,
         )
       }
 
