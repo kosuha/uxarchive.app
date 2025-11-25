@@ -4,7 +4,7 @@ import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server-clients"
 const handler = async (request: Request) => {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get("code")
-  // 기본 리디렉션을 /workspace로 지정해 로그인 이후 워크스페이스로 이동
+  // Default redirect to /workspace after login
   const next = requestUrl.searchParams.get("next") ?? "/workspace"
 
   if (code) {

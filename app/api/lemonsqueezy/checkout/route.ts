@@ -56,7 +56,7 @@ export async function POST(request: Request) {
         {
           error: "already_subscribed",
           message:
-            "이미 Plus 플랜을 사용 중이에요. 구독 관리나 결제 변경은 고객 포털에서 진행해주세요.",
+            "You're already on the Plus plan. Manage or change your subscription in the customer portal.",
         },
         { status: 409 },
       )

@@ -28,7 +28,7 @@ export default function PlusPage() {
           </Badge>
           <h1 className="text-4xl font-black md:text-5xl">Upgrade to Plus</h1>
           <p className="text-lg text-muted-foreground">
-            개인 워크스페이스를 넉넉하게 확장하고 모든 패턴을 안전하게 보관하세요.
+            Expand your personal workspace and keep every pattern safe.
           </p>
         </header>
 
@@ -40,13 +40,13 @@ export default function PlusPage() {
                   <span className="text-base text-muted-foreground">/mo</span>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  언제든 취소할 수 있습니다. 결제 후 바로 플랜이 적용됩니다.
+                  Cancel anytime. The plan activates immediately after payment.
                 </p>
               </div>
 
             <div className="grid gap-6 md:grid-cols-[2fr,1fr]">
               <div className="space-y-4">
-                <h2 className="text-lg font-semibold">포함 기능</h2>
+                <h2 className="text-lg font-semibold">What's included</h2>
                 <ul className="space-y-3 text-sm text-muted-foreground">
                   {features.map((item) => (
                     <li key={item} className="flex items-center gap-2">
@@ -73,15 +73,16 @@ function CheckoutBlock() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
-  const handleCheckout = useCallback(async () => {
-    if (!session) {
-      toast({
-        title: "로그인 후 진행해주세요",
-        description: "워크스페이스에서 로그인/회원가입을 완료하면 결제가 이어집니다.",
-      })
-      router.push("/workspace")
-      return
-    }
+    const handleCheckout = useCallback(async () => {
+      if (!session) {
+        toast({
+          title: "Please sign in first",
+          description:
+            "Complete sign-in or sign-up from the workspace to continue with payment.",
+        })
+        router.push("/workspace")
+        return
+      }
 
     setLoading(true)
     try {
@@ -102,8 +103,8 @@ function CheckoutBlock() {
     } catch (error) {
       console.error(error)
       toast({
-        title: "체크아웃을 준비할 수 없어요",
-        description: "잠시 후 다시 시도해주세요. 문제가 지속되면 알려주세요.",
+        title: "Unable to prepare checkout",
+        description: "Please try again shortly. If the issue continues, let us know.",
         variant: "destructive",
       })
     } finally {
@@ -111,26 +112,29 @@ function CheckoutBlock() {
     }
   }, [router, session, toast])
 
-  return (
-    <div className="space-y-3">
-      <div>
-        <p className="text-sm font-semibold">결제</p>
-        <p className="text-xs text-muted-foreground">결제 완료 즉시 플랜이 활성화됩니다.</p>
+    return (
+      <div className="space-y-3">
+        <div>
+          <p className="text-sm font-semibold">Checkout</p>
+          <p className="text-xs text-muted-foreground">
+            Your plan activates as soon as the payment completes.
+          </p>
+        </div>
+        <Button className="w-full" size="lg" onClick={handleCheckout} disabled={loading}>
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Preparing...
+            </span>
+          ) : (
+            "Start Plus subscription"
+          )}
+        </Button>
+        <Separator />
+        <p className="text-xs text-muted-foreground">
+          The subscription links to the account you are logged into. Check your workspace
+          right after paying.
+        </p>
       </div>
-      <Button className="w-full" size="lg" onClick={handleCheckout} disabled={loading}>
-        {loading ? (
-          <span className="flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            준비 중...
-          </span>
-        ) : (
-          "플러스 구독 시작하기"
-        )}
-      </Button>
-      <Separator />
-      <p className="text-xs text-muted-foreground">
-        로그인된 계정으로 구독이 연결됩니다. 결제 후 워크스페이스에서 바로 확인하세요.
-      </p>
-    </div>
-  )
-}
+    )
+  }

@@ -292,7 +292,7 @@ export function parseLemonSqueezyEvent(payload: LemonSqueezyWebhookPayload) {
         planCodeFromPassThrough = parsed.planCode
       }
     } catch {
-      // pass_through이 JSON이 아닌 경우 그대로 무시
+      // Ignore cases where pass_through isn't valid JSON
     }
   }
 
@@ -327,7 +327,7 @@ export function parseLemonSqueezyEvent(payload: LemonSqueezyWebhookPayload) {
   return {
     eventName,
     eventId,
-    // payment 이벤트 등에서는 data.id가 구독 ID가 아니므로 attributes.subscription_id를 우선 사용
+    // For payment events data.id isn't the subscription ID, so prefer attributes.subscription_id
     subscriptionId: subscriptionIdFromAttributes ?? payload.data?.id,
     customerId: (attributes as { customer_id?: string }).customer_id,
     orderId: (attributes as { order_id?: string }).order_id,

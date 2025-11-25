@@ -76,7 +76,7 @@ export function AppSidebar({
   const [activeNavId, setActiveNavId] = React.useState(PRIMARY_NAV_ITEMS[0]?.id ?? "")
   const [searchQuery, setSearchQuery] = React.useState("")
   const [searchSelectedTagIds, setSearchSelectedTagIds] = React.useState<string[]>([])
-  // 모바일 시트에서는 접힘 상태를 적용하지 않아야 내용이 보인다.
+  // Keep the sidebar expanded inside the mobile sheet so content stays visible.
   const isSidebarCollapsed = !isMobile && sidebarState === "collapsed"
 
   const navOffsetValue = React.useMemo(
@@ -155,7 +155,7 @@ export function AppSidebar({
       if (patternLimitMessage) {
         toast({
           variant: "destructive",
-          title: "패턴 한도 도달",
+          title: "Pattern limit reached",
           description: patternLimitMessage,
         })
         return
@@ -368,7 +368,7 @@ export function AppSidebar({
       if (patternLimitMessage) {
         toast({
           variant: "destructive",
-          title: "패턴 한도 도달",
+          title: "Pattern limit reached",
           description: patternLimitMessage,
         })
         setPendingPatternInput(null)
@@ -380,7 +380,7 @@ export function AppSidebar({
         return
       }
       try {
-        // 인풋은 즉시 닫아서 사용자에게 잔존 입력창이 보이지 않도록 처리
+        // Hide the input immediately so no ghost field lingers for the user.
         setPendingPatternInput(null)
         await mutations.createPattern({ name: trimmed, folderId })
       } catch (mutationError) {
@@ -398,7 +398,7 @@ export function AppSidebar({
         return
       }
       try {
-        // 폴더 생성도 엔터 입력 후 즉시 인풋을 숨겨 UX 지연을 제거
+        // Hide the folder input right after submit to avoid UX lag.
         setPendingFolderInput(null)
         await mutations.createFolder({ name: trimmed, parentId })
       } catch (mutationError) {

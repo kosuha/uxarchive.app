@@ -38,7 +38,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "no_subscription" }, { status: 404 })
     }
 
-    // 구독 객체에 포함된 서명된 customer_portal URL을 요청 시마다 새로 가져온다 (24시간 유효)
+    // Fetch the signed customer_portal URL from the subscription on every request (valid for 24h)
     try {
       const subscription = await getLemonSqueezySubscription(subscriptionId)
       const urls = (subscription.data?.attributes as { urls?: { customer_portal?: string } })?.urls

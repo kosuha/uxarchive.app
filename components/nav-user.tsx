@@ -171,7 +171,7 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
       if (!data?.url) {
         throw new Error("Missing portal URL")
       }
-      // 새 창에서 구독 관리를 열어 현재 세션 흐름을 유지
+      // Open subscription management in a new tab to preserve the current session flow.
       window.open(data.url, "_blank", "noopener,noreferrer")
     } catch (error) {
       console.error("Portal open failed", error)

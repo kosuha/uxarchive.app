@@ -300,7 +300,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
       if (status === 403) {
         toast({
           variant: "destructive",
-          title: "패턴 한도 도달",
+          title: "Pattern limit reached",
           description: derivedMessage,
         })
       } else {
@@ -859,11 +859,11 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
         if (typeof maxPatterns === "number" && usageCount >= maxPatterns) {
           const message =
             effectivePlan === "free"
-              ? `무료 플랜에서는 최대 ${maxPatterns}개의 패턴만 저장할 수 있어요. 업그레이드하면 더 추가할 수 있습니다.`
-              : `현재 플랜의 패턴 한도(${maxPatterns}개)를 초과했어요. 불필요한 패턴을 정리하거나 플랜을 조정해주세요.`
+              ? `You can save up to ${maxPatterns} patterns on the free plan. Upgrade to add more.`
+              : `You exceeded the pattern limit (${maxPatterns}) for your current plan. Remove unused patterns or adjust your plan.`
           toast({
             variant: "destructive",
-            title: "패턴 한도 도달",
+            title: "Pattern limit reached",
             description: message,
           })
           return

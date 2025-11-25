@@ -130,15 +130,15 @@ export function CanvasSection({
   const showDownloadBlockedToast = React.useCallback(() => {
     toast({
       variant: "destructive",
-      title: "다운로드가 제한돼요",
-      description: "현재 플랜에서는 이미지 다운로드가 불가능합니다.",
+      title: "Downloads are restricted",
+      description: "Image downloads aren't available on your current plan.",
     })
   }, [toast])
 
   const showPlanLoadingToast = React.useCallback(() => {
     toast({
-      title: "플랜 확인 중",
-      description: "잠시 후 다시 시도해주세요.",
+      title: "Checking your plan",
+      description: "Please try again in a moment.",
     })
   }, [toast])
 
@@ -161,7 +161,7 @@ export function CanvasSection({
     const baseFilename = `${patternFilenameToken}-capture-${orderLabel}`
     try {
       await downloadRemoteImage(downloadUrl, baseFilename)
-      toast({ title: "다운로드 준비 중", description: "현재 캡처 이미지를 저장합니다." })
+      toast({ title: "Preparing download", description: "Saving the current capture image." })
     } catch (error) {
       console.error("Failed to download capture image", error)
       if (isForbiddenError(error)) {
@@ -170,8 +170,8 @@ export function CanvasSection({
       } else {
         toast({
           variant: "destructive",
-          title: "캡처 이미지 다운로드 실패",
-          description: error instanceof Error ? error.message : "다시 시도해주세요.",
+          title: "Failed to download capture image",
+          description: error instanceof Error ? error.message : "Please try again.",
         })
       }
     } finally {
@@ -209,10 +209,10 @@ export function CanvasSection({
           filename: `${patternFilenameToken}-capture-${String(index + 1).padStart(2, "0")}`,
         }))
       if (!zipEntries.length) {
-        throw new Error("다운로드 가능한 이미지가 없습니다.")
+        throw new Error("No downloadable images available.")
       }
       await downloadZipFromUrls(zipEntries, `${patternFilenameToken}-captures`)
-      toast({ title: "ZIP 준비 중", description: "모든 캡처 이미지를 묶어서 내려받습니다." })
+      toast({ title: "Preparing ZIP", description: "Downloading all capture images as a ZIP." })
     } catch (error) {
       console.error("Failed to download pattern images", error)
       if (isForbiddenError(error)) {
@@ -221,8 +221,8 @@ export function CanvasSection({
       } else {
         toast({
           variant: "destructive",
-          title: "패턴 전체 이미지 다운로드 실패",
-          description: error instanceof Error ? error.message : "다시 시도해주세요.",
+          title: "Failed to download all pattern images",
+          description: error instanceof Error ? error.message : "Please try again.",
         })
       }
     } finally {

@@ -66,14 +66,14 @@ export const loadPlanWithLimits = async (
     .maybeSingle()
 
   if (error) {
-    throw new RepositoryError(`프로필을 불러올 수 없어요: ${error.message}`, {
+    throw new RepositoryError(`Failed to load profile: ${error.message}`, {
       cause: error,
       code: (error as { code?: string }).code,
     })
   }
 
   if (!data) {
-    throw new RepositoryError("사용자 프로필을 찾을 수 없어요.", { status: 404 })
+    throw new RepositoryError("User profile not found.", { status: 404 })
   }
 
   const planCode = resolveEffectivePlan(
@@ -99,8 +99,8 @@ export const assertPatternLimit = (params: {
   if (limit > 0 && params.usageCount >= limit) {
     const message =
       params.plan.code === "free"
-        ? `무료 플랜에서는 최대 ${limit}개의 패턴만 저장할 수 있어요. Plus로 업그레이드하면 더 추가할 수 있습니다.`
-        : `현재 플랜의 패턴 한도(${limit}개)를 초과했어요. 불필요한 패턴을 정리하거나 플랜을 조정해주세요.`
+        ? `You can save up to ${limit} patterns on the free plan. Upgrade to add more.`
+        : `You exceeded the pattern limit (${limit}) for your current plan. Remove unused patterns or adjust your plan.`
 
     throw new RepositoryError(message, { status: 403 })
   }
@@ -118,7 +118,7 @@ export const ensurePatternCreationAllowed = async (
     .eq("workspace_id", workspaceId)
 
   if (error) {
-    throw new RepositoryError(`패턴 수를 확인할 수 없어요: ${error.message}`, {
+    throw new RepositoryError(`Failed to fetch pattern count: ${error.message}`, {
       cause: error,
       code: (error as { code?: string }).code,
       status: (error as { status?: number }).status,
@@ -138,7 +138,7 @@ export const ensureSharingAllowed = async (
   const plan = await loadPlanWithLimits(supabase, userId)
   if (!plan.limits.allowPublicSharing) {
     throw new RepositoryError(
-      "공유 링크는 Plus 플랜에서만 사용할 수 있어요. 업그레이드를 고려해주세요.",
+      "Sharing links are only available on the Plus plan. Please upgrade.",
       { status: 403 },
     )
   }
@@ -152,7 +152,7 @@ export const ensureDownloadAllowed = async (
   const plan = await loadPlanWithLimits(supabase, userId)
   if (!plan.limits.allowDownloads) {
     throw new RepositoryError(
-      "이미지 다운로드는 Plus 플랜에서만 가능합니다. 업그레이드 후 다시 시도해주세요.",
+      "Image downloads are only available on the Plus plan. Upgrade and try again.",
       { status: 403 },
     )
   }

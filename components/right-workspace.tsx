@@ -65,8 +65,8 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
         const canCreate = typeof maxPatterns === "number" ? usageCount < maxPatterns : true
         const limitMessage = !canCreate
           ? (effectivePlan === "free"
-              ? `무료 플랜에서는 최대 ${maxPatterns}개의 패턴만 저장할 수 있어요. 업그레이드하면 더 추가할 수 있습니다.`
-              : `현재 플랜의 패턴 한도(${maxPatterns}개)를 초과했어요.`)
+              ? `You can save up to ${maxPatterns} patterns on the free plan. Upgrade to add more.`
+              : `You exceeded the pattern limit (${maxPatterns}) for your current plan.`)
           : undefined
 
         if (!cancelled) {
@@ -76,7 +76,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
       } catch {
         if (!cancelled) {
           setAllowDownloads(false)
-          setPatternLimitStatus({ canCreate: false, message: "플랜 정보를 확인할 수 없어 새 패턴을 잠시 생성할 수 없습니다." })
+          setPatternLimitStatus({ canCreate: false, message: "We can't confirm your plan right now, so creating new patterns is temporarily disabled." })
         }
       }
     }
@@ -299,7 +299,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
     if (isCreatingPattern) return
     if (patternLimitStatus && !patternLimitStatus.canCreate) {
       if (patternLimitStatus.message) {
-        window.dispatchEvent(new CustomEvent("toast", { detail: { variant: "destructive", title: "패턴 한도 도달", description: patternLimitStatus.message } }))
+        window.dispatchEvent(new CustomEvent("toast", { detail: { variant: "destructive", title: "Pattern limit reached", description: patternLimitStatus.message } }))
       }
       return
     }
@@ -345,7 +345,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
                     new CustomEvent("toast", {
                       detail: {
                         variant: "destructive",
-                        title: "패턴 한도 도달",
+                        title: "Pattern limit reached",
                         description: patternLimitStatus.message,
                       },
                     })

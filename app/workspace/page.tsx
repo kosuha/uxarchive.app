@@ -135,7 +135,7 @@ function WorkspaceShell() {
               <div className="flex flex-1 items-center gap-2 text-sm font-semibold">
                 <LibraryBig className="h-4 w-4 text-muted-foreground" />
                 <span className="truncate text-foreground">
-                  {selectedPattern?.name ?? "패턴 미선택"}
+                  {selectedPattern?.name ?? "No pattern selected"}
                 </span>
               </div>
             )}
@@ -143,7 +143,7 @@ function WorkspaceShell() {
           {isMobile ? (
             folderPath.length ? (
               <div className="flex w-full flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
-                <span className="font-semibold text-foreground">경로</span>
+                <span className="font-semibold text-foreground">Path</span>
                 {folderPath.map((folder) => (
                   <span
                     key={folder.id}

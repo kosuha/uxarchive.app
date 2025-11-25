@@ -542,7 +542,7 @@ function SidebarMenuButton({
 
   const handleClick = React.useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
-      // nav rail에서 아이콘을 클릭하면 사이드바를 펼쳐 보여준다.
+      // Expand the sidebar when clicking an icon on the nav rail.
       if (!isMobile && state === "collapsed") {
         setOpen(true)
       }
