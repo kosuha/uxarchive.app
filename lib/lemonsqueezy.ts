@@ -163,11 +163,11 @@ export async function createLemonSqueezyPortal(options: {
     },
   }
 
-  const response = await fetch(`${LEMONSQUEEZY_API_BASE}/customer-portal`, {
+  const response = await fetch(`${LEMONSQUEEZY_API_BASE}/customer-portals`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
+      "Content-Type": "application/vnd.api+json",
       Accept: "application/vnd.api+json",
     },
     body: JSON.stringify(payload),

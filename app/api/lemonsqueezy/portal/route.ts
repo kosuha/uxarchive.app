@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { createLemonSqueezyPortal } from "@/lib/lemonsqueezy"
+import { getLemonSqueezySubscription } from "@/lib/lemonsqueezy"
 import { createSupabaseRouteHandlerClient } from "@/lib/supabase/server-clients"
 
 export const runtime = "nodejs"
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("ls_customer_id")
+      .select("ls_customer_id, ls_subscription_id")
       .eq("id", user.id)
       .maybeSingle()
 
@@ -29,23 +29,32 @@ export async function GET(request: Request) {
     }
 
     const customerId = profile?.ls_customer_id
+    const subscriptionId = profile?.ls_subscription_id
     if (!customerId) {
       return NextResponse.json({ error: "no_customer" }, { status: 404 })
     }
 
-    const origin =
-      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-      new URL(request.url).origin
-    const returnUrl = `${origin}/workspace`
-
-    const portal = await createLemonSqueezyPortal({ customerId, returnUrl })
-    const url = portal.data?.attributes?.url
-
-    if (!url) {
-      return NextResponse.json({ error: "portal_unavailable" }, { status: 502 })
+    if (!subscriptionId) {
+      return NextResponse.json({ error: "no_subscription" }, { status: 404 })
     }
 
-    return NextResponse.json({ url })
+    // 구독 객체에 포함된 서명된 customer_portal URL을 요청 시마다 새로 가져온다 (24시간 유효)
+    try {
+      const subscription = await getLemonSqueezySubscription(subscriptionId)
+      const urls = (subscription.data?.attributes as { urls?: { customer_portal?: string } })?.urls
+      const signedPortalUrl =
+        urls && typeof urls.customer_portal === "string"
+          ? urls.customer_portal
+          : null
+
+      if (signedPortalUrl) {
+        return NextResponse.json({ url: signedPortalUrl })
+      }
+    } catch (error) {
+      console.warn("Failed to fetch subscription for portal", error)
+    }
+
+    return NextResponse.json({ error: "portal_unavailable" }, { status: 502 })
   } catch (error) {
     console.error("LemonSqueezy portal creation failed", error)
     return NextResponse.json({ error: "portal_failed" }, { status: 500 })
