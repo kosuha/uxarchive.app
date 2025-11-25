@@ -8,6 +8,16 @@ import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -82,6 +92,7 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
   const [portalError, setPortalError] = React.useState<string | null>(null)
   const [deleteError, setDeleteError] = React.useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = React.useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
 
   React.useEffect(() => {
     setIsMounted(true)
@@ -194,6 +205,7 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
       if (!response.ok) {
         throw new Error(`Delete failed: ${response.status}`)
       }
+      setIsDeleteDialogOpen(false)
       await handleSignOut()
       setIsProfileDialogOpen(false)
       router.push("/?account_deleted=1")
@@ -409,7 +421,7 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     <Button
                       variant="destructive"
-                      onClick={handleDeleteAccount}
+                      onClick={() => setIsDeleteDialogOpen(true)}
                       disabled={deleteLoading}
                     >
                       {deleteLoading ? "Deleting..." : "Delete account"}
@@ -429,6 +441,35 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
                   {deleteError ? (
                     <p className="text-right text-xs text-destructive">{deleteError}</p>
                   ) : null}
+
+                  <AlertDialog
+                    open={isDeleteDialogOpen}
+                    onOpenChange={(open) => {
+                      if (!deleteLoading) {
+                        setIsDeleteDialogOpen(open)
+                      }
+                    }}
+                  >
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete account?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-destructive">
+                          This will delete all workspaces, patterns, and related data. This action
+                          cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deleteLoading}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleDeleteAccount}
+                          disabled={deleteLoading}
+                          className="bg-destructive text-destructive hover:bg-destructive/90"
+                        >
+                          {deleteLoading ? "Deleting..." : "Delete account"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               ) : (
                 <div className="space-y-4">

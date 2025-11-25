@@ -32,6 +32,9 @@ const PATTERN_DETAIL_QUERY_KEY = "pattern-detail"
 
 const createEmptyDetailData = (): PatternDetailQueryData => ({ captures: [], insights: [] })
 
+const isValidUuid = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+
 const STORAGE_OBJECT_ROUTE = "/api/storage/object"
 
 const normalizeObjectPath = (path: string) => path.replace(/^\/+/, "").trim()
@@ -122,6 +125,7 @@ export const usePatternDetail = (patternId?: string | null) => {
   const pendingCaptureOrderRef = React.useRef<string[] | null>(null)
   const pendingUploadCountRef = React.useRef(0)
   const pendingDeletionCountRef = React.useRef(0)
+  const isPatternIdValid = React.useMemo(() => Boolean(patternId && isValidUuid(patternId)), [patternId])
 
   const mapCaptureRecord = React.useCallback((record: CaptureRecord) => {
     return {
@@ -134,12 +138,15 @@ export const usePatternDetail = (patternId?: string | null) => {
     } satisfies Capture
   }, [])
 
-  const patternDetailQueryKey = React.useMemo(() => (patternId ? [PATTERN_DETAIL_QUERY_KEY, patternId] : null), [patternId])
+  const patternDetailQueryKey = React.useMemo(
+    () => (isPatternIdValid ? [PATTERN_DETAIL_QUERY_KEY, patternId] : null),
+    [isPatternIdValid, patternId],
+  )
 
   const detailQuery = useQuery<PatternDetailQueryData>({
     queryKey: patternDetailQueryKey ?? [PATTERN_DETAIL_QUERY_KEY, "unknown"],
     queryFn: async () => {
-      if (!patternId) {
+      if (!patternId || !isPatternIdValid) {
         return createEmptyDetailData()
       }
 
@@ -166,7 +173,7 @@ export const usePatternDetail = (patternId?: string | null) => {
         insights: mappedInsights,
       }
     },
-    enabled: Boolean(patternId),
+    enabled: isPatternIdValid,
   })
 
   type RefreshOptions = { silent?: boolean }
@@ -681,10 +688,16 @@ export const usePatternDetail = (patternId?: string | null) => {
     [patternId, refresh, setDetailData],
   )
 
-  const captures = patternId ? detailQuery.data?.captures ?? [] : []
-  const insights = patternId ? detailQuery.data?.insights ?? [] : []
-  const loading = Boolean(patternId) ? detailQuery.isPending : false
-  const error = detailQuery.error ? (detailQuery.error instanceof Error ? detailQuery.error.message : String(detailQuery.error)) : null
+  const captures = patternId && isPatternIdValid ? detailQuery.data?.captures ?? [] : []
+  const insights = patternId && isPatternIdValid ? detailQuery.data?.insights ?? [] : []
+  const loading = isPatternIdValid ? detailQuery.isPending : false
+  const error = isPatternIdValid
+    ? detailQuery.error
+      ? detailQuery.error instanceof Error
+        ? detailQuery.error.message
+        : String(detailQuery.error)
+      : null
+    : null
 
   return {
     captures,

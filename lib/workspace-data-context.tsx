@@ -192,13 +192,15 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
       return []
     }
 
-    return patternData.records.map((record) => {
-      const tagIds = patternData.tagIdsByPattern[record.id] ?? []
-      const patternTags = tagIds
-        .map((tagId) => tagMap.get(tagId))
-        .filter((tag): tag is Tag => Boolean(tag))
-      return mapPatternRecordToPattern(record, favoritePatternIdSet, patternTags)
-    })
+    return patternData.records
+      .map((record) => {
+        const tagIds = patternData.tagIdsByPattern[record.id] ?? []
+        const patternTags = tagIds
+          .map((tagId) => tagMap.get(tagId))
+          .filter((tag): tag is Tag => Boolean(tag))
+        return mapPatternRecordToPattern(record, favoritePatternIdSet, patternTags)
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }))
   }, [favoritePatternIdSet, patternData, tagMap])
 
   const ensureWorkspace = React.useCallback(() => {

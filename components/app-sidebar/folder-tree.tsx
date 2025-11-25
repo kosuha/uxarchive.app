@@ -440,7 +440,10 @@ export function FolderTree({
 const buildFolderTree = (folders: Folder[], patterns: Pattern[]): FolderTreeNode[] => {
   const nodeMap = new Map<string, FolderTreeNode>()
 
-  folders.forEach((folder) => {
+  const sortedFolders = [...folders].sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }))
+  const sortedPatterns = [...patterns].sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }))
+
+  sortedFolders.forEach((folder) => {
     nodeMap.set(folder.id, {
       folder,
       patterns: [],
@@ -448,7 +451,7 @@ const buildFolderTree = (folders: Folder[], patterns: Pattern[]): FolderTreeNode
     })
   })
 
-  patterns.forEach((pattern) => {
+  sortedPatterns.forEach((pattern) => {
     if (!pattern.folderId) return
     const node = nodeMap.get(pattern.folderId)
     if (node) {
@@ -469,6 +472,15 @@ const buildFolderTree = (folders: Folder[], patterns: Pattern[]): FolderTreeNode
     }
     roots.push(node)
   })
+
+  const sortNode = (node: FolderTreeNode) => {
+    node.children.sort((a, b) => a.folder.name.localeCompare(b.folder.name, "en", { sensitivity: "base" }))
+    node.patterns.sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }))
+    node.children.forEach(sortNode)
+  }
+
+  roots.sort((a, b) => a.folder.name.localeCompare(b.folder.name, "en", { sensitivity: "base" }))
+  roots.forEach(sortNode)
 
   return roots
 }
