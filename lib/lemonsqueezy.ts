@@ -215,6 +215,41 @@ export async function getLemonSqueezySubscription(subscriptionId: string) {
   return (await response.json()) as SubscriptionResponse
 }
 
+export async function cancelLemonSqueezySubscription(subscriptionId: string) {
+  const apiKey = lemonSqueezyBilling.apiKey ?? getEnv("LEMONSQUEEZY_API_KEY")
+
+  const payload = {
+    data: {
+      type: "subscriptions",
+      id: subscriptionId,
+      attributes: { cancelled: true },
+    },
+  }
+
+  const response = await fetch(
+    `${LEMONSQUEEZY_API_BASE}/subscriptions/${subscriptionId}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/vnd.api+json",
+        Accept: "application/vnd.api+json",
+      },
+      body: JSON.stringify(payload),
+      cache: "no-store",
+    }
+  )
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(
+      `Failed to cancel LemonSqueezy subscription: ${response.status} ${errorText}`
+    )
+  }
+
+  return (await response.json()) as SubscriptionResponse
+}
+
 export type LemonSqueezyPlanStatus = "active" | "trialing" | "past_due" | "canceled"
 
 export function mapLemonSqueezyStatus(status?: string): LemonSqueezyPlanStatus {
