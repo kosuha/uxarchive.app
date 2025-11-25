@@ -232,10 +232,10 @@ const deleteCaptureRecord = async (
   supabase: RouteSupabaseClient,
   patternId: string,
   captureId: string,
-): Promise<CaptureRecord> => {
+): Promise<CaptureRecord & { poster_storage_path: string | null }> => {
   const { data: target, error: lookupError } = await supabase
     .from("captures")
-    .select("id, pattern_id, storage_path, media_type, mime_type, order_index, created_at")
+    .select("id, pattern_id, storage_path, poster_storage_path, media_type, mime_type, order_index, created_at")
     .eq("id", captureId)
     .eq("pattern_id", patternId)
     .maybeSingle()
@@ -258,7 +258,7 @@ const deleteCaptureRecord = async (
     throw new Error(`Failed to delete the capture record: ${deleteError.message}`)
   }
 
-  return target as CaptureRecord
+  return target as CaptureRecord & { poster_storage_path: string | null }
 }
 
 const removeStorageObjectIfExists = async (bucket: string, storagePath: string) => {
@@ -337,6 +337,9 @@ export async function DELETE(request: Request) {
     const deletedCapture = await deleteCaptureRecord(supabase, payload.patternId, payload.captureId)
 
     await removeStorageObjectIfExists(bucket, deletedCapture.storage_path)
+    if (deletedCapture.poster_storage_path) {
+      await removeStorageObjectIfExists(bucket, deletedCapture.poster_storage_path)
+    }
 
     return NextResponse.json({
       deletedCaptureId: deletedCapture.id,

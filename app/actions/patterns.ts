@@ -6,6 +6,7 @@ import { RepositoryError } from "@/lib/repositories/types"
 import { PATTERN_NAME_MAX_LENGTH, PATTERN_SERVICE_NAME_MAX_LENGTH } from "@/lib/field-limits"
 import { DEFAULT_PATTERN_SERVICE_NAME } from "@/lib/pattern-constants"
 import { ensurePatternCreationAllowed, ensureSharingAllowed } from "@/lib/plan-limits"
+import { getServiceRoleSupabaseClient } from "@/lib/supabase/service-client"
 
 import {
   createActionSupabaseClient,
@@ -13,6 +14,29 @@ import {
   requireAuthenticatedUser,
 } from "./_workspace-guards"
 import { ensureMaxLength } from "./_validation"
+
+const DEFAULT_CAPTURE_BUCKET = "ux-archive-captures"
+
+const resolveCaptureBucketName = () => process.env.SUPABASE_STORAGE_BUCKET || DEFAULT_CAPTURE_BUCKET
+
+const cleanupPatternStorageObjects = async (
+  storagePaths: Array<string | null | undefined>,
+): Promise<void> => {
+  const bucket = resolveCaptureBucketName()
+  const paths = Array.from(new Set(storagePaths.filter((value): value is string => Boolean(value))))
+  if (!paths.length) return
+
+  const serviceSupabase = getServiceRoleSupabaseClient()
+  const { error } = await serviceSupabase.storage.from(bucket).remove(paths)
+
+  if (error) {
+    console.warn(`[patterns] Failed to delete storage objects for pattern`, {
+      bucket,
+      paths,
+      message: error.message,
+    })
+  }
+}
 
 export const listWorkspacePatternsAction = async (workspaceId: string) => {
   if (!workspaceId) {
@@ -94,6 +118,22 @@ export const deletePatternAction = async (workspaceId: string, patternId: string
   const supabase = await createActionSupabaseClient()
   await requireAuthenticatedUser(supabase)
   await ensureWorkspaceRole(supabase, workspaceId, "editor")
+
+  // 삭제 전에 패턴과 연결된 스토리지 객체를 정리한다.
+  const { data: captures, error: capturesError } = await supabase
+    .from("captures")
+    .select("storage_path, poster_storage_path")
+    .eq("pattern_id", patternId)
+
+  if (capturesError) {
+    throw new RepositoryError(`Failed to load capture storage paths: ${capturesError.message}`, {
+      cause: capturesError,
+      code: capturesError.code,
+    })
+  }
+
+  const storagePaths = (captures ?? []).flatMap((capture) => [capture.storage_path, capture.poster_storage_path])
+  await cleanupPatternStorageObjects(storagePaths)
 
   const repo = createPatternsRepository(supabase)
   await repo.remove({ workspaceId, patternId })
