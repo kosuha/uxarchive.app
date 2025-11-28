@@ -1,11 +1,15 @@
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, Sparkles, Users } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function Hero() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [userCount, setUserCount] = useState<number | null>(null);
+  const [isLoadingCount, setIsLoadingCount] = useState(true);
+  const [hasStatsError, setHasStatsError] = useState(false);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -18,6 +22,44 @@ export function Hero() {
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
+
+    const fetchUserCount = async () => {
+      try {
+        const response = await fetch("/api/public/stats", { signal: controller.signal });
+        if (!response.ok) {
+          throw new Error("Failed to load stats");
+        }
+        const data = (await response.json()) as { userCount?: number };
+        if (!isMounted) return;
+        setUserCount(typeof data.userCount === "number" ? data.userCount : 0);
+      } catch (error) {
+        if ((error as Error)?.name === "AbortError") return;
+        if (isMounted) setHasStatsError(true);
+      } finally {
+        if (isMounted) setIsLoadingCount(false);
+      }
+    };
+
+    fetchUserCount();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, []);
+
+  const formattedUserCount = useMemo(() => {
+    if (userCount === null) return null;
+    const formatter = new Intl.NumberFormat("en-US", {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    });
+    return `${formatter.format(userCount)}+`;
+  }, [userCount]);
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -69,7 +111,7 @@ export function Hero() {
             <Button 
               asChild
               size="lg" 
-              className="bg-primary hover:bg-primary/90 text-lg px-8 py-6 rounded-full group"
+              className="bg-primary hover:bg-primary/90 text-lg px-8 py-6 rounded-full group w-[250px] h-[54px]"
             >
               <Link href="/workspace">
                 Get Started Free
@@ -80,10 +122,42 @@ export function Hero() {
               asChild
               size="lg"
               variant="outline"
-              className="text-lg px-8 py-6 rounded-full border-border hover:bg-muted"
+              className="text-lg px-8 py-6 rounded-full border-border hover:bg-muted w-[250px] h-[54px]"
             >
               <Link href="#pricing">View Pricing</Link>
             </Button>
+          </div>
+
+          <div className="mt-30 flex flex-col items-center gap-3">
+            <div className="flex h-[54px] w-[250px] items-center gap-2.5 rounded-lg border border-border/70 bg-background/30 pl-2.5 shadow-lg backdrop-blur">
+              <div className="rounded-full bg-primary/10 p-2 text-primary">
+                <Users className="h-4 w-4" />
+              </div>
+              <div className="flex flex-col items-start text-left leading-tight">
+                {hasStatsError ? (
+                  <span className="text-xs text-muted-foreground">Live count unavailable</span>
+                ) : isLoadingCount ? (
+                  <Skeleton className="h-6 w-16 rounded-md" />
+                ) : (
+                  <span className="text-xl font-black leading-none tracking-tight">
+                    {formattedUserCount}
+                  </span>
+                )}
+                <span className="text-xs font-bold">
+                  {hasStatsError
+                    ? "Updating the live number soon"
+                    : "UX pros joined"}
+                </span>
+              </div>
+            </div>
+            <a 
+              href="https://www.producthunt.com/products/ux-archive?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-ux&#0045;archive" target="_blank">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1042398&theme=dark&t=1764317381315" alt="UX&#0032;Archive - Organize&#0032;your&#0032;UX&#0032;Patterns | Product Hunt"
+              width="250" 
+              height="54" 
+            />
+            </a>
           </div>
         </motion.div>
       </div>
