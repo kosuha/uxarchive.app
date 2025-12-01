@@ -43,11 +43,29 @@ const resolveStorageRemotePattern = (): RemotePattern | null => {
   }
 }
 
+const resolveSupabaseRemotePattern = (): RemotePattern | null => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+  if (!supabaseUrl) return null
+
+  try {
+    const parsed = new URL(supabaseUrl)
+    return {
+      protocol: normalizeProtocol(parsed.protocol),
+      hostname: parsed.hostname,
+      pathname: "/storage/v1/**",
+    }
+  } catch {
+    return null
+  }
+}
+
 const storageRemotePattern = resolveStorageRemotePattern()
+const supabaseRemotePattern = resolveSupabaseRemotePattern()
+const remotePatterns = [storageRemotePattern, supabaseRemotePattern].filter(Boolean) as RemotePattern[]
 
 const nextConfig: NextConfig = {
   images: {
-    remotePatterns: storageRemotePattern ? [storageRemotePattern] : undefined,
+    remotePatterns: remotePatterns.length ? remotePatterns : undefined,
     localPatterns: [
       {
         pathname: "/api/storage/object",

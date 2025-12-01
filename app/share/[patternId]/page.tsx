@@ -14,6 +14,27 @@ import type { ServiceSupabaseClient } from "@/lib/supabase/service-client"
 const SHARE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "ux-archive-captures"
 const SIGNED_URL_EXPIRATION_SECONDS = 60 * 60
 
+const parseSupabaseObjectPath = (urlString: string): { bucket: string; objectPath: string } | null => {
+  try {
+    const url = new URL(urlString)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+    const storageHost = supabaseUrl ? new URL(supabaseUrl).hostname.replace(/\.supabase\.co$/, ".storage.supabase.co") : null
+    const isStorageHost = storageHost ? url.hostname === storageHost : false
+    const isProjectHost = supabaseUrl ? url.hostname === new URL(supabaseUrl).hostname : false
+    if (!isStorageHost && !isProjectHost) return null
+
+    const match =
+      url.pathname.match(/^\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/) ||
+      url.pathname.match(/^\/storage\/v1\/s3\/([^/]+)\/(.+)$/)
+    if (!match) return null
+
+    const [, bucket, objectPath] = match
+    return { bucket, objectPath }
+  } catch {
+    return null
+  }
+}
+
 const fetchSharedPattern = cache(async (patternId: string) => {
   if (!patternId) {
     notFound()
@@ -78,14 +99,24 @@ const resolveCaptureImageUrl = async (client: ServiceSupabaseClient, record: Cap
 
   const publicUrl = record.publicUrl?.trim()
   if (publicUrl) {
+    const parsed = parseSupabaseObjectPath(publicUrl)
+    if (parsed) {
+      const { data, error } = await client.storage
+        .from(parsed.bucket)
+        .createSignedUrl(parsed.objectPath, SIGNED_URL_EXPIRATION_SECONDS)
+      if (!error && data?.signedUrl) {
+        return data.signedUrl
+      }
+    }
     try {
-      const parsed = new URL(publicUrl)
-      if (parsed.protocol && parsed.host) {
+      const external = new URL(publicUrl)
+      if (external.protocol && external.host) {
         return publicUrl
       }
     } catch {
-      return `/${publicUrl.replace(/^\/+/, "")}`
+      // fall through to relative normalization
     }
+    return `/${publicUrl.replace(/^\/+/, "")}`
   }
 
   return ""

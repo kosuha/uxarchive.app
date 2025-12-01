@@ -3,19 +3,24 @@ import type { Metadata } from "next"
 import { ShareListing } from "@/components/share/share-listing"
 import { fetchShareList, type ShareListItem } from "@/lib/api/share"
 
-export const revalidate = 60
+const SHARE_PAGE_REVALIDATE_SECONDS = 120
+export const revalidate = SHARE_PAGE_REVALIDATE_SECONDS
 
 const DEFAULT_PAGE_SIZE = 24
+const PAGE_TITLE = "Published posts"
+const PAGE_DESCRIPTION = "Browse public listings shared by the community."
+const PAGE_PATH = "/share"
+const PAGE_OG_IMAGE = "/logo.png"
 
 const loadSharePosts = async (): Promise<{ posts: ShareListItem[]; error?: string }> => {
   try {
     const response = await fetchShareList(
       { page: 1, perPage: DEFAULT_PAGE_SIZE, sort: "recent" },
-      { next: { revalidate: 60 } },
+      { next: { revalidate: SHARE_PAGE_REVALIDATE_SECONDS } },
     )
 
     return {
-      posts: (response.items ?? []).filter((item) => item.published && item.sharingEnabled),
+      posts: (response.items ?? []).filter((item) => item.published && item.isPublic),
     }
   } catch (error) {
     console.error("Failed to fetch public share listings", error)
@@ -27,8 +32,32 @@ const loadSharePosts = async (): Promise<{ posts: ShareListItem[]; error?: strin
 }
 
 export const metadata: Metadata = {
-  title: "Published posts",
-  description: "Browse public listings shared by the community.",
+  title: PAGE_TITLE,
+  description: PAGE_DESCRIPTION,
+  alternates: {
+    canonical: PAGE_PATH,
+  },
+  openGraph: {
+    title: `${PAGE_TITLE} | UX Archive`,
+    description: PAGE_DESCRIPTION,
+    url: PAGE_PATH,
+    siteName: "UX Archive",
+    type: "website",
+    images: [
+      {
+        url: PAGE_OG_IMAGE,
+        width: 300,
+        height: 300,
+        alt: "UX Archive logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${PAGE_TITLE} | UX Archive`,
+    description: PAGE_DESCRIPTION,
+    images: [PAGE_OG_IMAGE],
+  },
 }
 
 export default async function SharePage() {

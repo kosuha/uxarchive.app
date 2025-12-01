@@ -34,10 +34,19 @@ type PatternShareDialogProps = {
   patternId: string
   patternName?: string
   isPublic: boolean
+  published: boolean
   onToggleShare: (next: boolean) => Promise<void> | void
+  onTogglePublish: (next: boolean) => Promise<void> | void
 }
 
-export function PatternShareDialog({ patternId, patternName, isPublic, onToggleShare }: PatternShareDialogProps) {
+export function PatternShareDialog({
+  patternId,
+  patternName,
+  isPublic,
+  published,
+  onToggleShare,
+  onTogglePublish,
+}: PatternShareDialogProps) {
   const { toast } = useToast()
   const [open, setOpen] = React.useState(false)
   const [pending, setPending] = React.useState(false)
@@ -96,6 +105,26 @@ export function PatternShareDialog({ patternId, patternName, isPublic, onToggleS
     }
   }, [isPublic, shareUrl, toast])
 
+  const handleTogglePublish = React.useCallback(
+    async (checked: boolean) => {
+      if (!isPublic) return
+      try {
+        setPending(true)
+        await onTogglePublish(checked)
+      } catch (error) {
+        console.error("Failed to toggle publish", error)
+        toast({
+          title: "Could not update publish state",
+          description: error instanceof Error ? error.message : "Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setPending(false)
+      }
+    },
+    [isPublic, onTogglePublish, toast],
+  )
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -118,6 +147,20 @@ export function PatternShareDialog({ patternId, patternName, isPublic, onToggleS
               <p className="text-xs text-muted-foreground">Turn on to let anyone with the link view this pattern.</p>
             </div>
             <Switch checked={isPublic} onCheckedChange={handleToggle} disabled={pending} aria-label="Toggle sharing" />
+          </div>
+          <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/10 px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">Publish to listing</p>
+              <p className="text-xs text-muted-foreground">
+                Show this pattern on the public /share page. Requires sharing enabled.
+              </p>
+            </div>
+            <Switch
+              checked={published}
+              onCheckedChange={handleTogglePublish}
+              disabled={pending || !isPublic}
+              aria-label="Toggle publish to listing"
+            />
           </div>
           {isPublic ? (
             <div className="space-y-2">

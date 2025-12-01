@@ -84,6 +84,7 @@ type UpdatePatternActionInput = {
   author?: string
   folderId?: string | null
   isPublic?: boolean
+  published?: boolean
   isArchived?: boolean
 }
 
@@ -102,7 +103,7 @@ export const updatePatternAction = async (input: UpdatePatternActionInput) => {
   const supabase = await createActionSupabaseClient()
   const user = await requireAuthenticatedUser(supabase)
   await ensureWorkspaceRole(supabase, input.workspaceId, "editor")
-  if (input.isPublic === true) {
+  if (input.isPublic === true || input.published === true) {
     await ensureSharingAllowed(supabase, user.id)
   }
 

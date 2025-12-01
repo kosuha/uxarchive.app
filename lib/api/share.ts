@@ -16,7 +16,7 @@ export type ShareListItem = {
   summary?: string | null
   updatedAt: string
   publishedAt?: string | null
-  sharingEnabled: boolean
+  isPublic: boolean
   published: boolean
   views?: number | null
   publicUrl?: string | null
@@ -37,6 +37,18 @@ export type ShareListFetchOptions = Omit<RequestInit, "method"> & {
 
 const SHARE_LIST_ENDPOINT = "/api/public/share"
 const DEFAULT_PAGE_SIZE = 24
+
+const resolveShareListUrl = (pathOrUrl: string) => {
+  if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) return pathOrUrl
+
+  // On the server, Node fetch requires an absolute URL. Prefer NEXT_PUBLIC_SITE_URL, otherwise fall back
+  // to Vercel-provided host or localhost.
+  const origin =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+
+  return new URL(pathOrUrl, origin).toString()
+}
 
 export class ShareListingApiError extends Error {
   status?: number
@@ -70,7 +82,8 @@ type RawShareListItem = {
   updated_at?: unknown
   publishedAt?: unknown
   published_at?: unknown
-  sharingEnabled?: unknown
+  isPublic?: unknown
+  is_public?: unknown
   sharing_enabled?: unknown
   published?: unknown
   publicUrl?: unknown
@@ -104,8 +117,7 @@ const normalizeShareItem = (raw: RawShareListItem): ShareListItem => {
       ? (raw.tags as string[])
       : []
 
-  const boolOr = (value: unknown, fallback: boolean) =>
-    typeof value === "boolean" ? value : fallback
+  const boolOr = (value: unknown, fallback: boolean) => (typeof value === "boolean" ? value : fallback)
 
   const stringOrNull = (value: unknown) =>
     typeof value === "string" ? value : value === null ? null : undefined
@@ -130,7 +142,7 @@ const normalizeShareItem = (raw: RawShareListItem): ShareListItem => {
     summary: stringOrNull(raw.summary) ?? null,
     updatedAt: normalizeDate(raw.updatedAt ?? raw.updated_at) ?? new Date().toISOString(),
     publishedAt: normalizeDate(raw.publishedAt ?? raw.published_at),
-    sharingEnabled: boolOr(raw.sharingEnabled ?? raw.sharing_enabled, false),
+    isPublic: boolOr(raw.isPublic ?? raw.is_public ?? raw.sharing_enabled, false),
     published: boolOr(raw.published, false),
     views: numberOrNull(raw.views),
     publicUrl: stringOrNull(raw.publicUrl ?? raw.public_url),
@@ -177,8 +189,10 @@ const normalizeShareListResponse = (raw: unknown): ShareListResponse => {
         ? payload.hasNextPage
         : page * perPage < total
 
+  const items = rawItems.map(normalizeShareItem).filter((item) => item.isPublic && item.published)
+
   return {
-    items: rawItems.map(normalizeShareItem),
+    items,
     page,
     perPage,
     total,
@@ -191,7 +205,7 @@ export const fetchShareList = async (
   options: ShareListFetchOptions = {},
 ): Promise<ShareListResponse> => {
   const query = buildQueryString(params)
-  const url = query ? `${SHARE_LIST_ENDPOINT}?${query}` : SHARE_LIST_ENDPOINT
+  const url = resolveShareListUrl(query ? `${SHARE_LIST_ENDPOINT}?${query}` : SHARE_LIST_ENDPOINT)
 
   const response = await fetch(url, {
     ...options,
