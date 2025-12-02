@@ -9,59 +9,73 @@ const normalizeProtocol = (value?: string): RemotePattern["protocol"] => {
   return normalized === "http" || normalized === "https" ? normalized : undefined
 }
 
-const resolveStorageRemotePattern = (): RemotePattern | null => {
+const resolveRemotePatterns = (): RemotePattern[] => {
   const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET?.trim() || DEFAULT_STORAGE_BUCKET
   const customEndpoint = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_ENDPOINT?.trim()?.replace(/\/$/, "")
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+
+  const patterns: RemotePattern[] = []
 
   if (customEndpoint) {
     try {
       const endpointUrl = new URL(customEndpoint)
-      const pathname = `${endpointUrl.pathname.replace(/\/$/, "") || ""}/${bucket}/**`
-      return {
+      const basePath = endpointUrl.pathname.replace(/\/$/, "") || ""
+      patterns.push({
         protocol: normalizeProtocol(endpointUrl.protocol),
         hostname: endpointUrl.hostname,
-        pathname: pathname.startsWith("/") ? pathname : `/${pathname}`,
-      }
+        pathname: `${basePath || "/"}/${bucket}/**`,
+      })
+      patterns.push({
+        protocol: normalizeProtocol(endpointUrl.protocol),
+        hostname: endpointUrl.hostname,
+        pathname: `${basePath || "/"}/**`,
+      })
     } catch {
       // ignore invalid custom endpoint
     }
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-  if (!supabaseUrl) return null
+  if (supabaseUrl) {
+    try {
+      const parsed = new URL(supabaseUrl)
+      patterns.push({
+        protocol: normalizeProtocol(parsed.protocol),
+        hostname: parsed.hostname,
+        pathname: "/storage/v1/**",
+      })
 
-  try {
-    const parsed = new URL(supabaseUrl)
-    const storageHost = parsed.hostname.replace(/\.supabase\.co$/, ".storage.supabase.co")
-    return {
-      protocol: "https",
-      hostname: storageHost,
-      pathname: `/storage/v1/s3/${bucket}/**`,
+      const storageHost = parsed.hostname.replace(/\.supabase\.co$/, ".storage.supabase.co")
+      patterns.push({
+        protocol: "https",
+        hostname: storageHost,
+        pathname: "/storage/v1/**",
+      })
+      patterns.push({
+        protocol: "https",
+        hostname: storageHost,
+        pathname: `/storage/v1/object/public/${bucket}/**`,
+      })
+      patterns.push({
+        protocol: "https",
+        hostname: storageHost,
+        pathname: `/storage/v1/s3/${bucket}/**`,
+      })
+    } catch {
+      // ignore invalid supabase URL
     }
-  } catch {
-    return null
   }
+
+  if (patterns.length === 0) {
+    patterns.push(
+      { protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/**" },
+      { protocol: "https", hostname: "*.storage.supabase.co", pathname: "/storage/v1/**" },
+    )
+  }
+
+  return patterns
 }
 
-const resolveSupabaseRemotePattern = (): RemotePattern | null => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-  if (!supabaseUrl) return null
-
-  try {
-    const parsed = new URL(supabaseUrl)
-    return {
-      protocol: normalizeProtocol(parsed.protocol),
-      hostname: parsed.hostname,
-      pathname: "/storage/v1/**",
-    }
-  } catch {
-    return null
-  }
-}
-
-const storageRemotePattern = resolveStorageRemotePattern()
-const supabaseRemotePattern = resolveSupabaseRemotePattern()
-const remotePatterns = [storageRemotePattern, supabaseRemotePattern].filter(Boolean) as RemotePattern[]
+const remotePatterns = resolveRemotePatterns()
 
 const nextConfig: NextConfig = {
   images: {

@@ -5,6 +5,7 @@ export type ShareListQueryParams = {
   sort?: ShareListSort
   page?: number
   perPage?: number
+  includeCaptures?: boolean
 }
 
 export type ShareListItem = {
@@ -21,6 +22,7 @@ export type ShareListItem = {
   views?: number | null
   publicUrl?: string | null
   thumbnailUrl?: string | null
+  captureUrls?: string[]
 }
 
 export type ShareListResponse = {
@@ -67,6 +69,7 @@ const buildQueryString = (params: ShareListQueryParams): string => {
   if (params.sort) searchParams.set("sort", params.sort)
   if (params.page && params.page > 1) searchParams.set("page", String(params.page))
   if (params.perPage && params.perPage > 0) searchParams.set("perPage", String(params.perPage))
+  if (params.includeCaptures) searchParams.set("includeCaptures", "true")
 
   return searchParams.toString()
 }
@@ -91,6 +94,8 @@ type RawShareListItem = {
   views?: unknown
   thumbnailUrl?: unknown
   thumbnail_url?: unknown
+  captureUrls?: unknown
+  captures?: unknown
 }
 
 type RawShareListResponse = {
@@ -147,6 +152,10 @@ const normalizeShareItem = (raw: RawShareListItem): ShareListItem => {
     views: numberOrNull(raw.views),
     publicUrl: stringOrNull(raw.publicUrl ?? raw.public_url),
     thumbnailUrl: stringOrNull(raw.thumbnailUrl ?? raw.thumbnail_url),
+    captureUrls:
+      Array.isArray(raw.captureUrls ?? raw.captures)
+        ? (raw.captureUrls ?? raw.captures)?.filter((value): value is string => typeof value === "string")
+        : undefined,
   }
 }
 

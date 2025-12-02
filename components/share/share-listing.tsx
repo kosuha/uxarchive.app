@@ -1,8 +1,9 @@
 "use client"
 
-import { useId, useMemo, useState } from "react"
+import { useEffect, useId, useMemo, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -16,6 +17,50 @@ export type ShareListingPost = ShareListItem
 type SortKey = "recent" | "oldest"
 
 type ComputedShareListItem = ShareListingPost & { listingVisible: boolean }
+
+const SLIDE_INTERVAL_MS = 3500
+
+const CaptureCarousel = ({ images, title }: { images: string[]; title: string }) => {
+  const validImages = images.filter((url) => Boolean(url?.trim()))
+  const [index, setIndex] = useState(0)
+
+  useEffect(() => {
+    if (validImages.length <= 1) return
+    const id = setInterval(() => {
+      setIndex((prev) => (prev + 1) % validImages.length)
+    }, SLIDE_INTERVAL_MS)
+    return () => clearInterval(id)
+  }, [validImages.length])
+
+  const current = validImages[index] || ""
+
+  return (
+    <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
+      {current ? (
+        <Image
+          key={current}
+          src={current}
+          alt={title}
+          fill
+          sizes="(max-width: 1024px) 100vw, 33vw"
+          className="h-full w-full object-contain bg-muted transition-transform duration-500 ease-out hover:scale-105"
+          priority={false}
+        />
+      ) : null}
+
+      {validImages.length > 1 ? (
+        <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1 rounded-full bg-background/70 px-2 py-1 text-[10px] text-muted-foreground shadow-sm">
+          {validImages.map((_, dotIndex) => (
+            <span
+              key={`${title}-${dotIndex}`}
+              className={`h-1.5 w-1.5 rounded-full transition-colors ${dotIndex === index ? "bg-primary" : "bg-border"}`}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
 
 const FALLBACK_GRADIENTS = [
   "from-amber-100 via-orange-200 to-orange-300",
@@ -47,6 +92,7 @@ export function ShareListing({ posts }: { posts: ShareListingPost[] }) {
   const [sortKey, setSortKey] = useState<SortKey>("recent")
   const searchInputId = useId()
   const sortSelectId = useId()
+  const router = useRouter()
 
   const computedItems = useMemo<ComputedShareListItem[]>(() => {
     const withListing = posts.map((item) => ({ ...item, listingVisible: item.isPublic && item.published }))
@@ -117,18 +163,37 @@ export function ShareListing({ posts }: { posts: ShareListingPost[] }) {
             if (!item.listingVisible) return null
             const tags = item.tags ?? []
             const thumbnail = item.thumbnailUrl?.trim()
+            const captures = (item.captureUrls || []).filter(Boolean)
             const fallbackInitial = getInitial(item.title)
             const fallbackGradient = pickGradient(item.id || item.title)
+            const targetUrl = item.publicUrl || `/patterns/${item.id}`
+
+            const handleCardClick = () => router.push(targetUrl)
+            const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault()
+                handleCardClick()
+              }
+            }
             return (
-              <div key={item.id} className="flex h-full flex-col overflow-hidden rounded-xl border bg-card/70 shadow-sm">
+              <div
+                key={item.id}
+                role="button"
+                tabIndex={0}
+                onClick={handleCardClick}
+                onKeyDown={handleKeyDown}
+                className="flex h-full flex-col overflow-hidden rounded-xl border bg-card/70 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
                 <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
-                  {thumbnail ? (
+                  {captures.length ? (
+                    <CaptureCarousel images={captures} title={item.title} />
+                  ) : thumbnail ? (
                     <Image
                       src={thumbnail}
                       alt={item.title}
                       fill
                       sizes="(max-width: 1024px) 100vw, 33vw"
-                      className="h-full w-full object-cover transition-transform duration-300 ease-out hover:scale-105"
+                      className="h-full w-full object-contain bg-muted transition-transform duration-300 ease-out hover:scale-105"
                       priority={false}
                     />
                   ) : (
@@ -140,26 +205,24 @@ export function ShareListing({ posts }: { posts: ShareListingPost[] }) {
                       {fallbackInitial}
                     </div>
                   )}
-                  <div className="absolute left-3 top-3 flex items-center gap-2">
-                    <Badge variant="secondary">Published</Badge>
-                    {item.views ? <Badge variant="outline">{item.views} views</Badge> : null}
-                  </div>
                 </div>
 
-                <div className="flex flex-1 flex-col gap-3 p-5">
-                  <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-muted-foreground">
-                    <Badge variant="outline">{item.service || "Unknown service"}</Badge>
-                    {item.author ? <span>By {item.author}</span> : null}
-                    <span className="text-[11px]">Updated {formatDate(item.updatedAt)}</span>
+                <div className="flex flex-1 flex-col p-5 gap-1">
+                  <div className="flex flex-wrap items-center text-xs font-medium text-muted-foreground">
+                    <h3>{item.service || "Unknown service"}</h3>
                   </div>
 
                   <div className="space-y-1">
                     <h3 className="text-lg font-semibold leading-tight text-foreground">{item.title}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{item.summary || "No description provided."}</p>
+                    <div className="flex flex-col text-muted-foreground">
+                      <span className="text-xs">{item.author ? <span>By {item.author}</span> : null}</span>
+                      <span className="text-xs">Updated {formatDate(item.updatedAt)}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-1">{item.summary || "-"}</p>
                   </div>
 
                   {tags.length ? (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 mt-2">
                       {tags.map((tag) => (
                         <Badge key={tag} variant="outline" className="text-[11px]">
                           {tag}
@@ -167,17 +230,6 @@ export function ShareListing({ posts }: { posts: ShareListingPost[] }) {
                       ))}
                     </div>
                   ) : null}
-
-                  <div className="mt-auto flex flex-wrap gap-2">
-                    <Button asChild size="sm" variant="secondary">
-                      <Link href={item.publicUrl || `/share/${item.id}`}>View</Link>
-                    </Button>
-                    <Button size="sm" variant="outline" asChild>
-                      <Link href={item.publicUrl || `/share/${item.id}`} target="_blank" rel="noreferrer noopener">
-                        Open in new tab
-                      </Link>
-                    </Button>
-                  </div>
                 </div>
               </div>
             )

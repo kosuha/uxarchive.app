@@ -84,9 +84,11 @@ const mapRowToShareItem = (row: Record<string, unknown>): ShareListItem => {
 
 type CaptureThumbnailRow = {
   pattern_id: string
+  id?: string
   storage_path: string | null
   public_url: string | null
   poster_storage_path: string | null
+  order_index?: number | null
 }
 
 const sanitizePath = (value: string | null | undefined) => value?.replace(/^\/+/, "").trim() || ""
@@ -125,15 +127,32 @@ const resolveCaptureThumbnailUrl = async (
   client: ReturnType<typeof getServiceRoleSupabaseClient>,
   capture: CaptureThumbnailRow,
 ) => {
+  const posterPath = sanitizePath(capture.poster_storage_path)
+  const storagePath = sanitizePath(capture.storage_path)
+
+  // Prefer storage paths for signing to avoid unauthenticated public requests
+  const signFirst = posterPath || storagePath
+  if (signFirst) {
+    const signed = await signThumbnailPath(client, signFirst, SHARE_BUCKET)
+    if (signed) return signed
+  }
+
   const publicCandidate = capture.public_url?.trim()
   if (publicCandidate) {
-    if (isAbsoluteUrl(publicCandidate)) return publicCandidate
+    if (isAbsoluteUrl(publicCandidate)) {
+      const parsed = parseSupabaseObjectPath(publicCandidate)
+      if (parsed) {
+        const signed = await signThumbnailPath(client, parsed.objectPath, parsed.bucket)
+        if (signed) return signed
+        // Supabase URL but signing failed: avoid hitting public endpoints on private buckets
+        return null
+      }
+      return publicCandidate
+    }
     const built = buildPublicStorageUrl(publicCandidate)
     if (built) return built
   }
 
-  const posterPath = sanitizePath(capture.poster_storage_path)
-  const storagePath = sanitizePath(capture.storage_path)
   const signTarget = posterPath || storagePath
   if (!signTarget) return null
 
@@ -202,6 +221,7 @@ const parseSupabaseObjectPath = (urlString: string): { bucket: string; objectPat
 const hydrateThumbnails = async (
   client: ReturnType<typeof getServiceRoleSupabaseClient>,
   items: ShareListItem[],
+  includeCaptures?: boolean,
 ): Promise<ShareListItem[]> => {
   const itemsNeedingSigning = items.filter((item) => {
     const url = item.thumbnailUrl
@@ -236,21 +256,29 @@ const hydrateThumbnails = async (
     return acc
   }, {})
 
-  if (missingThumbnailIds.length === 0) return items
+  if (missingThumbnailIds.length === 0 && !includeCaptures) return items
 
-  const { data, error } = await client
-    .from("captures")
-    .select("pattern_id, storage_path, public_url, poster_storage_path, order_index")
-    .in("pattern_id", missingThumbnailIds)
-    .order("order_index", { ascending: true })
+  const patternIds = Array.from(new Set(items.map((item) => item.id))).filter(Boolean)
 
-  if (error) {
-    console.error("[public/share] Failed to load capture thumbnails", error)
-    return items
+  const captureQueryNeeded = includeCaptures || missingThumbnailIds.length > 0
+  const { data: captures, error: capturesError } = captureQueryNeeded
+    ? await client
+        .from("captures")
+        .select("id, pattern_id, storage_path, public_url, poster_storage_path, order_index")
+        .in("pattern_id", patternIds)
+        .order("pattern_id", { ascending: true })
+        .order("order_index", { ascending: true })
+    : { data: null, error: null }
+
+  if (capturesError) {
+    console.error("[public/share] Failed to load capture thumbnails", capturesError)
+    if (!includeCaptures && missingThumbnailIds.length === 0) return items
   }
 
+  const captureRows = (captures ?? []) as CaptureThumbnailRow[]
+
   const firstCaptureByPattern = new Map<string, CaptureThumbnailRow>()
-  for (const row of (data ?? []) as CaptureThumbnailRow[]) {
+  for (const row of captureRows) {
     if (!row?.pattern_id || firstCaptureByPattern.has(row.pattern_id)) continue
     firstCaptureByPattern.set(row.pattern_id, row)
   }
@@ -267,12 +295,39 @@ const hydrateThumbnails = async (
     return acc
   }, {})
 
+  const captureGroups = captureRows.reduce<Record<string, CaptureThumbnailRow[]>>((acc, row) => {
+    if (!row?.pattern_id) return acc
+    if (!acc[row.pattern_id]) acc[row.pattern_id] = []
+    acc[row.pattern_id].push(row)
+    return acc
+  }, {})
+
+  const captureUrlEntries = includeCaptures
+    ? await Promise.all(
+        Object.entries(captureGroups).map(async ([patternId, caps]) => {
+          const urls = await Promise.all(
+            caps.map(async (capture) => ({
+              id: capture.id ?? capture.pattern_id,
+              url: await resolveCaptureThumbnailUrl(client, capture),
+            })),
+          )
+          return [patternId, urls.map((item) => item.url).filter((url): url is string => Boolean(url))] as const
+        }),
+      )
+    : []
+
+  const captureUrlLookup = captureUrlEntries.reduce<Record<string, string[]>>((acc, [patternId, urls]) => {
+    acc[patternId] = urls
+    return acc
+  }, {})
+
   return items.map((item) => ({
     ...item,
     thumbnailUrl:
       signingLookup[item.id]?.hadParsed
         ? signedExistingLookup[item.id] ?? thumbnailLookup[item.id] ?? null
         : signedExistingLookup[item.id] || item.thumbnailUrl?.trim() || thumbnailLookup[item.id] || null,
+    captureUrls: includeCaptures ? captureUrlLookup[item.id] ?? [] : item.captureUrls,
   }))
 }
 
@@ -329,7 +384,8 @@ const handler = async (request: Request) => {
       .filter((item) => item.id && item.title && item.isPublic && item.published)
     const total = typeof count === "number" && count >= 0 ? count : items.length
     const hasNextPage = total > page * perPage
-    const itemsWithThumbnails = await hydrateThumbnails(supabase, items)
+    const includeCaptures = url.searchParams.get("includeCaptures") === "true"
+    const itemsWithThumbnails = await hydrateThumbnails(supabase, items, includeCaptures)
 
     const response: ShareListResponse = {
       items: itemsWithThumbnails,

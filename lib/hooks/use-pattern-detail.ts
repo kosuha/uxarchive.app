@@ -62,10 +62,36 @@ const isAbsoluteUrl = (value: string | null | undefined) => {
   }
 }
 
+const parseSupabaseObjectPath = (urlString: string): { bucket: string; objectPath: string } | null => {
+  try {
+    const url = new URL(urlString)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+    const storageHost = supabaseUrl ? new URL(supabaseUrl).hostname.replace(/\.supabase\.co$/, ".storage.supabase.co") : null
+    const isStorageHost = storageHost ? url.hostname === storageHost : false
+    const isProjectHost = supabaseUrl ? url.hostname === new URL(supabaseUrl).hostname : false
+    if (!isStorageHost && !isProjectHost) return null
+
+    const match =
+      url.pathname.match(/^\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/) ||
+      url.pathname.match(/^\/storage\/v1\/s3\/([^/]+)\/(.+)$/) ||
+      url.pathname.match(/^\/storage\/v1\/object\/sign\/([^/]+)\/(.+)$/)
+    if (!match) return null
+
+    const [, bucket, objectPath] = match
+    return { bucket, objectPath }
+  } catch {
+    return null
+  }
+}
+
 const resolveCaptureImageUrl = (record: CaptureRecord) => {
   const storagePath = record.storagePath?.trim()
   if (storagePath) {
     if (isAbsoluteUrl(storagePath)) {
+      const parsed = parseSupabaseObjectPath(storagePath)
+      if (parsed) {
+        return buildStorageProxyUrl(parsed.objectPath, "view")
+      }
       return storagePath
     }
     const proxyUrl = buildStorageProxyUrl(storagePath, "view")
@@ -82,6 +108,10 @@ const resolveCaptureImageUrl = (record: CaptureRecord) => {
   const publicUrl = record.publicUrl?.trim()
   if (publicUrl) {
     if (isAbsoluteUrl(publicUrl)) {
+      const parsed = parseSupabaseObjectPath(publicUrl)
+      if (parsed) {
+        return buildStorageProxyUrl(parsed.objectPath, "view")
+      }
       return publicUrl
     }
     return `/${publicUrl}`
@@ -102,6 +132,10 @@ const resolveCaptureDownloadUrl = (record: CaptureRecord) => {
   const storagePath = record.storagePath?.trim()
   if (storagePath) {
     if (isAbsoluteUrl(storagePath)) {
+      const parsed = parseSupabaseObjectPath(storagePath)
+      if (parsed) {
+        return buildStorageProxyUrl(parsed.objectPath, "download")
+      }
       return storagePath
     }
     return buildStorageProxyUrl(storagePath, "download")
@@ -110,6 +144,10 @@ const resolveCaptureDownloadUrl = (record: CaptureRecord) => {
   const publicUrl = record.publicUrl?.trim()
   if (publicUrl) {
     if (isAbsoluteUrl(publicUrl)) {
+      const parsed = parseSupabaseObjectPath(publicUrl)
+      if (parsed) {
+        return buildStorageProxyUrl(parsed.objectPath, "download")
+      }
       return publicUrl
     }
     return `/${publicUrl}`
