@@ -1,18 +1,46 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
+import { Geist_Mono } from "next/font/google";
 import { AppProviders } from "@/components/app-providers";
 import { ContextMenuBlocker } from "@/components/context-menu-blocker";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const pretendard = localFont({
+  src: [
+    { path: "../public/font/Pretendard-Thin.ttf", weight: "100", style: "normal" },
+    {
+      path: "../public/font/Pretendard-ExtraLight.ttf",
+      weight: "200",
+      style: "normal",
+    },
+    { path: "../public/font/Pretendard-Light.ttf", weight: "300", style: "normal" },
+    {
+      path: "../public/font/Pretendard-Regular.ttf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../public/font/Pretendard-Medium.ttf",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "../public/font/Pretendard-SemiBold.ttf",
+      weight: "600",
+      style: "normal",
+    },
+    { path: "../public/font/Pretendard-Bold.ttf", weight: "700", style: "normal" },
+    {
+      path: "../public/font/Pretendard-ExtraBold.ttf",
+      weight: "800",
+      style: "normal",
+    },
+    { path: "../public/font/Pretendard-Black.ttf", weight: "900", style: "normal" },
+  ],
+  variable: "--font-pretendard",
+  fallback: ["system-ui", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+  display: "swap",
 });
 
 const organizationJsonLd = {
@@ -99,7 +127,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${pretendard.variable} antialiased`}
       >
         <Script
           id="org-ld"

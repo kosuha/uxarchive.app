@@ -24,7 +24,7 @@ const features = [
   {
     icon: Search,
     title: "Powerful Search",
-    description: "Find references quickly by tags, colors, and pattern types",
+    description: "Find references quickly by tags, and pattern types",
     gradient: "from-cyan-500 to-blue-500",
   },
   {

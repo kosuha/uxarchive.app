@@ -95,7 +95,7 @@ export function Hero() {
           </motion.div>
 
           <h1 className="text-6xl font-black md:text-8xl mb-6 tracking-tight">
-            <span className="block">Organize your</span>
+            <span className="block">Organize your</span>{" "}
             <span className="block leading-[1.15] bg-gradient-to-r from-primary via-green-400 to-primary bg-clip-text text-transparent">
               UX Patterns
             </span>
@@ -128,7 +128,7 @@ export function Hero() {
             </Button>
           </div>
 
-          <div className="mt-30 flex flex-col items-center gap-3">
+          <div className="mt-10 flex flex-col items-center gap-3">
             <div className="flex h-[54px] w-[250px] items-center gap-2.5 rounded-lg border border-border/70 bg-background/30 pl-2.5 shadow-lg backdrop-blur">
               <div className="rounded-full bg-primary/10 p-2 text-primary">
                 <Users className="h-4 w-4" />
