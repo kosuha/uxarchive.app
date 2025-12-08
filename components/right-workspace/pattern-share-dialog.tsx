@@ -151,7 +151,7 @@ export function PatternShareDialog({
           <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/10 px-4 py-3">
             <div>
               <p className="text-sm font-medium">Publish to listing</p>
-              <p className="text-xs text-muted-foreground">Show this pattern on the public /patterns page. Requires sharing enabled.</p>
+              <p className="text-xs text-muted-foreground">Show this pattern on <a href="/patterns" className="underline">the public patterns page</a>.</p>
             </div>
             <Switch
               checked={published}
