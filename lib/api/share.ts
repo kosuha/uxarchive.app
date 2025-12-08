@@ -138,6 +138,8 @@ const normalizeShareItem = (raw: RawShareListItem): ShareListItem => {
     return Number.isNaN(date.getTime()) ? undefined : date.toISOString()
   }
 
+  const rawCaptures = raw.captureUrls ?? raw.captures
+
   return {
     id,
     title,
@@ -153,8 +155,8 @@ const normalizeShareItem = (raw: RawShareListItem): ShareListItem => {
     publicUrl: stringOrNull(raw.publicUrl ?? raw.public_url),
     thumbnailUrl: stringOrNull(raw.thumbnailUrl ?? raw.thumbnail_url),
     captureUrls:
-      Array.isArray(raw.captureUrls ?? raw.captures)
-        ? (raw.captureUrls ?? raw.captures)?.filter((value): value is string => typeof value === "string")
+      Array.isArray(rawCaptures)
+        ? (rawCaptures as unknown[]).filter((value): value is string => typeof value === "string")
         : undefined,
   }
 }
