@@ -9,16 +9,27 @@ export const dynamic = "force-dynamic"
 const handler = async () => {
   try {
     const supabase = getServiceRoleSupabaseClient()
-    const { count, error } = await supabase
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
+    const [profiles, patterns] = await Promise.all([
+      supabase.from("profiles").select("id", { count: "exact", head: true }),
+      supabase
+        .from("pattern_public_listing")
+        .select("id", { count: "exact", head: true })
+        .eq("sharing_enabled", true)
+        .eq("published", true),
+    ])
 
-    if (error) {
-      console.error("Failed to count profiles", error)
-      return NextResponse.json({ error: "stats_unavailable" }, { status: 500 })
+    if (profiles.error) {
+      console.error("Failed to count profiles", profiles.error)
     }
 
-    const response = NextResponse.json({ userCount: count ?? 0 })
+    if (patterns.error) {
+      console.error("Failed to count patterns", patterns.error)
+    }
+
+    const response = NextResponse.json({
+      userCount: profiles.count ?? 0,
+      patternCount: patterns.count ?? 0,
+    })
     response.headers.set("Cache-Control", "public, max-age=300")
     return response
   } catch (error) {

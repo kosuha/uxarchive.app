@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Sparkles, Users } from "lucide-react";
+import { ArrowRight, LayoutDashboard, Sparkles, Users } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function Hero() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [userCount, setUserCount] = useState<number | null>(null);
+  const [patternCount, setPatternCount] = useState<number | null>(null);
   const [isLoadingCount, setIsLoadingCount] = useState(true);
   const [hasStatsError, setHasStatsError] = useState(false);
 
@@ -33,9 +34,10 @@ export function Hero() {
         if (!response.ok) {
           throw new Error("Failed to load stats");
         }
-        const data = (await response.json()) as { userCount?: number };
+        const data = (await response.json()) as { userCount?: number; patternCount?: number };
         if (!isMounted) return;
         setUserCount(typeof data.userCount === "number" ? data.userCount : 0);
+        setPatternCount(typeof data.patternCount === "number" ? data.patternCount : 0);
       } catch (error) {
         if ((error as Error)?.name === "AbortError") return;
         if (isMounted) setHasStatsError(true);
@@ -61,6 +63,15 @@ export function Hero() {
     return `${formatter.format(userCount)}+`;
   }, [userCount]);
 
+  const formattedPatternCount = useMemo(() => {
+    if (patternCount === null) return null;
+    const formatter = new Intl.NumberFormat("en-US", {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    });
+    return `${formatter.format(patternCount)}+`;
+  }, [patternCount]);
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Animated Background Gradient */}
@@ -70,7 +81,7 @@ export function Hero() {
           background: `radial-gradient(circle at ${mousePosition.x}% ${mousePosition.y}%, oklch(0.648 0.2 131.684) 0%, transparent 50%)`,
         }}
       />
-      
+
       {/* Grid Pattern */}
       <div className="absolute inset-0 opacity-40">
         <div className="h-full w-full" style={{
@@ -80,7 +91,7 @@ export function Hero() {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 max-w-6xl mx-auto px-6 text-center">
+      <div className="relative z-10 max-w-6xl mx-auto px-6 text-center pt-12">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -108,9 +119,9 @@ export function Hero() {
           </p>
 
           <div className="flex items-center justify-center gap-4 md:flex-row flex-col">
-            <Button 
+            <Button
               asChild
-              size="lg" 
+              size="lg"
               className="bg-primary hover:bg-primary/90 text-lg px-8 py-6 rounded-full group w-[250px] h-[54px]"
             >
               <Link href="/workspace">
@@ -150,20 +161,35 @@ export function Hero() {
                 </span>
               </div>
             </div>
-            <a 
-              href="https://www.producthunt.com/products/ux-archive?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-ux&#0045;archive" target="_blank">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1042398&theme=dark&t=1764317381315" alt="UX&#0032;Archive - Organize&#0032;your&#0032;UX&#0032;Patterns | Product Hunt"
-              width="250" 
-              height="54" 
-            />
-            </a>
+            <Button
+              asChild
+              variant="outline"
+              className="h-[54px] w-[250px] justify-start rounded-lg border-border/70 bg-background/30 pl-2.5 shadow-lg backdrop-blur hover:bg-background/50"
+            >
+              <Link href="/patterns" className="items-center gap-2.5">
+                <div className="rounded-full bg-primary/10 p-2 text-primary">
+                  <LayoutDashboard className="h-4 w-4" />
+                </div>
+                <div className="flex flex-col items-start text-left leading-tight">
+                  {hasStatsError ? (
+                    <span className="text-xs text-muted-foreground">Count unavailable</span>
+                  ) : isLoadingCount ? (
+                    <Skeleton className="h-6 w-12 rounded-md" />
+                  ) : (
+                    <span className="text-xl font-black leading-none tracking-tight">
+                      {formattedPatternCount}
+                    </span>
+                  )}
+                  <span className="text-xs font-bold">Shared patterns</span>
+                </div>
+              </Link>
+            </Button>
           </div>
         </motion.div>
       </div>
 
       {/* Scroll Indicator */}
-      <motion.div
+      {/* <motion.div
         className="absolute bottom-8 left-1/2 -translate-x-1/2"
         animate={{ y: [0, 10, 0] }}
         transition={{ duration: 2, repeat: Infinity }}
@@ -175,7 +201,7 @@ export function Hero() {
             transition={{ duration: 2, repeat: Infinity }}
           />
         </div>
-      </motion.div>
+      </motion.div> */}
     </section>
   );
 }
