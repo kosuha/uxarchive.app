@@ -44,7 +44,6 @@ const buildSearchClause = (term: string) => {
     `title.ilike.${pattern}`,
     `service.ilike.${pattern}`,
     `author.ilike.${pattern}`,
-    `tags::text.ilike.${pattern}`,
   ].join(",")
 }
 

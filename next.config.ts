@@ -84,6 +84,10 @@ const nextConfig: NextConfig = {
       {
         pathname: "/api/storage/object",
       },
+      {
+        pathname: "/**",
+        search: "",
+      },
     ],
   },
 }

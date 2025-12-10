@@ -1,0 +1,59 @@
+"use client"
+
+import * as React from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Search } from "lucide-react"
+
+import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
+
+interface SearchInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+    className?: string
+}
+
+export function SearchInput({ className, ...props }: SearchInputProps) {
+    const router = useRouter()
+    const searchParams = useSearchParams()
+    const [value, setValue] = React.useState(searchParams.get("search") || "")
+
+    // Sync internal state with URL if it changes externally
+    React.useEffect(() => {
+        setValue(searchParams.get("search") || "")
+    }, [searchParams])
+
+    const handleSearch = React.useCallback(() => {
+        const params = new URLSearchParams(searchParams.toString())
+        if (value && value.trim()) {
+            params.set("search", value.trim())
+        } else {
+            params.delete("search")
+        }
+        router.replace(`?${params.toString()}`, { scroll: false })
+    }, [router, searchParams, value])
+
+    const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter") {
+            handleSearch()
+        }
+    }
+
+    return (
+        <div className={cn("relative w-full max-w-md", className)}>
+            <Input
+                {...props}
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                onKeyDown={onKeyDown}
+                placeholder="Search"
+                className="h-10 w-full rounded-full border-border bg-white/5 pr-10 text-sm text-white placeholder:text-white/40 focus-visible:bg-white/10 focus-visible:ring-0"
+            />
+            <button
+                onClick={handleSearch}
+                className="absolute right-3 top-2.5 text-white/40 hover:text-white transition-colors"
+                aria-label="Search"
+            >
+                <Search className="h-4 w-4" />
+            </button>
+        </div>
+    )
+}

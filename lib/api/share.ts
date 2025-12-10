@@ -228,8 +228,10 @@ export const fetchShareList = async (
   })
 
   if (!response.ok) {
+    const errorText = await response.text()
+    console.error("API Error details:", errorText)
     throw new ShareListingApiError(
-      `Failed to load published posts (${response.status})`,
+      `Failed to load published posts (${response.status}): ${errorText.slice(0, 100)}`,
       response.status,
     )
   }
