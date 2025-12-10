@@ -37,11 +37,11 @@ export function PublicPatternViewer({ pattern, captures, insights }: PublicPatte
   const captureIndex = activeCapture ? captures.findIndex((capture) => capture.id === activeCapture.id) + 1 : 0
   const [highlightedInsightId, setHighlightedInsightId] = React.useState<string | null>(null)
 
-  const noop = React.useCallback(() => {}, [])
-  const noopAsync = React.useCallback(async () => {}, [])
+  const noop = React.useCallback(() => { }, [])
+  const noopAsync = React.useCallback(async () => { }, [])
 
   return (
-    <div className="flex h-full w-full min-h-[600px] flex-1 min-h-0 flex-col gap-6 lg:flex-row">
+    <div className="flex h-full w-full min-h-[600px] flex-1 min-h-0 flex-col gap-6 p-8 lg:flex-row">
       <aside className="order-1 flex w-full max-w-full flex-shrink-0 flex-col gap-4 min-h-0 lg:order-1 lg:h-full lg:w-[320px] lg:max-w-[360px]">
         <PublicPatternMetadataCard
           patternName={pattern.name}
