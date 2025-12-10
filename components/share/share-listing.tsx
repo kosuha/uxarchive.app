@@ -204,7 +204,7 @@ export function ShareListing({ initialPosts, search }: ShareListingProps) {
                   tabIndex={0}
                   onClick={handleCardClick}
                   onKeyDown={handleKeyDown}
-                  className="group break-inside-avoid mb-6 flex flex-col gap-4 focus-visible:outline-none"
+                  className="group break-inside-avoid mb-6 flex flex-col gap-4 focus-visible:outline-none hover:cursor-pointer"
                 >
                   {/* Card Image */}
                   <div className="relative w-full overflow-hidden rounded-[24px] bg-[#1C1C1E] p-8 transition-all duration-300 group-hover:shadow-2xl group-focus-visible:ring-2 group-focus-visible:ring-white/50">
