@@ -30,7 +30,7 @@ type RightWorkspaceProps = {
 }
 
 export function RightWorkspace({ patternId }: RightWorkspaceProps) {
-  const { patterns, tags, loading: workspaceLoading, error: workspaceError, mutations, refresh: refreshWorkspace } = useWorkspaceData()
+  const { workspaceId, patterns, tags, loading: workspaceLoading, error: workspaceError, mutations, refresh: refreshWorkspace, planInfo } = useWorkspaceData()
   const isMobile = useIsMobile()
   const [allowDownloads, setAllowDownloads] = React.useState<boolean | null>(null)
   const [patternLimitStatus, setPatternLimitStatus] = React.useState<{ canCreate: boolean; message?: string } | null>(null)
@@ -283,17 +283,32 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
     [mutations, pattern],
   )
 
+
+
+  // ... (existing code)
+
   const shareControl = React.useMemo(() => {
     if (!pattern) return null
+
+    // Check private pattern limit
+    const privateLimit = planInfo?.maxPrivatePatterns ?? Infinity
+    const currentPrivateCount = patterns.filter(p => !p.isPublic).length
+    const isLimitReached = currentPrivateCount >= privateLimit
+
+    // Disable if public and limit reached (prevent turning private)
+    // Always allow turning public (freed up a slot)
+    const shareDisabled = pattern.isPublic && isLimitReached
+
     return (
       <PatternShareDialog
         patternId={pattern.id}
         patternName={pattern.name}
         isPublic={pattern.isPublic}
+        disabled={shareDisabled}
         onToggleShare={handleToggleShare}
       />
     )
-  }, [handleToggleShare, pattern])
+  }, [handleToggleShare, pattern, patterns, planInfo])
 
   const handleCreatePattern = React.useCallback(async () => {
     if (isCreatingPattern) return

@@ -34,7 +34,7 @@ type WorkspaceDataContextValue = {
   patterns: Pattern[]
   folders: Folder[]
   tags: Tag[]
-  planInfo: { code: string; maxPatterns: number; allowDownloads: boolean } | null
+  planInfo: { code: string; maxPatterns: number; maxPrivatePatterns: number; allowDownloads: boolean } | null
   refresh: () => Promise<void>
   mutations: WorkspaceMutations
 }
@@ -43,7 +43,7 @@ type WorkspaceMutations = {
   createPattern: (input: { folderId: string | null; name: string; serviceName?: string; summary?: string }) => Promise<void>
   updatePattern: (
     patternId: string,
-    updates: Partial<Pick<Pattern, "name" | "serviceName" | "summary" | "author" | "folderId" | "isFavorite" | "captureCount" | "isPublic" | "published">>,
+    updates: Partial<Pick<Pattern, "name" | "serviceName" | "summary" | "author" | "folderId" | "isFavorite" | "captureCount" | "isPublic">>,
   ) => Promise<void>
   setPatternFavorite: (patternId: string, isFavorite: boolean) => Promise<void>
   deletePattern: (patternId: string) => Promise<void>
@@ -91,8 +91,6 @@ const mapPatternRecordToPattern = (record: PatternRecord, favorites: Set<string>
   author: record.author,
   isFavorite: favorites.has(record.id),
   isPublic: record.isPublic,
-  published: record.published,
-  publishedAt: record.publishedAt,
   publicUrl: record.publicUrl ?? undefined,
   thumbnailUrl: record.thumbnailUrl ?? undefined,
   views: record.views ?? undefined,
@@ -239,7 +237,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
 
   const toRecordUpdates = (
     record: PatternRecord,
-    updates: Partial<Pick<Pattern, "name" | "serviceName" | "summary" | "author" | "folderId" | "captureCount" | "isPublic" | "published">>,
+    updates: Partial<Pick<Pattern, "name" | "serviceName" | "summary" | "author" | "folderId" | "captureCount" | "isPublic">>,
   ): PatternRecord => ({
     ...record,
     name: typeof updates.name === "string" ? updates.name : record.name,
@@ -249,13 +247,6 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
     folderId: updates.folderId !== undefined ? updates.folderId ?? null : record.folderId,
     captureCount: typeof updates.captureCount === "number" ? updates.captureCount : record.captureCount,
     isPublic: typeof updates.isPublic === "boolean" ? updates.isPublic : record.isPublic,
-    published: typeof updates.published === "boolean" ? updates.published : record.published,
-    publishedAt:
-      typeof updates.published === "boolean"
-        ? updates.published
-          ? record.publishedAt ?? new Date().toISOString()
-          : null
-        : record.publishedAt,
     updatedAt: new Date().toISOString(),
   })
 
@@ -289,8 +280,6 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
         summary: input.summary ?? "",
         author: getAuthorName(),
         isPublic: false,
-        published: false,
-        publishedAt: null,
         isArchived: false,
         publicUrl: null,
         thumbnailUrl: null,
@@ -364,7 +353,6 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
         author: updates.author,
         folderId: typeof updates.folderId === "undefined" ? undefined : updates.folderId,
         isPublic: typeof updates.isPublic === "undefined" ? undefined : updates.isPublic,
-        published: typeof updates.published === "undefined" ? undefined : updates.published,
       })
 
       if (typeof updates.captureCount === "number") {
@@ -391,7 +379,20 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
       return { previous, version: nextVersion, patternId }
     },
     onError: (error, _input, context) => {
-      setMutationError(toErrorMessage(error))
+      const status = (error as { status?: number })?.status
+      const derivedMessage = toErrorMessage(error)
+
+      const isLimitError = status === 403 || derivedMessage.includes("Free plan allows only")
+
+      if (isLimitError) {
+        toast({
+          variant: "destructive",
+          title: "Pattern limit reached",
+          description: derivedMessage,
+        })
+      } else {
+        setMutationError(derivedMessage)
+      }
       if (context?.previous && patternsQueryKey) {
         queryClient.setQueryData(patternsQueryKey, context.previous)
       }
@@ -954,7 +955,26 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
     [removeTagMutation],
   )
 
-  const planInfo: WorkspaceDataContextValue["planInfo"] = null
+  const planInfoQuery = useQuery({
+    queryKey: ["plan-info", user?.id],
+    queryFn: async () => {
+      const response = await fetch("/api/profile/plan")
+      if (!response.ok) return null
+      const data = (await response.json()) as { planCode?: string; planStatus?: string; effectivePlan?: string }
+      const effectivePlan = resolveEffectivePlan(data.planCode ?? data.effectivePlan, data.planStatus)
+      const limits = planLimits[effectivePlan] ?? planLimits.free
+      return {
+        code: effectivePlan,
+        maxPatterns: limits.maxPatterns,
+        maxPrivatePatterns: limits.maxPrivatePatterns,
+        allowDownloads: limits.allowDownloads,
+      }
+    },
+    enabled: Boolean(user),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+
+  const planInfo = planInfoQuery.data ?? null
 
   const value = React.useMemo<WorkspaceDataContextValue>(
     () => ({
@@ -982,7 +1002,29 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
         previewTag,
       },
     }),
-    [assignTagToPattern, createFolder, createPattern, createTag, deleteFolder, deletePattern, deleteTag, error, folders, loading, patterns, previewTag, refresh, removeTagFromPattern, setPatternFavorite, tags, updateFolder, updatePattern, updateTag, workspaceId],
+    [
+      assignTagToPattern,
+      createFolder,
+      createPattern,
+      createTag,
+      deleteFolder,
+      deletePattern,
+      deleteTag,
+      error,
+      folders,
+      loading,
+      patterns,
+      planInfo,
+      previewTag,
+      refresh,
+      removeTagFromPattern,
+      setPatternFavorite,
+      tags,
+      updateFolder,
+      updatePattern,
+      updateTag,
+      workspaceId,
+    ],
   )
 
   return <WorkspaceDataContext.Provider value={value}>{children}</WorkspaceDataContext.Provider>

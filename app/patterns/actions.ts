@@ -8,7 +8,7 @@ export async function getPatternsAction(params: ShareListQueryParams) {
       next: { revalidate: 60 },
     })
     return {
-      posts: (response.items ?? []).filter((item) => item.published && item.isPublic),
+      posts: (response.items ?? []).filter((item) => item.isPublic),
       hasNextPage: response.hasNextPage,
     }
   } catch (error) {

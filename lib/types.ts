@@ -27,8 +27,6 @@ export interface Pattern extends IdentifiableEntity {
   author: string
   isFavorite: boolean
   isPublic: boolean
-  published: boolean
-  publishedAt: string | null
   publicUrl?: string | null
   thumbnailUrl?: string | null
   views?: number

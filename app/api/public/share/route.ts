@@ -72,9 +72,7 @@ const mapRowToShareItem = (row: Record<string, unknown>): ShareListItem => {
     tags,
     summary: stringOrNull(row.summary) ?? null,
     updatedAt: stringOrNull((row as { updated_at?: unknown }).updated_at) ?? new Date().toISOString(),
-    publishedAt: stringOrNull((row as { published_at?: unknown }).published_at),
     isPublic: typeof isPublicRaw === "boolean" ? isPublicRaw : Boolean(isPublicRaw),
-    published: Boolean(row.published),
     views: numberOrNull(row.views),
     publicUrl: stringOrNull((row as { public_url?: unknown }).public_url),
     thumbnailUrl: stringOrNull((row as { thumbnail_url?: unknown }).thumbnail_url),
@@ -356,11 +354,10 @@ const handler = async (request: Request) => {
     let query = supabase
       .from("pattern_public_listing")
       .select(
-        "id,title,service,author,summary,tags,updated_at,published_at,is_public:sharing_enabled,published,views,public_url,thumbnail_url",
+        "id,title,service,author,summary,tags,updated_at,is_public:sharing_enabled,views,public_url,thumbnail_url",
         { count: "exact" },
       )
       .eq("sharing_enabled", true)
-      .eq("published", true)
 
     if (search) {
       query = query.or(buildSearchClause(search))
@@ -375,12 +372,12 @@ const handler = async (request: Request) => {
 
     if (error) {
       console.error("[public/share] Failed to load listings", error)
-      return NextResponse.json({ error: "Failed to load published posts." }, { status: 500 })
+      return NextResponse.json({ error: "Failed to load public posts." }, { status: 500 })
     }
 
     const items = (data ?? [])
       .map(mapRowToShareItem)
-      .filter((item) => item.id && item.title && item.isPublic && item.published)
+      .filter((item) => item.id && item.title && item.isPublic)
     const total = typeof count === "number" && count >= 0 ? count : items.length
     const hasNextPage = total > page * perPage
     const includeCaptures = url.searchParams.get("includeCaptures") === "true"

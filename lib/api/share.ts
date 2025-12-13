@@ -16,9 +16,7 @@ export type ShareListItem = {
   tags?: string[]
   summary?: string | null
   updatedAt: string
-  publishedAt?: string | null
   isPublic: boolean
-  published: boolean
   views?: number | null
   publicUrl?: string | null
   thumbnailUrl?: string | null
@@ -83,12 +81,9 @@ type RawShareListItem = {
   summary?: unknown
   updatedAt?: unknown
   updated_at?: unknown
-  publishedAt?: unknown
-  published_at?: unknown
   isPublic?: unknown
   is_public?: unknown
   sharing_enabled?: unknown
-  published?: unknown
   publicUrl?: unknown
   public_url?: unknown
   views?: unknown
@@ -148,9 +143,7 @@ const normalizeShareItem = (raw: RawShareListItem): ShareListItem => {
     tags,
     summary: stringOrNull(raw.summary) ?? null,
     updatedAt: normalizeDate(raw.updatedAt ?? raw.updated_at) ?? new Date().toISOString(),
-    publishedAt: normalizeDate(raw.publishedAt ?? raw.published_at),
     isPublic: boolOr(raw.isPublic ?? raw.is_public ?? raw.sharing_enabled, false),
-    published: boolOr(raw.published, false),
     views: numberOrNull(raw.views),
     publicUrl: stringOrNull(raw.publicUrl ?? raw.public_url),
     thumbnailUrl: stringOrNull(raw.thumbnailUrl ?? raw.thumbnail_url),
@@ -200,7 +193,7 @@ const normalizeShareListResponse = (raw: unknown): ShareListResponse => {
         ? payload.hasNextPage
         : page * perPage < total
 
-  const items = rawItems.map(normalizeShareItem).filter((item) => item.isPublic && item.published)
+  const items = rawItems.map(normalizeShareItem).filter((item) => item.isPublic)
 
   return {
     items,

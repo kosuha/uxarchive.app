@@ -34,6 +34,7 @@ type PatternShareDialogProps = {
   patternId: string
   patternName?: string
   isPublic: boolean
+  disabled?: boolean
   onToggleShare: (next: boolean) => Promise<void> | void
 }
 
@@ -41,6 +42,7 @@ export function PatternShareDialog({
   patternId,
   patternName,
   isPublic,
+  disabled,
   onToggleShare,
 }: PatternShareDialogProps) {
   const { toast } = useToast()
@@ -122,7 +124,7 @@ export function PatternShareDialog({
               <p className="text-sm font-medium">Public Access</p>
               <p className="text-xs text-muted-foreground">Anyone with the link can view. Public patterns appear in Discovery.</p>
             </div>
-            <Switch checked={isPublic} onCheckedChange={handleToggle} disabled={pending} aria-label="Toggle public access" />
+            <Switch checked={isPublic} onCheckedChange={handleToggle} disabled={pending || disabled} aria-label="Toggle public access" />
           </div>
 
           {isPublic ? (
