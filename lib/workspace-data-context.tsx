@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { moveFolderAction, movePatternAction } from "@/app/actions/folders"
 
 import {
   assignTagToPatternAction,
@@ -58,6 +59,8 @@ type WorkspaceMutations = {
   deleteTag: (tagId: string) => Promise<void>
   assignTagToPattern: (patternId: string, tagId: string) => Promise<void>
   removeTagFromPattern: (patternId: string, tagId: string) => Promise<void>
+  moveFolder: (folderId: string, destinationParentId: string | null) => Promise<void>
+  movePattern: (patternId: string, destinationFolderId: string | null) => Promise<void>
   previewTag: (tagId: string, updates: Partial<Pick<Tag, "label" | "color">>) => void
 }
 
@@ -835,6 +838,69 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
     },
   })
 
+  // Optimistic Move Folder
+  const moveFolderMutation = useMutation({
+    mutationFn: async ({ folderId, destinationParentId }: { folderId: string; destinationParentId: string | null }) => {
+      const workspaceId = ensureWorkspace()
+      return moveFolderAction(workspaceId, folderId, destinationParentId)
+    },
+    onMutate: async ({ folderId, destinationParentId }) => {
+      setMutationError(null)
+      await queryClient.cancelQueries({ queryKey: foldersQueryKey })
+      const previous = queryClient.getQueryData<Folder[]>(foldersQueryKey)
+      if (previous) {
+        queryClient.setQueryData<Folder[]>(foldersQueryKey, (prev) => {
+          if (!prev) return []
+          return prev.map((f) => (f.id === folderId ? { ...f, parentId: destinationParentId } : f))
+        })
+      }
+      return { previous }
+    },
+    onError: (error, _input, context) => {
+      setMutationError(toErrorMessage(error))
+      if (context?.previous) {
+        queryClient.setQueryData(foldersQueryKey, context.previous)
+      }
+      void refresh()
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: foldersQueryKey })
+    },
+  })
+
+  // Optimistic Move Pattern
+  const movePatternMutation = useMutation({
+    mutationFn: async ({ patternId, destinationFolderId }: { patternId: string; destinationFolderId: string | null }) => {
+      const workspaceId = ensureWorkspace()
+      return movePatternAction(workspaceId, patternId, destinationFolderId)
+    },
+    onMutate: async ({ patternId, destinationFolderId }) => {
+      setMutationError(null)
+      await queryClient.cancelQueries({ queryKey: patternsQueryKey })
+      const previous = queryClient.getQueryData<PatternQueryData>(patternsQueryKey)
+      if (previous) {
+        queryClient.setQueryData<PatternQueryData>(patternsQueryKey, (prev) => {
+          if (!prev) return { records: [], totalCount: 0 }
+          const updatedRecords = prev.records.map((p) =>
+            p.id === patternId ? { ...p, folderId: destinationFolderId } : p
+          )
+          return { ...prev, records: updatedRecords }
+        })
+      }
+      return { previous }
+    },
+    onError: (error, _input, context) => {
+      setMutationError(toErrorMessage(error))
+      if (context?.previous) {
+        queryClient.setQueryData(patternsQueryKey, context.previous)
+      }
+      void refresh()
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: patternsQueryKey })
+    },
+  })
+
   const previewTag = React.useCallback<WorkspaceMutations["previewTag"]>(
     (tagId, updates) => {
       if (!tagsQueryKey) return
@@ -1000,6 +1066,8 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
         assignTagToPattern,
         removeTagFromPattern,
         previewTag,
+        moveFolder: (folderId, dest) => moveFolderMutation.mutateAsync({ folderId, destinationParentId: dest }).then(() => undefined),
+        movePattern: (patternId, dest) => movePatternMutation.mutateAsync({ patternId, destinationFolderId: dest }).then(() => undefined),
       },
     }),
     [
@@ -1024,6 +1092,8 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
       updatePattern,
       updateTag,
       workspaceId,
+      moveFolderMutation,
+      movePatternMutation,
     ],
   )
 

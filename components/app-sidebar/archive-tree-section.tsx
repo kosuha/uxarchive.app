@@ -94,76 +94,30 @@ export function ArchiveTreeSection({ title, state, handlers }: ArchiveTreeSectio
           onClick={onBackgroundClick}
           onContextMenu={onBackgroundContextMenu}
         >
-          <SidebarGroup>
-            <SidebarGroupLabel className="flex items-center justify-between gap-2 text-muted-foreground text-xs font-medium">
-              <span
-                role="button"
-                tabIndex={0}
-                className="select-none"
-                onClick={clearSelection}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault()
-                    clearSelection()
-                  }
-                }}
-              >
-                {title}
-              </span>
-              <div className="flex items-center gap-1.5">
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="size-7 text-muted-foreground"
-                  aria-label="Add new pattern"
-                  onClick={onRootPatternClick}
-                >
-                  <FilePlus className="size-4" />
-                </Button>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="size-7 text-muted-foreground"
-                  aria-label="Add new folder"
-                  onClick={onRootFolderClick}
-                >
-                  <FolderPlus className="size-4" />
-                </Button>
-              </div>
-            </SidebarGroupLabel>
-            <SidebarGroupContent className="flex flex-col gap-2">
-              <div className="rounded-md">
-                <FolderTree
-                  folders={folders}
-                  patterns={patterns}
-                  selectedPatternId={selectedPatternId ?? undefined}
-                  onPatternSelect={onPatternSelect}
-                  pendingPatternInput={pendingPatternInput}
-                  pendingFolderInput={pendingFolderInput}
-                  onPatternInputSubmit={onPatternInputSubmit}
-                  onPatternInputCancel={onPatternInputCancel}
-                  onFolderInputSubmit={onFolderInputSubmit}
-                  onFolderInputCancel={onFolderInputCancel}
-                  selectedFolderId={selectedFolderId}
-                  onFolderSelect={onFolderSelect}
-                  onPatternCreateRequest={onPatternCreateRequest}
-                  onFolderCreateRequest={onFolderCreateRequest}
-                  onPatternDelete={onPatternDelete}
-                  onFolderDelete={onFolderDelete}
-                  onPatternMove={onPatternMove}
-                  onFolderMove={onFolderMove}
-                  onFolderRename={onFolderRename}
-                />
-              </div>
-            </SidebarGroupContent>
-          </SidebarGroup>
-          <div
-            className="flex-1"
-            onClick={onBackgroundClick}
-            onContextMenu={onBackgroundContextMenu}
-            data-tree-interactive="false"
+          <FolderTree
+            title={title}
+            folders={folders}
+            patterns={patterns}
+            selectedPatternId={selectedPatternId ?? undefined}
+            onPatternSelect={onPatternSelect}
+            pendingPatternInput={pendingPatternInput}
+            pendingFolderInput={pendingFolderInput}
+            onPatternInputSubmit={onPatternInputSubmit}
+            onPatternInputCancel={onPatternInputCancel}
+            onFolderInputSubmit={onFolderInputSubmit}
+            onFolderInputCancel={onFolderInputCancel}
+            selectedFolderId={selectedFolderId}
+            onFolderSelect={onFolderSelect}
+            onPatternCreateRequest={onPatternCreateRequest}
+            onFolderCreateRequest={onFolderCreateRequest}
+            onPatternDelete={onPatternDelete}
+            onFolderDelete={onFolderDelete}
+            onPatternMove={onPatternMove}
+            onFolderMove={onFolderMove}
+            onFolderRename={onFolderRename}
+            onRootPatternClick={onRootPatternClick}
+            onRootFolderClick={onRootFolderClick}
+            onRootClick={clearSelection}
           />
         </div>
       </ContextMenuTrigger>

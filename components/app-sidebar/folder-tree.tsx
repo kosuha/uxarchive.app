@@ -1,16 +1,29 @@
-"use client"
-
 import * as React from "react"
 import {
   Check,
   ChevronDown,
   ChevronRight,
   EllipsisVertical,
+  FilePlus,
+  FolderPlus,
   Folder as FolderIcon,
   LibraryBig,
 } from "lucide-react"
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  pointerWithin,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core"
 
 import { Button } from "@/components/ui/button"
+// ... (rest of imports)
 import {
   Collapsible,
   CollapsibleContent,
@@ -35,6 +48,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuAction,
   SidebarMenuButton,
@@ -82,6 +98,7 @@ type MoveDialogTarget =
   | { type: "folder"; folder: Folder }
 
 type FolderTreeProps = {
+  title?: string
   folders: Folder[]
   patterns: Pattern[]
   selectedPatternId?: string
@@ -101,9 +118,13 @@ type FolderTreeProps = {
   onPatternMove?: (patternId: string, destinationFolderId: string | null) => void
   onFolderMove?: (folderId: string, destinationFolderId: string | null) => void
   onFolderRename?: (folderId: string, name: string) => void
+  onRootPatternClick?: () => void
+  onRootFolderClick?: () => void
+  onRootClick?: () => void
 }
 
 export function FolderTree({
+  title = "My Archive",
   folders,
   patterns,
   selectedPatternId,
@@ -123,11 +144,16 @@ export function FolderTree({
   onPatternMove,
   onFolderMove,
   onFolderRename,
+  onRootPatternClick,
+  onRootFolderClick,
+  onRootClick,
 }: FolderTreeProps) {
   const [pendingFolderDelete, setPendingFolderDelete] = React.useState<Folder | null>(null)
   const [moveDialogTarget, setMoveDialogTarget] = React.useState<MoveDialogTarget | null>(null)
   const [moveDestinationId, setMoveDestinationId] = React.useState<string | null>(null)
   const [renamingFolderId, setRenamingFolderId] = React.useState<string | null>(null)
+  const [activeDragId, setActiveDragId] = React.useState<string | null>(null)
+  const [activeDragType, setActiveDragType] = React.useState<"folder" | "pattern" | null>(null)
 
   const handleFolderDeleteRequest = React.useCallback((folder: Folder) => {
     setPendingFolderDelete(folder)
@@ -235,6 +261,7 @@ export function FolderTree({
   const moveDialogDescription = moveDialogTarget
     ? `Select a folder to move "${moveDialogEntityName}" into.`
     : ""
+
   const handleMoveConfirm = React.useCallback(() => {
     if (!moveDialogTarget) return
     const destinationId = moveDestinationId ?? null
@@ -261,64 +288,186 @@ export function FolderTree({
     }
     onFolderMove?.(moveDialogTarget.folder.id, destinationId)
     closeMoveDialog()
+    return
   }, [closeMoveDialog, excludedFolderIds, moveDestinationId, moveDialogTarget, onFolderMove, onPatternMove])
 
-  if (!tree.length && !pendingFolderInput && !shouldShowRootPatterns) {
-    return (
-      <div className="text-sidebar-foreground/70 rounded-md border border-dashed border-border/60 px-3 py-4 text-xs">
-        No folders available.
-      </div>
-    )
+  // Drag and Drop Sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  )
+
+  // Drag and Drop Handlers
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event
+    setActiveDragId(active.id as string)
+    const type = active.data.current?.type
+    if (type) setActiveDragType(type)
   }
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveDragId(null)
+    setActiveDragType(null)
+
+    if (!over) return
+
+    const dragId = active.id as string
+    const dropId = over.id as string
+    const dragData = active.data.current
+
+    if (!dragData) return
+
+    // If dropped on root container (dropId="root-droppable" or "root-header-droppable")
+    const isRootDrop = dropId === "root-droppable" || dropId === "root-header-droppable"
+
+    // Helper to get real ID from dropId
+    const getTargetFolderId = (dId: string) => {
+      if (dId === "root-droppable" || dId === "root-header-droppable") return null
+      if (dId.startsWith("folder-")) return dId.replace("folder-", "")
+      return dId // Fallback
+    }
+
+    const targetFolderId = isRootDrop ? null : getTargetFolderId(dropId)
+
+    if (dragData.type === "folder") {
+      const folderId = dragData.folder.id
+      if (dropId === `folder-${folderId}`) return // Dropped on self
+      onFolderMove?.(folderId, targetFolderId)
+    } else if (dragData.type === "pattern") {
+      const patternId = dragData.pattern.id
+      onPatternMove?.(patternId, targetFolderId)
+    }
+  }
+
+  const { setNodeRef: setRootDropRef, isOver: isRootOver } = useDroppable({
+    id: "root-droppable",
+    data: { type: "root" },
+  })
+
+  // Header Droppable
+  const { setNodeRef: setHeaderDropRef, isOver: isHeaderOver } = useDroppable({
+    id: "root-header-droppable",
+    data: { type: "root-header" },
+  })
+
   return (
-    <>
-      <div className="flex flex-col gap-1">
-        {shouldShowRootFolders && (
-          <FolderMenuList
-            nodes={tree}
-            parentId={null}
-            selectedPatternId={selectedPatternId}
-            onPatternSelect={onPatternSelect}
-            pendingPatternInput={pendingPatternInput}
-            pendingFolderInput={pendingFolderInput}
-            onPatternInputSubmit={onPatternInputSubmit}
-            onPatternInputCancel={onPatternInputCancel}
-            onFolderInputSubmit={onFolderInputSubmit}
-            onFolderInputCancel={onFolderInputCancel}
-            selectedFolderId={selectedFolderId}
-            onFolderSelect={onFolderSelect}
-            onPatternCreateRequest={onPatternCreateRequest}
-            onFolderCreateRequest={onFolderCreateRequest}
-            onPatternDelete={onPatternDelete}
-            onFolderDelete={onFolderDelete}
-            onFolderDeleteRequest={handleFolderDeleteRequest}
-            onPatternMoveRequest={openPatternMoveDialog}
-            onFolderMoveRequest={openFolderMoveDialog}
-            renamingFolderId={renamingFolderId}
-            onFolderRenameRequest={handleFolderRenameRequest}
-            onFolderRenameSubmit={handleFolderRenameSubmit}
-            onFolderRenameCancel={handleFolderRenameCancel}
-          />
-        )}
-        {shouldShowRootPatterns && (
-          <PatternList
-            folderId={null}
-            patterns={rootPatterns}
-            showEmpty
-            nested={false}
-            selectedPatternId={selectedPatternId}
-            onPatternSelect={onPatternSelect}
-            pendingPatternInput={pendingPatternInput}
-            onPatternInputSubmit={onPatternInputSubmit}
-            onPatternInputCancel={onPatternInputCancel}
-            onPatternCreateRequest={onPatternCreateRequest}
-            onPatternDelete={onPatternDelete}
-            onFolderCreateRequest={onFolderCreateRequest}
-            onPatternMoveRequest={openPatternMoveDialog}
-          />
-        )}
-      </div>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={pointerWithin}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <SidebarGroup className="flex-1">
+        <div ref={setHeaderDropRef} className={cn("rounded-md transition-colors", isHeaderOver && "bg-accent text-accent-foreground")}>
+          <SidebarGroupLabel className="flex items-center justify-between gap-2 text-muted-foreground text-xs font-medium cursor-default pointer-events-auto">
+            <span
+              role="button"
+              tabIndex={0}
+              className="select-none flex-1"
+              onClick={onRootClick}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault()
+                  onRootClick?.()
+                }
+              }}
+            >
+              {title}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="size-7 text-muted-foreground"
+                aria-label="Add new pattern"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onRootPatternClick?.()
+                }}
+              >
+                <FilePlus className="size-4" />
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="size-7 text-muted-foreground"
+                aria-label="Add new folder"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onRootFolderClick?.()
+                }}
+              >
+                <FolderPlus className="size-4" />
+              </Button>
+            </div>
+          </SidebarGroupLabel>
+        </div>
+
+        <SidebarGroupContent className="flex flex-col gap-2 flex-1">
+          <div
+            ref={setRootDropRef}
+            className={cn(
+              "flex flex-col gap-1 min-h-[50px] flex-1 h-full transition-colors relative rounded-md",
+              isRootOver && "bg-primary/5 ring-1 ring-primary/20",
+            )}
+          >
+            {shouldShowRootFolders && (
+              <FolderMenuList
+                nodes={tree}
+                parentId={null}
+                selectedPatternId={selectedPatternId}
+                onPatternSelect={onPatternSelect}
+                pendingPatternInput={pendingPatternInput}
+                pendingFolderInput={pendingFolderInput}
+                onPatternInputSubmit={onPatternInputSubmit}
+                onPatternInputCancel={onPatternInputCancel}
+                onFolderInputSubmit={onFolderInputSubmit}
+                onFolderInputCancel={onFolderInputCancel}
+                selectedFolderId={selectedFolderId}
+                onFolderSelect={onFolderSelect}
+                onPatternCreateRequest={onPatternCreateRequest}
+                onFolderCreateRequest={onFolderCreateRequest}
+                onPatternDelete={onPatternDelete}
+                onFolderDelete={onFolderDelete}
+                onFolderDeleteRequest={handleFolderDeleteRequest}
+                onPatternMoveRequest={openPatternMoveDialog}
+                onFolderMoveRequest={openFolderMoveDialog}
+                renamingFolderId={renamingFolderId}
+                onFolderRenameRequest={handleFolderRenameRequest}
+                onFolderRenameSubmit={handleFolderRenameSubmit}
+                onFolderRenameCancel={handleFolderRenameCancel}
+              />
+            )}
+            {shouldShowRootPatterns && (
+              <PatternList
+                folderId={null}
+                patterns={rootPatterns}
+                showEmpty
+                nested={false}
+                selectedPatternId={selectedPatternId}
+                onPatternSelect={onPatternSelect}
+                pendingPatternInput={pendingPatternInput}
+                onPatternInputSubmit={onPatternInputSubmit}
+                onPatternInputCancel={onPatternInputCancel}
+                onFolderCreateRequest={onFolderCreateRequest}
+                onPatternDelete={onPatternDelete}
+                onPatternMoveRequest={openPatternMoveDialog}
+              />
+            )}
+            {!tree.length && !pendingFolderInput && !shouldShowRootPatterns && (
+              <div className="text-sidebar-foreground/70 rounded-md border border-dashed border-border/60 px-3 py-4 text-xs">
+                No folders available.
+              </div>
+            )}
+          </div>
+        </SidebarGroupContent>
+      </SidebarGroup>
       <AlertDialog
         open={Boolean(pendingFolderDelete)}
         onOpenChange={(open) => {
@@ -433,7 +582,24 @@ export function FolderTree({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+      <DragOverlay dropAnimation={null}>
+        {activeDragId && activeDragType === "folder" ? (
+          <div className="flex items-center gap-2 rounded-md bg-background border p-2 shadow-md ring-1 ring-primary/20 opacity-80 pointer-events-none">
+            <FolderIcon className="size-4 text-muted-foreground" />
+            <span className="truncate font-medium text-sm">
+              {folders.find((f) => `folder-${f.id}` === activeDragId)?.name}
+            </span>
+          </div>
+        ) : activeDragId && activeDragType === "pattern" ? (
+          <div className="flex items-center gap-2 rounded-md bg-background border p-2 shadow-md ring-1 ring-primary/20 opacity-80 pointer-events-none">
+            {/* Generic pattern icon or file icon */}
+            <span className="truncate font-medium text-sm">
+              {patterns.find((p) => `pattern-${p.id}` === activeDragId)?.name}
+            </span>
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   )
 }
 
@@ -663,7 +829,7 @@ function FolderMenuList({
               <InlineCreateInput
                 placeholder="New folder name"
                 onSubmit={(value) => onFolderInputSubmit?.(value, parentId ?? null)}
-                onCancel={onFolderInputCancel ?? (() => {})}
+                onCancel={onFolderInputCancel ?? (() => { })}
                 className="px-0"
                 maxLength={FOLDER_NAME_MAX_LENGTH}
               />
@@ -700,6 +866,7 @@ type FolderNodeItemProps = {
   onFolderRenameCancel?: () => void
 }
 
+// ... Inside FolderNodeItem
 function FolderNodeItem({
   node,
   selectedPatternId,
@@ -730,6 +897,34 @@ function FolderNodeItem({
   const totalPatterns = getPatternCount(node)
   const isSelected = node.folder.id === selectedFolderId
   const isRenaming = renamingFolderId === node.folder.id
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDraggableRef,
+    isDragging,
+  } = useDraggable({
+    id: `folder-${node.folder.id}`,
+    data: { type: "folder", folder: node.folder },
+  })
+
+  const {
+    setNodeRef: setDroppableRef,
+    isOver,
+  } = useDroppable({
+    id: `folder-${node.folder.id}`,
+    data: { type: "folder", folder: node.folder },
+  })
+
+  // Combine refs
+  const setNodeRef = React.useCallback(
+    (element: HTMLElement | null) => {
+      setDraggableRef(element)
+      setDroppableRef(element)
+    },
+    [setDraggableRef, setDroppableRef]
+  )
+
   const [isOpen, setIsOpen] = React.useState(() => {
     if (pendingFolderInput?.parentId && nodeContainsFolder(node, pendingFolderInput.parentId)) {
       return true
@@ -788,29 +983,35 @@ function FolderNodeItem({
         <ContextMenuTrigger asChild>
           <CollapsibleTrigger asChild disabled={isRenaming}>
             <SidebarMenuButton
+              ref={setNodeRef}
               {...allowContextMenuProps}
+              {...attributes}
+              {...listeners}
               asChild={isRenaming}
               data-tree-interactive="true"
+              style={{ opacity: isDragging ? 0.5 : 1, touchAction: "none" }}
               className={cn(
                 "justify-between",
                 isSelected && "text-primary bg-primary/10 ring-1 ring-primary/40",
-                isRenaming && "cursor-text"
+                isRenaming && "cursor-text",
+                isOver && !isDragging && "bg-accent ring-1 ring-primary"
               )}
               onClick={
                 isRenaming
                   ? undefined
                   : () => {
-                      onFolderSelect?.(node.folder.id)
-                    }
+                    onFolderSelect?.(node.folder.id)
+                  }
               }
               onPointerDown={
                 isRenaming
                   ? undefined
                   : (event) => {
-                      if (event.button === 2) {
-                        onFolderSelect?.(node.folder.id)
-                      }
+                    listeners?.onPointerDown?.(event)
+                    if (event.button === 2) {
+                      onFolderSelect?.(node.folder.id)
                     }
+                  }
               }
               onContextMenu={isRenaming ? undefined : () => onFolderSelect?.(node.folder.id)}
             >
@@ -822,7 +1023,7 @@ function FolderNodeItem({
                     placeholder="Rename folder"
                     initialValue={node.folder.name}
                     onSubmit={(value) => onFolderRenameSubmit?.(node.folder.id, value)}
-                    onCancel={onFolderRenameCancel ?? (() => {})}
+                    onCancel={onFolderRenameCancel ?? (() => { })}
                     className="px-0"
                     maxLength={FOLDER_NAME_MAX_LENGTH}
                   />
@@ -857,19 +1058,19 @@ function FolderNodeItem({
             Move
           </ContextMenuItem>
           <ContextMenuSeparator />
-        <ContextMenuItem
-          className="text-destructive focus:text-destructive"
-          onSelect={(event) => {
-            event.preventDefault()
-            if (onFolderDeleteRequest) {
-              onFolderDeleteRequest(node.folder)
-            } else {
-              onFolderDelete?.(node.folder.id)
-            }
-          }}
-        >
-          Delete
-        </ContextMenuItem>
+          <ContextMenuItem
+            className="text-destructive focus:text-destructive"
+            onSelect={(event) => {
+              event.preventDefault()
+              if (onFolderDeleteRequest) {
+                onFolderDeleteRequest(node.folder)
+              } else {
+                onFolderDelete?.(node.folder.id)
+              }
+            }}
+          >
+            Delete
+          </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
       <CollapsibleContent>
@@ -919,7 +1120,7 @@ function FolderNodeItem({
           />
         </div>
       </CollapsibleContent>
-    </Collapsible>
+    </Collapsible >
   )
 }
 
@@ -990,13 +1191,13 @@ function PatternList({
                 className={cn("cursor-text", !nested && "px-2")}
                 data-tree-interactive="true"
               >
-              <InlineCreateInput
-                placeholder="New pattern name"
-                onSubmit={(value) => onPatternInputSubmit?.(value, folderId)}
-                onCancel={onPatternInputCancel ?? (() => {})}
-                className="px-2"
-                maxLength={PATTERN_NAME_MAX_LENGTH}
-              />
+                <InlineCreateInput
+                  placeholder="New pattern name"
+                  onSubmit={(value) => onPatternInputSubmit?.(value, folderId)}
+                  onCancel={onPatternInputCancel ?? (() => { })}
+                  className="px-2"
+                  maxLength={PATTERN_NAME_MAX_LENGTH}
+                />
               </SidebarMenuButton>
             </SidebarMenuItem>
           )}
@@ -1039,6 +1240,11 @@ function PatternMenuItem({
 }: PatternMenuItemProps) {
   const [isDeleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
 
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `pattern-${pattern.id}`,
+    data: { type: "pattern", pattern },
+  })
+
   const handleDeleteSelect = React.useCallback((event: Event | React.SyntheticEvent) => {
     event.preventDefault()
     setDeleteDialogOpen(true)
@@ -1071,38 +1277,42 @@ function PatternMenuItem({
     <>
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <div className="relative w-full">
+          <div className="relative w-full group/pattern-item" ref={setNodeRef} style={{ opacity: isDragging ? 0.5 : 1, touchAction: "none" }}>
             <SidebarMenuButton
               {...allowContextMenuProps}
+              {...attributes}
+              {...listeners}
               data-tree-interactive="true"
               className={cn(
-                "h-auto items-start gap-2 py-2 px-3 transition-colors",
-                isSelected && "bg-primary/10 text-primary ring-1 ring-primary/40"
+                "h-auto items-start gap-2 py-2 px-3 pr-8 transition-colors",
+                isSelected && "bg-primary/10 text-primary ring-1 ring-primary/40",
               )}
               type="button"
               onClick={() => onPatternSelect?.(pattern.id)}
               onPointerDown={(event) => {
+                listeners?.onPointerDown?.(event)
                 if (event.button === 2) {
                   onPatternSelect?.(pattern.id)
                 }
               }}
               onContextMenu={() => onPatternSelect?.(pattern.id)}
             >
-              <div className="flex flex-col">
-                <span className="text-sm font-medium">{pattern.name}</span>
-                <span className="text-xs text-muted-foreground">{pattern.serviceName}</span>
+              {/* Image thumbnail if needed, or just icon */}
+              <div className="mt-0.5 shrink-0 opacity-80 group-hover/pattern-item:opacity-100">
+                {/* Replaced fixed icon with generic file or image icon if desired, but sticking to existing design */}
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="truncate text-sm font-medium leading-tight">{pattern.name}</span>
+                <span className="truncate text-xs text-muted-foreground">{pattern.serviceName}</span>
               </div>
             </SidebarMenuButton>
             <SidebarMenuAction
-              {...allowContextMenuProps}
-              type="button"
-              aria-label={`Open context menu for ${pattern.name}`}
+              showOnHover
+              className="absolute right-1 top-1.5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-6 w-6 transition-opacity opacity-0 group-hover/pattern-item:opacity-100 data-[state=open]:opacity-100 focus-within:opacity-100"
               onClick={handleMenuActionClick}
-              onContextMenu={() => onPatternSelect?.(pattern.id)}
-              className="!top-1/2 -translate-y-1/2 text-muted-foreground"
             >
-              <EllipsisVertical className="size-4" />
-              <span className="sr-only">Toggle pattern context menu</span>
+              <EllipsisVertical className="h-4 w-4" />
+              <span className="sr-only">More</span>
             </SidebarMenuAction>
           </div>
         </ContextMenuTrigger>
@@ -1110,12 +1320,6 @@ function PatternMenuItem({
           className="w-44"
           onCloseAutoFocus={(event) => event.preventDefault()}
         >
-          <ContextMenuItem onSelect={() => onPatternCreateRequest?.(folderId)}>
-            New pattern
-          </ContextMenuItem>
-          <ContextMenuItem onSelect={() => onFolderCreateRequest?.(folderId)}>
-            New folder
-          </ContextMenuItem>
           <ContextMenuItem onSelect={() => onPatternMoveRequest?.(pattern)}>
             Move
           </ContextMenuItem>
@@ -1133,7 +1337,7 @@ function PatternMenuItem({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete pattern?</AlertDialogTitle>
             <AlertDialogDescription>
-              {`Deleting "${pattern.name}" removes all associated captures and insights.`}
+              This will permanently delete "{pattern.name}" and remove it from this workspace.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
