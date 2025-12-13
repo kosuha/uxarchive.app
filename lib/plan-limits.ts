@@ -8,6 +8,7 @@ export type PlanStatus = "active" | "trialing" | "past_due" | "canceled" | strin
 export type PlanLimitConfig = {
   code: PlanCode
   maxPatterns: number
+  maxPrivatePatterns: number
   allowPublicSharing: boolean
   allowDownloads: boolean
 }
@@ -19,8 +20,8 @@ export type PlanWithLimits = {
 }
 
 export const planLimits: Record<PlanCode, PlanLimitConfig> = {
-  free: { code: "free", maxPatterns: 5, allowPublicSharing: false, allowDownloads: false },
-  plus: { code: "plus", maxPatterns: 30, allowPublicSharing: true, allowDownloads: true },
+  free: { code: "free", maxPatterns: Infinity, maxPrivatePatterns: 3, allowPublicSharing: true, allowDownloads: false },
+  plus: { code: "plus", maxPatterns: Infinity, maxPrivatePatterns: Infinity, allowPublicSharing: true, allowDownloads: true },
 }
 
 const PAID_STATUSES: PlanStatus[] = ["active", "trialing"]
@@ -129,6 +130,46 @@ export const ensurePatternCreationAllowed = async (
   assertPatternLimit({ usageCount, plan })
 
   return { plan, usageCount }
+}
+
+export const ensurePrivatePatternAllowed = async (
+  supabase: SupabaseClient,
+  userId: string,
+  workspaceId: string,
+) => {
+  const plan = await loadPlanWithLimits(supabase, userId)
+  const limit = plan.limits.maxPrivatePatterns
+
+  // If limit is Infinity, no need to check
+  if (!Number.isFinite(limit)) {
+    return plan
+  }
+
+  // Count existing PRIVATE patterns
+  const { count, error } = await supabase
+    .from("patterns")
+    .select("id", { count: "exact", head: true })
+    .eq("workspace_id", workspaceId)
+    .eq("is_public", false)
+    .eq("is_archived", false) // Assuming archived don't count towards active limit? Or they do. Let's assume active ones.
+
+  if (error) {
+    throw new RepositoryError(`Failed to fetch private pattern count: ${error.message}`, {
+      cause: error,
+      code: (error as { code?: string }).code,
+    })
+  }
+
+  const usageCount = normalizeCount(count)
+  
+  if (usageCount >= limit) {
+    throw new RepositoryError(
+      `Free plan allows only ${limit} private patterns. Please make some patterns public or upgrade.`,
+      { status: 403 }
+    )
+  }
+
+  return plan
 }
 
 export const ensureSharingAllowed = async (

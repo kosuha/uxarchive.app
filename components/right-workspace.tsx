@@ -65,8 +65,8 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
         const canCreate = typeof maxPatterns === "number" ? usageCount < maxPatterns : true
         const limitMessage = !canCreate
           ? (effectivePlan === "free"
-              ? `You can save up to ${maxPatterns} patterns on the free plan. Upgrade to add more.`
-              : `You exceeded the pattern limit (${maxPatterns}) for your current plan.`)
+            ? `You can save up to ${maxPatterns} patterns on the free plan. Upgrade to add more.`
+            : `You exceeded the pattern limit (${maxPatterns}) for your current plan.`)
           : undefined
 
         if (!cancelled) {
@@ -278,17 +278,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
       if (!pattern) {
         return Promise.resolve()
       }
-      return mutations.updatePattern(pattern.id, { isPublic: next, published: next ? pattern.published : false })
-    },
-    [mutations, pattern],
-  )
-
-  const handleTogglePublish = React.useCallback(
-    (next: boolean) => {
-      if (!pattern) {
-        return Promise.resolve()
-      }
-      return mutations.updatePattern(pattern.id, { published: next })
+      return mutations.updatePattern(pattern.id, { isPublic: next })
     },
     [mutations, pattern],
   )
@@ -300,12 +290,10 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
         patternId={pattern.id}
         patternName={pattern.name}
         isPublic={pattern.isPublic}
-        published={pattern.published}
         onToggleShare={handleToggleShare}
-        onTogglePublish={handleTogglePublish}
       />
     )
-  }, [handleTogglePublish, handleToggleShare, pattern])
+  }, [handleToggleShare, pattern])
 
   const handleCreatePattern = React.useCallback(async () => {
     if (isCreatingPattern) return

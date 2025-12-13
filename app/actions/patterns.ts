@@ -5,7 +5,7 @@ import { createPatternsRepository } from "@/lib/repositories/patterns"
 import { RepositoryError } from "@/lib/repositories/types"
 import { PATTERN_NAME_MAX_LENGTH, PATTERN_SERVICE_NAME_MAX_LENGTH } from "@/lib/field-limits"
 import { DEFAULT_PATTERN_SERVICE_NAME } from "@/lib/pattern-constants"
-import { ensurePatternCreationAllowed, ensureSharingAllowed } from "@/lib/plan-limits"
+import { ensurePatternCreationAllowed, ensureSharingAllowed, ensurePrivatePatternAllowed } from "@/lib/plan-limits"
 import { getServiceRoleSupabaseClient } from "@/lib/supabase/service-client"
 
 import {
@@ -70,6 +70,20 @@ export const createPatternAction = async (input: CreatePatternActionInput) => {
   const user = await requireAuthenticatedUser(supabase)
   await ensureWorkspaceRole(supabase, input.workspaceId, "editor")
   await ensurePatternCreationAllowed(supabase, user.id, input.workspaceId)
+  
+  // New patterns are Private by default? Or Public?
+  // Plan says: "Free User: Enforce default Public". 
+  // Let's check plan and set default isPublic.
+  // Actually, let's keep it simple: if isPublic is not provided, it defaults to false (Private).
+  // But wait, Free users might be FORCED to make it public?
+  // "Free User: Enforce default Public and guidance UI" implies we should default to public or force it.
+  // However, simpler to just check limits. If they try to create Private (default) and are over limit, it will fail?
+  // ensurePatternCreationAllowed only checks total count.
+  // Let's add ensurePrivatePatternAllowed check here if isPublic is false (or undefined -> false).
+  
+  if (input.isPublic !== true) {
+     await ensurePrivatePatternAllowed(supabase, user.id, input.workspaceId)
+  }
 
   const repo = createPatternsRepository(supabase)
   return repo.create({ ...input, serviceName, createdBy: input.createdBy ?? user.id })
@@ -84,7 +98,6 @@ type UpdatePatternActionInput = {
   author?: string
   folderId?: string | null
   isPublic?: boolean
-  published?: boolean
   isArchived?: boolean
 }
 
@@ -103,8 +116,13 @@ export const updatePatternAction = async (input: UpdatePatternActionInput) => {
   const supabase = await createActionSupabaseClient()
   const user = await requireAuthenticatedUser(supabase)
   await ensureWorkspaceRole(supabase, input.workspaceId, "editor")
-  if (input.isPublic === true || input.published === true) {
+  
+  if (input.isPublic === true) {
     await ensureSharingAllowed(supabase, user.id)
+  }
+  
+  if (input.isPublic === false) {
+    await ensurePrivatePatternAllowed(supabase, user.id, input.workspaceId)
   }
 
   const repo = createPatternsRepository(supabase)

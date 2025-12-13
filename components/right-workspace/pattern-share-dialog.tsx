@@ -34,18 +34,14 @@ type PatternShareDialogProps = {
   patternId: string
   patternName?: string
   isPublic: boolean
-  published: boolean
   onToggleShare: (next: boolean) => Promise<void> | void
-  onTogglePublish: (next: boolean) => Promise<void> | void
 }
 
 export function PatternShareDialog({
   patternId,
   patternName,
   isPublic,
-  published,
   onToggleShare,
-  onTogglePublish,
 }: PatternShareDialogProps) {
   const { toast } = useToast()
   const [open, setOpen] = React.useState(false)
@@ -69,7 +65,7 @@ export function PatternShareDialog({
       } catch (error) {
         console.error("Failed to toggle sharing", error)
         toast({
-          title: "Could not update sharing",
+          title: "Could not update visibility",
           description: error instanceof Error ? error.message : "Please try again.",
           variant: "destructive",
         })
@@ -105,26 +101,6 @@ export function PatternShareDialog({
     }
   }, [isPublic, shareUrl, toast])
 
-  const handleTogglePublish = React.useCallback(
-    async (checked: boolean) => {
-      if (!isPublic) return
-      try {
-        setPending(true)
-        await onTogglePublish(checked)
-      } catch (error) {
-        console.error("Failed to toggle publish", error)
-        toast({
-          title: "Could not update publish state",
-          description: error instanceof Error ? error.message : "Please try again.",
-          variant: "destructive",
-        })
-      } finally {
-        setPending(false)
-      }
-    },
-    [isPublic, onTogglePublish, toast],
-  )
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -137,29 +113,18 @@ export function PatternShareDialog({
         <DialogHeader>
           <DialogTitle>Share pattern</DialogTitle>
           <DialogDescription>
-            Anyone with the link can view {patternName ?? "this pattern"} without signing in.
+            Make {patternName ?? "this pattern"} public to share it with others and the community.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/20 px-4 py-3">
             <div>
-              <p className="text-sm font-medium">Enable sharing</p>
-              <p className="text-xs text-muted-foreground">Turn on to let anyone with the link view this pattern.</p>
+              <p className="text-sm font-medium">Public Access</p>
+              <p className="text-xs text-muted-foreground">Anyone with the link can view. Public patterns appear in Discovery.</p>
             </div>
-            <Switch checked={isPublic} onCheckedChange={handleToggle} disabled={pending} aria-label="Toggle sharing" />
+            <Switch checked={isPublic} onCheckedChange={handleToggle} disabled={pending} aria-label="Toggle public access" />
           </div>
-          <div className="flex items-center justify-between rounded-xl border border-border/60 bg-muted/10 px-4 py-3">
-            <div>
-              <p className="text-sm font-medium">Publish to listing</p>
-              <p className="text-xs text-muted-foreground">Show this pattern on <a href="/patterns" className="underline">the public patterns page</a>.</p>
-            </div>
-            <Switch
-              checked={published}
-              onCheckedChange={handleTogglePublish}
-              disabled={pending || !isPublic}
-              aria-label="Toggle publish to listing"
-            />
-          </div>
+
           {isPublic ? (
             <div className="space-y-2">
               <p className="text-sm font-medium">Share link</p>
@@ -174,7 +139,7 @@ export function PatternShareDialog({
           ) : null}
         </div>
         <DialogFooter>
-          <p className="text-xs text-muted-foreground">Disabling sharing immediately revokes the link.</p>
+          <p className="text-xs text-muted-foreground">Making it private restricts access to you only.</p>
         </DialogFooter>
       </DialogContent>
     </Dialog>

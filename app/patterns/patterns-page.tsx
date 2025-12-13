@@ -26,7 +26,7 @@ const loadSharePosts = async (search?: string): Promise<{ posts: ShareListItem[]
     )
 
     return {
-      posts: (response.items ?? []).filter((item) => item.published && item.isPublic),
+      posts: (response.items ?? []).filter((item) => item.isPublic),
     }
   } catch (error) {
     console.error("Failed to fetch public share listings", error)

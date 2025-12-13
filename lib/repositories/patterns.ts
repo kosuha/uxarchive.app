@@ -10,7 +10,7 @@ const getPostgrestErrorStatus = (error: unknown): number | undefined => {
 };
 
 const PATTERN_BASE_FIELDS =
-  "id, workspace_id, folder_id, name, service_name, summary, author, is_public, published, published_at, is_archived, public_url, thumbnail_url, views, created_by, created_at, updated_at"
+  "id, workspace_id, folder_id, name, service_name, summary, author, is_public, is_archived, public_url, thumbnail_url, views, created_by, created_at, updated_at"
 
 const PATTERN_WITH_COUNTS_FIELDS = `${PATTERN_BASE_FIELDS}, capture_count, insight_count`
 
@@ -23,8 +23,6 @@ export type PatternRecord = {
   summary: string
   author: string
   isPublic: boolean
-  published: boolean
-  publishedAt: string | null
   isArchived: boolean
   publicUrl: string | null
   thumbnailUrl: string | null
@@ -45,8 +43,6 @@ type PatternRow = {
   summary: string
   author: string
   is_public: boolean
-  published: boolean
-  published_at: string | null
   is_archived: boolean
   public_url: string | null
   thumbnail_url: string | null
@@ -67,8 +63,6 @@ const mapPattern = (row: PatternRow): PatternRecord => ({
   summary: row.summary,
   author: row.author,
   isPublic: Boolean(row.is_public),
-  published: Boolean(row.published),
-  publishedAt: row.published_at,
   isArchived: row.is_archived,
   publicUrl: row.public_url,
   thumbnailUrl: row.thumbnail_url,
@@ -165,7 +159,6 @@ export type UpdatePatternInput = {
   author?: string
   folderId?: string | null
   isPublic?: boolean
-  published?: boolean
   isArchived?: boolean
 }
 
@@ -181,7 +174,6 @@ export const updatePattern = async (
   if (typeof input.author === "string") updates.author = input.author
   if (input.folderId !== undefined) updates.folder_id = input.folderId
   if (typeof input.isPublic === "boolean") updates.is_public = input.isPublic
-  if (typeof input.published === "boolean") updates.published = input.published
   if (typeof input.isArchived === "boolean") updates.is_archived = input.isArchived
 
   if (Object.keys(updates).length === 0) {
