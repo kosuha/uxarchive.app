@@ -124,7 +124,7 @@ export function Hero() {
               size="lg"
               className="bg-primary hover:bg-primary/90 text-lg px-8 py-6 rounded-full group w-[250px] h-[54px]"
             >
-              <Link href="/workspace">
+              <Link href="/patterns">
                 Get Started Free
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>

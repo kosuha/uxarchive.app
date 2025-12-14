@@ -1,96 +1,21 @@
 "use client"
 
-import { useEffect, useId, useMemo, useState, useRef, useCallback } from "react"
-import Image from "next/image"
-import Link from "next/link"
+import { useEffect, useState, useRef, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
 import { Skeleton } from "@/components/ui/skeleton"
 import type { ShareListItem } from "@/lib/api/share"
 import { getPatternsAction } from "@/app/patterns/actions"
+import { ShareCard } from "./share-card"
 
 export type ShareListingPost = ShareListItem
-
-type SortKey = "recent" | "oldest"
 
 type ComputedShareListItem = ShareListingPost & { listingVisible: boolean }
 
 interface ShareListingProps {
   initialPosts: ShareListingPost[]
   search?: string
-}
-
-const SLIDE_INTERVAL_MS = 3500
-
-const CaptureCarousel = ({ images, title }: { images: string[]; title: string }) => {
-  const validImages = images.filter((url) => Boolean(url?.trim()))
-  const [index, setIndex] = useState(0)
-
-  useEffect(() => {
-    if (validImages.length <= 1) return
-    const id = setInterval(() => {
-      setIndex((prev) => (prev + 1) % validImages.length)
-    }, SLIDE_INTERVAL_MS)
-    return () => clearInterval(id)
-  }, [validImages.length])
-
-  const current = validImages[index] || ""
-
-  return (
-    <div className="relative w-full overflow-hidden bg-muted/20">
-      {current ? (
-        <Image
-          key={current}
-          src={current}
-          alt={title}
-          width={0}
-          height={0}
-          sizes="(max-width: 1024px) 100vw, 33vw"
-          className="h-auto w-full object-contain transition-transform duration-500 ease-out hover:scale-105"
-          style={{ width: "100%", height: "auto" }}
-          priority={false}
-        />
-      ) : null}
-
-      {validImages.length > 1 ? (
-        <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-1.5 p-2 z-10">
-          {validImages.map((_, dotIndex) => (
-            <span
-              key={`${title}-${dotIndex}`}
-              className={`h-1.5 w-1.5 rounded-full transition-colors drop-shadow-md ${dotIndex === index ? "bg-white" : "bg-white/40"
-                }`}
-            />
-          ))}
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-const FALLBACK_GRADIENTS = [
-  "from-amber-100 via-orange-200 to-orange-300",
-  "from-blue-100 via-indigo-200 to-indigo-300",
-  "from-emerald-100 via-teal-200 to-teal-300",
-  "from-rose-100 via-pink-200 to-pink-300",
-  "from-slate-100 via-slate-200 to-slate-300",
-  "from-violet-100 via-purple-200 to-purple-300",
-]
-
-const pickGradient = (seed: string) => {
-  const normalized = seed || "gradient"
-  const hash = normalized
-    .split("")
-    .reduce((acc, char) => (acc * 31 + char.charCodeAt(0)) % 997, 7)
-  return FALLBACK_GRADIENTS[hash % FALLBACK_GRADIENTS.length]
-}
-
-const getInitial = (value: string) => (value?.trim()?.charAt(0) || "?").toUpperCase()
-
-const formatDate = (value: string) => {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return "—"
-  return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(date)
 }
 
 export function ShareListing({ initialPosts, search }: ShareListingProps) {
@@ -167,7 +92,7 @@ export function ShareListing({ initialPosts, search }: ShareListingProps) {
 
   const computedItems = useMemo<ComputedShareListItem[]>(() => {
     return posts
-      .map((item) => ({ ...item, listingVisible: item.isPublic && item.published }))
+      .map((item) => ({ ...item, listingVisible: item.isPublic }))
       .filter((item) => item.listingVisible)
   }, [posts])
 
@@ -181,78 +106,11 @@ export function ShareListing({ initialPosts, search }: ShareListingProps) {
       ) : (
         <>
           <div className="columns-1 gap-6 sm:columns-1 lg:columns-2 xl:columns-3">
-            {computedItems.map((item) => {
-              const thumbnail = item.thumbnailUrl?.trim()
-              const captures = (item.captureUrls || []).filter(Boolean)
-              const fallbackInitial = getInitial(item.service || item.title) // Use service for initial if available
-              const fallbackGradient = pickGradient(item.id || item.title)
-              const targetUrl = item.publicUrl || `/patterns/${item.id}`
-              const isNew = item.publishedAt && new Date(item.publishedAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-
-              const handleCardClick = () => router.push(targetUrl)
-              const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault()
-                  handleCardClick()
-                }
-              }
-
-              return (
-                <div
-                  key={item.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={handleCardClick}
-                  onKeyDown={handleKeyDown}
-                  className="group break-inside-avoid mb-6 flex flex-col gap-4 focus-visible:outline-none hover:cursor-pointer"
-                >
-                  {/* Card Image */}
-                  <div className="relative w-full overflow-hidden rounded-[24px] bg-[#1C1C1E] p-8 transition-all duration-300 group-hover:shadow-2xl group-focus-visible:ring-2 group-focus-visible:ring-white/50">
-                    {/* New Badge */}
-                    {isNew && (
-                      <div className="absolute left-4 top-4 z-10 rounded-md bg-white/20 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md">
-                        New
-                      </div>
-                    )}
-
-                    <div className="relative flex w-full justify-center overflow-hidden rounded-2xl">
-                      {captures[0] || thumbnail ? (
-                        <Image
-                          src={captures[0] || thumbnail || ""}
-                          alt={item.title}
-                          width={0}
-                          height={0}
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                          className="h-auto max-h-[500px] w-auto max-w-full rounded-2xl object-contain shadow-sm transition-transform duration-500 ease-out group-hover:scale-105"
-                          style={{ width: "auto", height: "auto" }}
-                          priority={false}
-                        />
-                      ) : (
-                        <div
-                          role="img"
-                          aria-label={`Placeholder cover for ${item.title}`}
-                          className={`flex aspect-[4/5] w-full items-center justify-center bg-gradient-to-br ${fallbackGradient} text-3xl font-semibold text-slate-700`}
-                        >
-                          {fallbackInitial}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Card Content */}
-                  <div className="flex items-start gap-3">
-                    <div className="flex flex-col min-w-0 pt-0.5">
-                      <h3 className="text-[15px] font-bold leading-tight text-white truncate">
-                        {item.service || item.title}
-                      </h3>
-                      <p className="text-[13px] text-white/50 truncate leading-tight mt-0.5">
-                        {item.service ? item.title : "Mobile Design Patterns"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+            {computedItems.map((item) => (
+              <div key={item.id} className="break-inside-avoid mb-6">
+                <ShareCard item={item} />
+              </div>
+            ))}
           </div>
 
           {/* Loading Indicator / Observer Target */}

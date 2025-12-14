@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 
 import { ShareListing } from "@/components/share/share-listing"
+import { FeaturedSection } from "@/components/home/featured-section"
 import { SearchInput } from "@/components/share/search-input"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -18,15 +19,33 @@ const PAGE_DESCRIPTION = "Browse public listings shared by the community."
 const PAGE_PATH = "/patterns"
 const PAGE_OG_IMAGE = "/logo.svg"
 
-const loadSharePosts = async (search?: string): Promise<{ posts: ShareListItem[]; error?: string }> => {
+const loadDiscoveryContent = async (search?: string) => {
   try {
-    const response = await fetchShareList(
-      { page: 1, perPage: DEFAULT_PAGE_SIZE, sort: "recent", includeCaptures: true, search },
-      { next: { revalidate: SHARE_PAGE_REVALIDATE_SECONDS } },
-    )
+    // If searching, only load search results
+    if (search) {
+      const response = await fetchShareList(
+        { page: 1, perPage: DEFAULT_PAGE_SIZE, sort: "recent", includeCaptures: true, search },
+        { next: { revalidate: SHARE_PAGE_REVALIDATE_SECONDS } },
+      )
+      return { posts: (response.items ?? []).filter((item) => item.isPublic) }
+    }
+
+    // Initial load: Fetch Editor's Pick (Recent) and Trending (Popular) in parallel
+    const [recentResponse, trendingResponse] = await Promise.all([
+      fetchShareList(
+        { page: 1, perPage: 10, sort: "recent", includeCaptures: true },
+        { next: { revalidate: SHARE_PAGE_REVALIDATE_SECONDS } }
+      ),
+      fetchShareList(
+        { page: 1, perPage: 10, sort: "popular", includeCaptures: true },
+        { next: { revalidate: SHARE_PAGE_REVALIDATE_SECONDS } }
+      )
+    ])
 
     return {
-      posts: (response.items ?? []).filter((item) => item.isPublic),
+      editorsPick: (recentResponse.items ?? []).filter((item) => item.isPublic),
+      trending: (trendingResponse.items ?? []).filter((item) => item.isPublic),
+      posts: (recentResponse.items ?? []).filter((item) => item.isPublic), // Main list also uses recent for now
     }
   } catch (error) {
     console.error("Failed to fetch public share listings", error)
@@ -71,7 +90,7 @@ export default async function PatternsPage(props: {
 }) {
   const searchParams = await props.searchParams
   const search = searchParams?.search || ""
-  const { posts, error } = await loadSharePosts(search)
+  const { posts, editorsPick, trending, error } = await loadDiscoveryContent(search)
 
   return (
     <div className="dark min-h-screen bg-[#0C0C0C] text-foreground">
@@ -113,14 +132,45 @@ export default async function PatternsPage(props: {
         </div>
       </nav>
 
-      <div className="mx-auto w-full max-w-[1600px] px-4 pt-8 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1600px] px-4 pt-8 sm:px-6 lg:px-8 space-y-12 pb-20">
         {error ? (
           <div className="mb-8 rounded-2xl border border-destructive/40 bg-destructive/20 px-4 py-3 text-sm text-destructive">
             {error}
           </div>
         ) : null}
 
-        <ShareListing initialPosts={posts} search={search} />
+        {!search && (
+          <>
+            {/* Editor's Pick Section */}
+            {editorsPick && editorsPick.length > 0 && (
+              <FeaturedSection
+                title="Editor's Pick"
+                subtitle="Curated patterns for your inspiration."
+                items={editorsPick}
+              />
+            )}
+
+            {/* Trending Section */}
+            {trending && trending.length > 0 && (
+              <FeaturedSection
+                title="Trending Now"
+                subtitle="Most popular patterns this week."
+                items={trending}
+              />
+            )}
+
+            <div className="h-px w-full bg-white/5" />
+          </>
+        )}
+
+        <div className="space-y-6">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-2xl font-semibold tracking-tight text-white">
+              {search ? `Results for "${search}"` : "All Patterns"}
+            </h2>
+          </div>
+          <ShareListing initialPosts={posts} search={search} />
+        </div>
       </div>
     </div>
   )
