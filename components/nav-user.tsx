@@ -101,7 +101,7 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
   const [profileUsername, setProfileUsername] = React.useState<string>("")
   const [isEditingUsername, setIsEditingUsername] = React.useState(false)
   const [pendingUsername, setPendingUsername] = React.useState("")
-  const [usernameError, setUsernameError] = React.useState<string | null>(null)
+  const [usernameMessage, setUsernameMessage] = React.useState<{ text: string; type: "error" | "warning" } | null>(null)
   const [isSavingUsername, setIsSavingUsername] = React.useState(false)
   const { toast } = useToast()
 
@@ -149,7 +149,7 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
   }
 
   const handleSaveUsername = async () => {
-    setUsernameError(null)
+    setUsernameMessage(null)
     if (pendingUsername === profileUsername) {
       setIsEditingUsername(false)
       return
@@ -158,7 +158,16 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
     setIsSavingUsername(true)
     try {
       const result = await updateProfileAction(pendingUsername)
-      setProfileUsername(result.username)
+
+      if (!result.success) {
+        setUsernameMessage({
+          text: result.message || "Failed to update username",
+          type: (result.type as "error" | "warning") || "error"
+        })
+        return
+      }
+
+      setProfileUsername(result.username!)
       setIsEditingUsername(false)
       toast({
         title: "Profile updated",
@@ -169,7 +178,10 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
       router.refresh()
     } catch (error) {
       console.error("Failed to update username", error)
-      setUsernameError(error instanceof Error ? error.message : "Failed to update username")
+      setUsernameMessage({
+        text: error instanceof Error ? error.message : "Failed to update username",
+        type: "error"
+      })
     } finally {
       setIsSavingUsername(false)
     }
@@ -515,7 +527,7 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
                             onClick={() => {
                               setIsEditingUsername(false)
                               setPendingUsername(profileUsername)
-                              setUsernameError(null)
+                              setUsernameMessage(null)
                             }}
                             disabled={isSavingUsername}
                           >
@@ -554,8 +566,10 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
                         </>
                       )}
                     </div>
-                    {usernameError && (
-                      <p className="text-xs text-destructive">{usernameError}</p>
+                    {usernameMessage && (
+                      <p className={cn("text-xs", usernameMessage.type === "warning" ? "text-amber-500" : "text-destructive")}>
+                        {usernameMessage.text}
+                      </p>
                     )}
                     <p className="text-xs text-muted-foreground">
                       This is your public profile URL. It must be unique.

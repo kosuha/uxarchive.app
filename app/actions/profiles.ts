@@ -10,11 +10,11 @@ export async function updateProfileAction(username: string) {
   // Validate username format
   const sanitizedUsername = username.trim().toLowerCase()
   if (!sanitizedUsername || sanitizedUsername.length < 3) {
-    throw new Error("Username must be at least 3 characters long.")
+    return { success: false, message: "Username must be at least 3 characters long.", type: "warning" }
   }
   
   if (!/^[a-z0-9_]+$/.test(sanitizedUsername)) {
-    throw new Error("Username can only contain letters, numbers, and underscores.")
+    return { success: false, message: "Username can only contain letters, numbers, and underscores.", type: "warning" }
   }
 
   // Check uniqueness
@@ -26,7 +26,7 @@ export async function updateProfileAction(username: string) {
     .single()
 
   if (existingUser) {
-    throw new Error("This username is already taken.")
+    return { success: false, message: "This username is already taken.", type: "warning" }
   }
 
   // Update profile
@@ -37,7 +37,7 @@ export async function updateProfileAction(username: string) {
 
   if (error) {
     console.error("Profile update failed", error)
-    throw new Error("Failed to update profile.")
+    return { success: false, message: "Failed to update profile.", type: "error" }
   }
 
   // Update auth metadata to keep session in sync
