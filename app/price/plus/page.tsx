@@ -24,7 +24,7 @@ export default function PlusPage() {
       <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-10 px-6 py-16">
         <header className="space-y-3 text-center">
           <Badge variant="outline" className="mx-auto h-8 rounded-full px-4">
-            Plus · $3/mo
+            Plus · $7/mo
           </Badge>
           <h1 className="text-4xl font-black md:text-5xl">Upgrade to Plus</h1>
           <p className="text-lg text-muted-foreground">
@@ -34,15 +34,15 @@ export default function PlusPage() {
 
         <div className="rounded-3xl border border-border/70 bg-card/90 backdrop-blur">
           <div className="flex flex-col gap-8 p-8">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-baseline gap-3">
-                  <span className="text-5xl font-black">$3</span>
-                  <span className="text-base text-muted-foreground">/mo</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Cancel anytime. The plan activates immediately after payment.
-                </p>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-baseline gap-3">
+                <span className="text-5xl font-black">$7</span>
+                <span className="text-base text-muted-foreground">/mo</span>
               </div>
+              <p className="text-sm text-muted-foreground">
+                Cancel anytime. The plan activates immediately after payment.
+              </p>
+            </div>
 
             <div className="grid gap-6 md:grid-cols-[2fr,1fr]">
               <div className="space-y-4">
@@ -73,16 +73,16 @@ function CheckoutBlock() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
-    const handleCheckout = useCallback(async () => {
-      if (!session) {
-        toast({
-          title: "Please sign in first",
-          description:
-            "Complete sign-in or sign-up from the workspace to continue with payment.",
-        })
-        router.push("/workspace")
-        return
-      }
+  const handleCheckout = useCallback(async () => {
+    if (!session) {
+      toast({
+        title: "Please sign in first",
+        description:
+          "Complete sign-in or sign-up from the workspace to continue with payment.",
+      })
+      router.push("/workspace")
+      return
+    }
 
     setLoading(true)
     try {
@@ -112,29 +112,29 @@ function CheckoutBlock() {
     }
   }, [router, session, toast])
 
-    return (
-      <div className="space-y-3">
-        <div>
-          <p className="text-sm font-semibold">Checkout</p>
-          <p className="text-xs text-muted-foreground">
-            Your plan activates as soon as the payment completes.
-          </p>
-        </div>
-        <Button className="w-full" size="lg" onClick={handleCheckout} disabled={loading}>
-          {loading ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Preparing...
-            </span>
-          ) : (
-            "Start Plus subscription"
-          )}
-        </Button>
-        <Separator />
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="text-sm font-semibold">Checkout</p>
         <p className="text-xs text-muted-foreground">
-          The subscription links to the account you are logged into. Check your workspace
-          right after paying.
+          Your plan activates as soon as the payment completes.
         </p>
       </div>
-    )
-  }
+      <Button className="w-full" size="lg" onClick={handleCheckout} disabled={loading}>
+        {loading ? (
+          <span className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Preparing...
+          </span>
+        ) : (
+          "Start Plus subscription"
+        )}
+      </Button>
+      <Separator />
+      <p className="text-xs text-muted-foreground">
+        The subscription links to the account you are logged into. Check your workspace
+        right after paying.
+      </p>
+    </div>
+  )
+}

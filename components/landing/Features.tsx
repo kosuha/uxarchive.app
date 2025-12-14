@@ -1,42 +1,42 @@
 import { motion, useInView } from "motion/react";
 import { useRef } from "react";
-import { Layers, MapPin, Search, FolderTree, Zap, Share2 } from "lucide-react";
+import { Layers, MapPin, FolderTree, Globe, Layout, TrendingUp } from "lucide-react";
 
 const features = [
   {
     icon: Layers,
     title: "Screenshot Collection",
-    description: "Easily capture and archive UI from web and mobile apps",
+    description: "Capture and upload UI patterns instantly from web and mobile.",
     gradient: "from-green-500 to-emerald-500",
   },
   {
     icon: MapPin,
-    title: "Interactive Pins",
-    description: "Pin insights directly on images to document design decisions",
+    title: "Insight Notes",
+    description: "Pin comments on specific design details to document decisions.",
     gradient: "from-emerald-500 to-teal-500",
   },
   {
     icon: FolderTree,
-    title: "Structured Organization",
-    description: "Manage patterns systematically with categories, tags, and projects",
+    title: "Smart Organization",
+    description: "Manage patterns systematically with projects, tags.",
     gradient: "from-teal-500 to-cyan-500",
   },
   {
-    icon: Search,
-    title: "Powerful Search",
-    description: "Find references quickly by tags, and pattern types",
+    icon: Globe,
+    title: "Community Discovery",
+    description: "Explore patterns shared by the community.",
     gradient: "from-cyan-500 to-blue-500",
   },
   {
-    icon: Zap,
-    title: "Quick Access",
-    description: "When inspiration strikes, capture it and save it immediately.",
+    icon: Layout,
+    title: "Public Profile",
+    description: "Curate and exhibit your personal pattern library to the world.",
     gradient: "from-blue-500 to-indigo-500",
   },
   {
-    icon: Share2,
-    title: "Collaboration & Sharing",
-    description: "Share pattern libraries with team members and grow together",
+    icon: TrendingUp,
+    title: "Engagement Stats",
+    description: "Track views, likes, and forks on your shared patterns.",
     gradient: "from-indigo-500 to-violet-500",
   },
 ];
@@ -49,7 +49,7 @@ export function Features() {
     <section ref={ref} className="py-32 px-6 relative">
       {/* Background Effect */}
       <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/5 to-background" />
-      
+
       <div className="max-w-7xl mx-auto relative z-10">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
