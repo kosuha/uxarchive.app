@@ -599,7 +599,7 @@ export function PatternMetadataCard({ pattern, allTags, onUpdatePattern, onAssig
           </DialogContent>
         </Dialog>
         <dl className="grid grid-cols-2 gap-4 text-sm">
-          <MetadataItem label="Author" value={pattern.author} />
+          <MetadataItem label="Author" value={pattern.author ? `@${pattern.author}` : "Unknown"} />
           <MetadataItem label="Created" value={formatDate(pattern.createdAt)} />
         </dl>
       </div>

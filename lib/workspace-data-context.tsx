@@ -221,7 +221,9 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
   }, [workspaceId])
 
   const getAuthorName = React.useCallback(() => {
-    const metadataName = typeof user?.user_metadata?.full_name === "string" ? user?.user_metadata?.full_name : null
+    const metadata = user?.user_metadata
+    if (metadata?.username) return metadata.username
+    const metadataName = typeof metadata?.full_name === "string" ? metadata.full_name : null
     return metadataName ?? user?.email ?? "Unknown"
   }, [user])
 
