@@ -49,7 +49,7 @@ export function PublicPatternViewer({ pattern, captures, insights, isAuthenticat
 
   return (
     <div className="flex bg-[#0C0C0C] min-h-screen w-full flex-col dark">
-      <PatternsHeader />
+      <PatternsHeader hideSearch={true} />
       <div className="mx-auto flex h-full w-full max-w-[1600px] min-h-[600px] flex-1 min-h-0 flex-col gap-6 p-8 lg:flex-row lg:px-8">
         <aside className="order-1 flex w-full max-w-full flex-shrink-0 flex-col gap-4 min-h-0 lg:order-1 lg:h-full lg:w-[320px] lg:max-w-[360px]">
           <PublicPatternMetadataCard

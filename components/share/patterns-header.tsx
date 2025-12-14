@@ -9,8 +9,17 @@ import { Button } from "@/components/ui/button"
 import { SearchInput } from "@/components/share/search-input"
 import { cn } from "@/lib/utils"
 
-export function PatternsHeader() {
+interface PatternsHeaderProps {
+    hideSearch?: boolean
+}
+
+export function PatternsHeader({ hideSearch = false }: PatternsHeaderProps) {
     const [isMobileSearchOpen, setIsMobileSearchOpen] = React.useState(false)
+
+    // Force close mobile search if search is hidden
+    React.useEffect(() => {
+        if (hideSearch) setIsMobileSearchOpen(false)
+    }, [hideSearch])
 
     return (
         <nav className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#0C0C0C]/80 backdrop-blur-md">
@@ -32,28 +41,32 @@ export function PatternsHeader() {
                 </div>
 
                 {/* Center: Search */}
-                <div className={cn(
-                    "flex-1 items-center justify-center px-4 md:px-8 transition-all duration-200",
-                    isMobileSearchOpen ? "flex" : "hidden md:flex"
-                )}>
-                    <SearchInput className="w-full max-w-md" autoFocus={isMobileSearchOpen} />
-                </div>
+                {!hideSearch && (
+                    <div className={cn(
+                        "flex-1 items-center justify-center px-4 md:px-8 transition-all duration-200",
+                        isMobileSearchOpen ? "flex" : "hidden md:flex"
+                    )}>
+                        <SearchInput className="w-full max-w-md" autoFocus={isMobileSearchOpen} />
+                    </div>
+                )}
 
                 {/* Right: Actions */}
                 <div className="flex w-auto md:w-32 items-center justify-end gap-2 sm:gap-4">
                     {/* Mobile Search Toggle */}
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-white/60 hover:text-white md:hidden"
-                        onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-                    >
-                        {isMobileSearchOpen ? (
-                            <X className="h-5 w-5" />
-                        ) : (
-                            <Search className="h-5 w-5" />
-                        )}
-                    </Button>
+                    {!hideSearch && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-white/60 hover:text-white md:hidden"
+                            onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+                        >
+                            {isMobileSearchOpen ? (
+                                <X className="h-5 w-5" />
+                            ) : (
+                                <Search className="h-5 w-5" />
+                            )}
+                        </Button>
+                    )}
 
                     {/* Desktop Navigation */}
                     <div className={cn(
@@ -66,7 +79,6 @@ export function PatternsHeader() {
                             className="hidden md:inline-flex px-4 rounded-full border border-white/10 text-white/70 hover:text-white hover:bg-white/5"
                         >
                             <Link href="/patterns" className="gap-2">
-                                <Grid className="size-4" />
                                 <span>Explore Patterns</span>
                             </Link>
                         </Button>
