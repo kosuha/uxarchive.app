@@ -13,9 +13,7 @@ const handler = async () => {
       supabase.from("profiles").select("id", { count: "exact", head: true }),
       supabase
         .from("pattern_public_listing")
-        .select("id", { count: "exact", head: true })
-        .eq("sharing_enabled", true)
-        .eq("published", true),
+        .select("id", { count: "exact", head: true }),
     ])
 
     if (profiles.error) {

@@ -854,6 +854,7 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
     },
     onMutate: async ({ folderId, destinationParentId }) => {
       setMutationError(null)
+      if (!foldersQueryKey) return
       await queryClient.cancelQueries({ queryKey: foldersQueryKey })
       const previous = queryClient.getQueryData<Folder[]>(foldersQueryKey)
       if (previous) {
@@ -866,13 +867,15 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
     },
     onError: (error, _input, context) => {
       setMutationError(toErrorMessage(error))
-      if (context?.previous) {
+      if (context?.previous && foldersQueryKey) {
         queryClient.setQueryData(foldersQueryKey, context.previous)
       }
       void refresh()
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: foldersQueryKey })
+      if (foldersQueryKey) {
+        queryClient.invalidateQueries({ queryKey: foldersQueryKey })
+      }
     },
   })
 
@@ -884,11 +887,12 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
     },
     onMutate: async ({ patternId, destinationFolderId }) => {
       setMutationError(null)
+      if (!patternsQueryKey) return
       await queryClient.cancelQueries({ queryKey: patternsQueryKey })
       const previous = queryClient.getQueryData<PatternQueryData>(patternsQueryKey)
       if (previous) {
         queryClient.setQueryData<PatternQueryData>(patternsQueryKey, (prev) => {
-          if (!prev) return { records: [], totalCount: 0 }
+          if (!prev) return { records: [], tagIdsByPattern: {} }
           const updatedRecords = prev.records.map((p) =>
             p.id === patternId ? { ...p, folderId: destinationFolderId } : p
           )
@@ -899,13 +903,15 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
     },
     onError: (error, _input, context) => {
       setMutationError(toErrorMessage(error))
-      if (context?.previous) {
+      if (context?.previous && patternsQueryKey) {
         queryClient.setQueryData(patternsQueryKey, context.previous)
       }
       void refresh()
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: patternsQueryKey })
+      if (patternsQueryKey) {
+        queryClient.invalidateQueries({ queryKey: patternsQueryKey })
+      }
     },
   })
 
