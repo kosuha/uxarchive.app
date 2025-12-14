@@ -12,6 +12,7 @@ type PublicInsightsPanelProps = {
   insights: PublicInsight[]
   highlightedInsightId?: string | null
   onHighlight?: (id: string | null) => void
+  onSelectInsight?: (id: string) => void
 }
 
 const EMPTY_NOTE_MESSAGE = "-"
@@ -24,7 +25,7 @@ const getTimestamp = (value?: string | null) => {
 
 const getCountLabel = (count: number) => `${count} ${count === 1 ? "item" : "items"}`
 
-export function PublicInsightsPanel({ insights, highlightedInsightId, onHighlight }: PublicInsightsPanelProps) {
+export function PublicInsightsPanel({ insights, highlightedInsightId, onHighlight, onSelectInsight }: PublicInsightsPanelProps) {
   const sortedInsights = React.useMemo(() => {
     if (!insights.length) return []
     return [...insights].sort((a, b) => {
@@ -107,7 +108,11 @@ export function PublicInsightsPanel({ insights, highlightedInsightId, onHighligh
                     tabIndex={0}
                     onMouseEnter={() => handleHighlight(insight.id)}
                     onMouseLeave={() => handleHighlight(null)}
-                    onFocus={() => handleHighlight(insight.id)}
+                    onFocus={() => {
+                      handleHighlight(insight.id)
+                      onSelectInsight?.(insight.id)
+                    }}
+                    onClick={() => onSelectInsight?.(insight.id)}
                     onBlur={() => handleHighlight(null)}
                   >
                     <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground">

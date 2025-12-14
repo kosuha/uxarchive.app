@@ -41,8 +41,20 @@ export function PublicPatternViewer({ pattern, captures, insights, isAuthenticat
       .filter((insight) => insight.captureId === activeCapture.id)
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
   }, [activeCapture, insights])
+
+  const allPatternInsights = React.useMemo(() => {
+    return insights.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+  }, [insights])
+
   const captureIndex = activeCapture ? captures.findIndex((capture) => capture.id === activeCapture.id) + 1 : 0
   const [highlightedInsightId, setHighlightedInsightId] = React.useState<string | null>(null)
+
+  const handleSelectInsight = React.useCallback((insightId: string) => {
+    const targetInsight = insights.find((i) => i.id === insightId)
+    if (targetInsight && targetInsight.captureId !== activeCaptureId) {
+      setActiveCaptureId(targetInsight.captureId)
+    }
+  }, [insights, activeCaptureId])
 
   const noop = React.useCallback(() => { }, [])
   const noopAsync = React.useCallback(async () => { }, [])
@@ -76,6 +88,7 @@ export function PublicPatternViewer({ pattern, captures, insights, isAuthenticat
             captureInsights={captureInsights}
             captureOrder={captureIndex}
             captures={captures}
+            allInsights={allPatternInsights}
             patternName={pattern.name}
             highlightedInsightId={highlightedInsightId}
             isAddingInsight={false}
@@ -94,9 +107,10 @@ export function PublicPatternViewer({ pattern, captures, insights, isAuthenticat
         </div>
         <aside className="order-3 flex w-full max-w-full flex-shrink-0 flex-col gap-4 min-h-0 lg:order-3 lg:h-full lg:w-[320px] lg:max-w-[360px] lg:min-h-0">
           <PublicInsightsPanel
-            insights={captureInsights}
+            insights={allPatternInsights}
             highlightedInsightId={highlightedInsightId}
             onHighlight={setHighlightedInsightId}
+            onSelectInsight={handleSelectInsight}
           />
         </aside>
       </div>

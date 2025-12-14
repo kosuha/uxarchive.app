@@ -131,6 +131,10 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
   }, [insightList, activeCapture])
 
+  const allPatternInsights = React.useMemo(() => {
+    return insightList.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+  }, [insightList])
+
   const [highlightedInsightId, setHighlightedInsightId] = React.useState<string | null>(null)
   const [isPlacingInsight, setIsPlacingInsight] = React.useState(false)
   const [pendingInsightDeleteId, setPendingInsightDeleteId] = React.useState<string | null>(null)
@@ -208,6 +212,13 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
     },
     [activeCapture, updateInsightAction]
   )
+
+  const handleSelectInsight = React.useCallback((insightId: string) => {
+    const targetInsight = insightList.find((i) => i.id === insightId)
+    if (targetInsight && targetInsight.captureId !== activeCaptureId) {
+      setActiveCaptureId(targetInsight.captureId)
+    }
+  }, [insightList, activeCaptureId])
 
   const handleCancelDeleteInsight = React.useCallback(() => {
     setPendingInsightDeleteId(null)
@@ -400,11 +411,12 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
         onDeleteTag={(tagId) => mutations.deleteTag(tagId)}
       />
       <InsightsPanel
-        insights={captureInsights}
+        insights={allPatternInsights}
         highlightedInsightId={highlightedInsightId}
         onHighlight={setHighlightedInsightId}
         onDeleteInsight={handleDeleteInsight}
         onUpdateInsightNote={handleUpdateInsightNote}
+        onSelectInsight={handleSelectInsight}
       />
     </>
   )
@@ -416,6 +428,7 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
       captureInsights={captureInsights}
       captureOrder={captureIndex}
       captures={patternCaptures}
+      allInsights={allPatternInsights}
       patternName={pattern.name}
       highlightedInsightId={highlightedInsightId}
       isAddingInsight={isAddingInsight}
@@ -464,11 +477,12 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
         </div>
       </div>
       <InsightsPanel
-        insights={captureInsights}
+        insights={allPatternInsights}
         highlightedInsightId={highlightedInsightId}
         onHighlight={setHighlightedInsightId}
         onDeleteInsight={handleDeleteInsight}
         onUpdateInsightNote={handleUpdateInsightNote}
+        onSelectInsight={handleSelectInsight}
       />
     </div>
   )

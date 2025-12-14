@@ -19,6 +19,7 @@ type CanvasSectionProps = {
   captureInsights: Insight[]
   captureOrder: number
   captures: Capture[]
+  allInsights?: Insight[]
   allowDownloads?: boolean | null
   highlightedInsightId: string | null
   isAddingInsight: boolean
@@ -46,6 +47,7 @@ export function CanvasSection({
   captureInsights,
   captureOrder,
   captures,
+  allInsights,
   allowDownloads,
   highlightedInsightId,
   isAddingInsight,
@@ -255,6 +257,7 @@ export function CanvasSection({
       <CaptureCanvas
         capture={activeCapture}
         insights={captureInsights}
+        allInsights={allInsights}
         highlightedInsightId={highlightedInsightId}
         onHighlight={onHighlight}
         isPlacingInsight={isPlacingInsight}

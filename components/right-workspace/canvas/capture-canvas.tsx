@@ -26,6 +26,7 @@ import { useCachedImage } from "./use-capture-image-cache"
 type CaptureCanvasProps = {
   capture?: Capture
   insights: Insight[]
+  allInsights?: Insight[]
   highlightedInsightId: string | null
   onHighlight: (id: string | null) => void
   isPlacingInsight: boolean
@@ -43,6 +44,7 @@ type CaptureCanvasProps = {
 export function CaptureCanvas({
   capture,
   insights,
+  allInsights,
   highlightedInsightId,
   onHighlight,
   isPlacingInsight,
@@ -449,6 +451,9 @@ export function CaptureCanvas({
                             >
                               {(() => {
                                 const noteText = insight.note?.trim()
+                                const globalIndex = (allInsights ?? insights).findIndex((i) => i.id === insight.id)
+                                const displayIndex = globalIndex !== -1 ? globalIndex + 1 : index + 1
+
                                 const button = (
                                   <button
                                     type="button"
@@ -475,7 +480,7 @@ export function CaptureCanvas({
                                       transformOrigin: "center",
                                     }}
                                   >
-                                    {index + 1}
+                                    {displayIndex}
                                   </button>
                                 )
 

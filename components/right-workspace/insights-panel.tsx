@@ -22,6 +22,7 @@ type InsightsPanelProps = {
   onHighlight: (id: string | null) => void
   onDeleteInsight: (insightId: string) => void
   onUpdateInsightNote: (insightId: string, note: string) => void
+  onSelectInsight?: (insightId: string) => void
   readOnly?: boolean
 }
 
@@ -31,6 +32,7 @@ export function InsightsPanel({
   onHighlight,
   onDeleteInsight,
   onUpdateInsightNote,
+  onSelectInsight,
   readOnly,
 }: InsightsPanelProps) {
   const listRef = React.useRef<HTMLDivElement>(null)
@@ -66,6 +68,7 @@ export function InsightsPanel({
                     onHighlight={onHighlight}
                     onDelete={onDeleteInsight}
                     onUpdateNote={onUpdateInsightNote}
+                    onSelect={onSelectInsight}
                     readOnly={isReadOnly}
                   />
                 ))
@@ -89,6 +92,7 @@ type InsightCardProps = {
   onHighlight: (id: string | null) => void
   onDelete: (id: string) => void
   onUpdateNote: (id: string, note: string) => void
+  onSelect?: (id: string) => void
   readOnly?: boolean
 }
 
@@ -99,6 +103,7 @@ function InsightCard({
   onHighlight,
   onDelete,
   onUpdateNote,
+  onSelect,
   readOnly,
 }: InsightCardProps) {
   const [value, setValue] = React.useState(insight.note)
@@ -158,7 +163,11 @@ function InsightCard({
       {...allowContextMenuProps}
       onMouseEnter={() => onHighlight(insight.id)}
       onMouseLeave={() => onHighlight(null)}
-      onFocus={() => onHighlight(insight.id)}
+      onFocus={() => {
+        onHighlight(insight.id)
+        onSelect?.(insight.id)
+      }}
+      onClick={() => onSelect?.(insight.id)}
       onBlur={() => onHighlight(null)}
     >
       <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground">
