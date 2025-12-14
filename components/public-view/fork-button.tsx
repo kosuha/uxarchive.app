@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { Copy, GitFork, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -31,6 +31,7 @@ export function ForkButton({
 }: ForkButtonProps) {
     const [isPending, startTransition] = React.useTransition()
     const router = useRouter()
+    const pathname = usePathname()
     const { toast } = useToast()
 
     const handleFork = () => {
@@ -41,7 +42,7 @@ export function ForkButton({
                 variant: "destructive",
             })
             // Optionally redirect to login
-            router.push("/login")
+            router.push(`/login?next=${encodeURIComponent(pathname)}`)
             return
         }
 

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { Heart, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -33,6 +33,7 @@ export function LikeButton({
 }: LikeButtonProps) {
     const [isPending, startTransition] = React.useTransition()
     const router = useRouter()
+    const pathname = usePathname()
     const { toast } = useToast()
 
     // Optimistic state
@@ -52,7 +53,7 @@ export function LikeButton({
                 description: "Please sign in to like patterns.",
                 variant: "destructive",
             })
-            router.push("/login")
+            router.push(`/login?next=${encodeURIComponent(pathname)}`)
             return
         }
 
