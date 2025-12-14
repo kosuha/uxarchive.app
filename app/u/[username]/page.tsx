@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 
 import { getProfileByUsername } from "@/lib/api/profile"
 import { fetchShareList } from "@/lib/api/share"
+import { PatternsHeader } from "@/components/share/patterns-header"
 import { ProfileHeader } from "@/components/profile/profile-header"
 import { ShareListing } from "@/components/share/share-listing"
 
@@ -36,6 +37,7 @@ export default async function ProfilePage(props: PageProps) {
 
     return (
         <div className="min-h-screen bg-[#0C0C0C] text-foreground">
+            <PatternsHeader hideSearch={true} />
             <div className="mx-auto w-full max-w-[1600px] px-4 pt-8 sm:px-6 lg:px-8">
                 <ProfileHeader profile={profile} />
 
