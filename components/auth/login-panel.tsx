@@ -2,15 +2,16 @@
 
 import React from "react"
 import { LogIn, Loader2 } from "lucide-react"
+import { useSearchParams, usePathname } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { useSupabaseSession } from "@/lib/supabase/session-context"
 
-const resolveRedirectTo = () => {
+const resolveRedirectTo = (nextPath: string = "/workspace") => {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "")
   const origin = siteUrl || (typeof window !== "undefined" ? window.location.origin : undefined)
   if (!origin) return undefined
-  return `${origin}/api/auth/callback?next=/workspace`
+  return `${origin}/api/auth/callback?next=${encodeURIComponent(nextPath)}`
 }
 
 export const LoginPanel = () => {
@@ -18,11 +19,27 @@ export const LoginPanel = () => {
   const [isLoading, setIsLoading] = React.useState(false)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
 
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
+
   const handleGoogleLogin = async () => {
     setIsLoading(true)
     setErrorMessage(null)
 
-    const redirectTo = resolveRedirectTo()
+    let nextPath = "/workspace"
+    const paramNext = searchParams.get("next")
+
+    if (paramNext) {
+      nextPath = paramNext
+    } else if (pathname && pathname !== "/login") {
+      // If we are showing this panel on a protected page (via AuthGuard),
+      // we want to return to the current page.
+      // We also preserve existing search params.
+      const currentSearch = searchParams.toString()
+      nextPath = pathname + (currentSearch ? `?${currentSearch}` : "")
+    }
+
+    const redirectTo = resolveRedirectTo(nextPath)
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",

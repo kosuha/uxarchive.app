@@ -42,6 +42,11 @@ export function Footer() {
                   Workspace
                 </Link>
               </li>
+              <li>
+                <Link href="/patterns" className="text-muted-foreground hover:text-foreground transition-colors">
+                  Patterns
+                </Link>
+              </li>
             </ul>
           </div>
 
