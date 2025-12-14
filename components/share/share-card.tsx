@@ -2,7 +2,10 @@
 
 import Image from "next/image"
 import { useRouter } from "next/navigation"
+import { Eye, Heart, GitFork } from "lucide-react"
+import { useState } from "react"
 import type { ShareListItem } from "@/lib/api/share"
+import { toggleLikeAction } from "@/app/actions/interactions"
 
 export type ShareListingPost = ShareListItem
 
@@ -39,11 +42,33 @@ export function ShareCard({ item, priority = false }: ShareCardProps) {
     const targetUrl = item.publicUrl || `/patterns/${item.id}`
     const isNew = item.updatedAt && new Date(item.updatedAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
 
+    // Stats State
+    const [likeCount, setLikeCount] = useState(item.likeCount || 0)
+    const [isLiked, setIsLiked] = useState(false) // TODO: Hydrate from API if possible
+
     const handleCardClick = () => router.push(targetUrl)
     const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
         if (event.key === "Enter" || event.key === " ") {
             event.preventDefault()
             handleCardClick()
+        }
+    }
+
+    const handleLike = async (e: React.MouseEvent) => {
+        e.stopPropagation()
+        e.preventDefault()
+
+        // Optimistic update
+        setLikeCount(prev => prev + (isLiked ? -1 : 1))
+        setIsLiked(prev => !prev)
+
+        try {
+            await toggleLikeAction(item.id)
+        } catch (error) {
+            // Revert on error
+            setLikeCount(prev => prev + (isLiked ? 1 : -1))
+            setIsLiked(prev => !prev)
+            console.error("Failed to toggle like", error)
         }
     }
 
@@ -85,8 +110,8 @@ export function ShareCard({ item, priority = false }: ShareCardProps) {
                 </div>
             </div>
 
-            {/* Card Content */}
-            <div className="flex items-start gap-3">
+            {/* Card Content & Stats */}
+            <div className="flex flex-col gap-2">
                 <div className="flex flex-col min-w-0 pt-0.5">
                     <h3 className="text-[15px] font-bold leading-tight text-white truncate">
                         {item.service || item.title}
@@ -94,6 +119,26 @@ export function ShareCard({ item, priority = false }: ShareCardProps) {
                     <p className="text-[13px] text-white/50 truncate leading-tight mt-0.5">
                         {item.service ? item.title : "Mobile Design Patterns"}
                     </p>
+                </div>
+
+                {/* Stats Footer */}
+                <div className="flex items-center gap-4 text-xs font-medium text-white/40 pt-1">
+                    <div className="flex items-center gap-1.5" title="Views">
+                        <Eye className="size-3.5" />
+                        <span>{item.views || 0}</span>
+                    </div>
+                    <button
+                        onClick={handleLike}
+                        className="flex items-center gap-1.5 hover:text-red-400 transition-colors focus:outline-none"
+                        title="Likes"
+                    >
+                        <Heart className={`size-3.5 ${isLiked ? "fill-red-500 text-red-500" : ""}`} />
+                        <span>{likeCount}</span>
+                    </button>
+                    <div className="flex items-center gap-1.5" title="Forks">
+                        <GitFork className="size-3.5" />
+                        <span>{item.forkCount || 0}</span>
+                    </div>
                 </div>
             </div>
         </div>

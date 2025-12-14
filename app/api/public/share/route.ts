@@ -357,7 +357,7 @@ const handler = async (request: Request) => {
     let query = supabase
       .from("pattern_public_listing")
       .select(
-        "id,title,service,author,author_id,summary,tags,updated_at,is_public:sharing_enabled,views,public_url,thumbnail_url",
+        "id,title,service,author,author_id,summary,tags,updated_at,is_public:sharing_enabled,views,like_count,fork_count,public_url,thumbnail_url",
         { count: "exact" },
       )
       .eq("sharing_enabled", true)

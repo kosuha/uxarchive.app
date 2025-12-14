@@ -20,6 +20,8 @@ export type ShareListItem = {
   updatedAt: string
   isPublic: boolean
   views?: number | null
+  likeCount?: number
+  forkCount?: number
   publicUrl?: string | null
   thumbnailUrl?: string | null
   captureUrls?: string[]
@@ -96,6 +98,10 @@ type RawShareListItem = {
   thumbnail_url?: unknown
   captureUrls?: unknown
   captures?: unknown
+  likeCount?: unknown
+  like_count?: unknown
+  forkCount?: unknown
+  fork_count?: unknown
 }
 
 type RawShareListResponse = {
@@ -151,6 +157,8 @@ const normalizeShareItem = (raw: RawShareListItem): ShareListItem => {
     updatedAt: normalizeDate(raw.updatedAt ?? raw.updated_at) ?? new Date().toISOString(),
     isPublic: boolOr(raw.isPublic ?? raw.is_public ?? raw.sharing_enabled, false),
     views: numberOrNull(raw.views),
+    likeCount: numberOrNull(raw.likeCount ?? raw.like_count) ?? 0,
+    forkCount: numberOrNull(raw.forkCount ?? raw.fork_count) ?? 0,
     publicUrl: stringOrNull(raw.publicUrl ?? raw.public_url),
     thumbnailUrl: stringOrNull(raw.thumbnailUrl ?? raw.thumbnail_url),
     captureUrls:
