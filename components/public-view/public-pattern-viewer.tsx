@@ -20,9 +20,11 @@ type PublicPatternViewerProps = {
   }
   captures: Capture[]
   insights: Insight[]
+  isAuthenticated: boolean
+  canDownload: boolean
 }
 
-export function PublicPatternViewer({ pattern, captures, insights }: PublicPatternViewerProps) {
+export function PublicPatternViewer({ pattern, captures, insights, isAuthenticated, canDownload }: PublicPatternViewerProps) {
   const [activeCaptureId, setActiveCaptureId] = React.useState<string | undefined>(captures[0]?.id)
   const activeCapture = React.useMemo(
     () => captures.find((capture) => capture.id === activeCaptureId),
@@ -44,12 +46,16 @@ export function PublicPatternViewer({ pattern, captures, insights }: PublicPatte
     <div className="flex h-full w-full min-h-[600px] flex-1 min-h-0 flex-col gap-6 p-8 lg:flex-row">
       <aside className="order-1 flex w-full max-w-full flex-shrink-0 flex-col gap-4 min-h-0 lg:order-1 lg:h-full lg:w-[320px] lg:max-w-[360px]">
         <PublicPatternMetadataCard
+          patternId={pattern.id}
           patternName={pattern.name}
           serviceName={pattern.serviceName}
           summary={pattern.summary}
           tags={pattern.tags}
           author={pattern.author}
           updatedAt={pattern.updatedAt}
+          isAuthenticated={isAuthenticated}
+          canDownload={canDownload}
+          currentCaptureUrl={activeCapture?.imageUrl}
         />
       </aside>
       <div className="order-2 flex h-full min-h-0 flex-1 lg:order-2">

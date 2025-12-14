@@ -3,11 +3,12 @@ import { RepositoryError } from "./types"
 import { ensureData } from "./utils"
 
 const CAPTURE_SELECT_FIELDS =
-  "id, pattern_id, storage_path, public_url, media_type, mime_type, order_index, width, height, duration_seconds, poster_storage_path, uploaded_by, created_at"
+  "id, pattern_id, asset_id, storage_path, public_url, media_type, mime_type, order_index, width, height, duration_seconds, poster_storage_path, uploaded_by, created_at"
 
 export type CaptureRecord = {
   id: string
   patternId: string
+  assetId: string | null
   storagePath: string
   publicUrl: string | null
   mediaType: string
@@ -24,6 +25,7 @@ export type CaptureRecord = {
 type CaptureRow = {
   id: string
   pattern_id: string
+  asset_id: string | null
   storage_path: string
   public_url: string | null
   media_type: string
@@ -40,6 +42,7 @@ type CaptureRow = {
 const mapCapture = (row: CaptureRow): CaptureRecord => ({
   id: row.id,
   patternId: row.pattern_id,
+  assetId: row.asset_id,
   storagePath: row.storage_path,
   publicUrl: row.public_url,
   mediaType: row.media_type,
@@ -73,10 +76,13 @@ export const listCapturesByPattern = async (
 
 export type CreateCaptureInput = {
   patternId: string
+  assetId?: string | null
   storagePath: string
   mediaType: string
   mimeType: string
   orderIndex: number
+  width?: number | null
+  height?: number | null
   uploadedBy?: string | null
   durationSeconds?: number | null
 }
@@ -87,10 +93,13 @@ export const createCapture = async (
 ): Promise<CaptureRecord> => {
   const payload = {
     pattern_id: input.patternId,
+    asset_id: input.assetId ?? null,
     storage_path: input.storagePath,
     media_type: input.mediaType,
     mime_type: input.mimeType,
     order_index: input.orderIndex,
+    width: input.width ?? null,
+    height: input.height ?? null,
     uploaded_by: input.uploadedBy ?? null,
     duration_seconds: input.durationSeconds ?? null,
   }

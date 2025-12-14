@@ -7,7 +7,9 @@ import type { Capture, Insight, Tag } from "@/lib/types"
 import { createCapturesRepository } from "@/lib/repositories/captures"
 import type { CaptureRecord } from "@/lib/repositories/captures"
 import { getServiceRoleSupabaseClient } from "@/lib/supabase/service-client"
+import { getServerSupabaseClient } from "@/lib/supabase/server-client"
 import type { ServiceSupabaseClient } from "@/lib/supabase/service-client"
+import { loadPlanWithLimits } from "@/lib/plan-limits"
 
 const SHARE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "ux-archive-captures"
 const SIGNED_URL_EXPIRATION_SECONDS = 60 * 60
@@ -209,9 +211,26 @@ interface PatternPageProps {
 export async function generateMetadata({ params }: PatternPageProps): Promise<Metadata> {
   const { patternId } = await params
   const data = await fetchSharedPattern(patternId)
+
+  const title = `${data.pattern.name} · UX Archive`
+  const description = data.pattern.summary || `Explore mobile design patterns from ${data.pattern.name}.`
+  const ogImage = data.captures[0]?.imageUrl ? [data.captures[0].imageUrl] : []
+
   return {
-    title: `${data.pattern.name} · Shared pattern`,
-    description: data.pattern.summary || "Read-only share view",
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      images: ogImage,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ogImage,
+    },
   }
 }
 
@@ -219,5 +238,26 @@ export default async function PatternDetailPage({ params }: PatternPageProps) {
   const { patternId } = await params
   const data = await fetchSharedPattern(patternId)
 
-  return <PublicPatternViewer pattern={data.pattern} captures={data.captures} insights={data.insights} />
+  const supabase = await getServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  let canDownload = false
+  if (user) {
+    try {
+      const plan = await loadPlanWithLimits(supabase as any, user.id)
+      canDownload = plan.limits.allowDownloads
+    } catch {
+      // If profile loading fails, assume free plan defaults (false)
+    }
+  }
+
+  return (
+    <PublicPatternViewer
+      pattern={data.pattern}
+      captures={data.captures}
+      insights={data.insights}
+      isAuthenticated={Boolean(user)}
+      canDownload={canDownload}
+    />
+  )
 }

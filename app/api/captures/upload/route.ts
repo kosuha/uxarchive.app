@@ -29,6 +29,7 @@ type UploadInitPayload = {
   filename: string
   contentType: string
   variant?: string
+  fileHash?: string
 }
 
 type RouteSupabaseClient = SupabaseClient
@@ -79,6 +80,7 @@ const parseRequest = async (request: Request): Promise<UploadInitPayload> => {
     filename: assertFileName(payload.filename),
     contentType: assertContentType(payload.contentType),
     variant: payload.variant ? assertSafeSegment(payload.variant, "variant") : undefined,
+    fileHash: typeof payload.fileHash === "string" ? payload.fileHash : undefined,
   }
 }
 
@@ -201,6 +203,7 @@ const createCaptureRecord = async (
     orderIndex: number
     objectPath: string
     userId: string
+    assetId?: string
   },
 ): Promise<CaptureRecord> => {
   const { data, error } = await supabase
@@ -213,8 +216,9 @@ const createCaptureRecord = async (
       mime_type: params.contentType,
       order_index: params.orderIndex,
       uploaded_by: params.userId,
+      asset_id: params.assetId || null
     })
-    .select("id, pattern_id, storage_path, media_type, mime_type, order_index, created_at")
+    .select("id, pattern_id, storage_path, media_type, mime_type, order_index, created_at, asset_id")
     .single()
 
   // TODO(@server-actions): wire up a Server Action/job to populate width/height, poster_storage_path, etc. after uploads finish
@@ -279,7 +283,9 @@ const postHandler = async (request: Request) => {
     const supabase = await createSupabaseRouteHandlerClient()
     const user = await requireAuthenticatedUser(supabase)
     const bucket = resolveBucketName()
-    const objectPath = resolveObjectPath(payload)
+    
+    // objectPath calculation moved to after deduplication logic
+    // const objectPath = resolveObjectPath(payload)
 
     const patternWorkspaceId = await fetchPatternWorkspaceId(supabase, payload.patternId)
 
@@ -289,6 +295,51 @@ const postHandler = async (request: Request) => {
 
     await ensureWorkspaceEditorRole(supabase, payload.workspaceId)
     const nextOrderIndex = await resolveNextOrderIndex(supabase, payload.patternId)
+
+    // Deduplication Logic
+    let assetId: string | undefined
+    let objectPath = ""
+    let reuseAsset = false
+
+    if (payload.fileHash) {
+      const { data: existingAsset } = await supabase
+        .from("storage_assets")
+        .select("id, storage_path")
+        .eq("file_hash", payload.fileHash)
+        .maybeSingle()
+      
+      if (existingAsset) {
+        assetId = existingAsset.id
+        objectPath = existingAsset.storage_path
+        reuseAsset = true
+      }
+    }
+
+    if (!reuseAsset) {
+      assetId = crypto.randomUUID()
+      // Use flat structure: assets/{uuid}
+      // Preserve extension for content-type inference if needed, or just strict assets/{uuid}
+      // Payload has filename.
+      const extension = payload.filename.split(".").pop()
+      objectPath = `assets/${assetId}${extension ? `.${extension}` : ""}`
+      
+      // Create storage_assets record (pending upload, but we reserve the path/hash)
+      // We don't have file size yet.
+      const { error: assetError } = await supabase
+        .from("storage_assets")
+        .insert({
+          id: assetId,
+          storage_path: objectPath,
+          file_hash: payload.fileHash || null,
+          created_by: user.id,
+          mime_type: payload.contentType
+        })
+      
+      if (assetError) {
+         throw new Error(`Failed to init storage asset: ${assetError.message}`)
+      }
+    }
+
     const capture = await createCaptureRecord(supabase, {
       captureId: payload.captureId,
       patternId: payload.patternId,
@@ -296,7 +347,16 @@ const postHandler = async (request: Request) => {
       orderIndex: nextOrderIndex,
       objectPath,
       userId: user.id,
+      assetId
     })
+
+    if (reuseAsset) {
+        return NextResponse.json({
+            skippedUpload: true,
+            capture,
+            uploadUrl: null
+        })
+    }
 
     const { data, error } = await createSignedUploadUrl(objectPath, bucket)
 
@@ -337,10 +397,14 @@ const deleteHandler = async (request: Request) => {
     await ensureWorkspaceEditorRole(supabase, payload.workspaceId)
     const deletedCapture = await deleteCaptureRecord(supabase, payload.patternId, payload.captureId)
 
+    // Skip deleting storage object if we are using deduplication/asset management.
+    // Garbage collection will handle unused assets.
+    /*
     await removeStorageObjectIfExists(bucket, deletedCapture.storage_path)
     if (deletedCapture.poster_storage_path) {
       await removeStorageObjectIfExists(bucket, deletedCapture.poster_storage_path)
     }
+    */
 
     return NextResponse.json({
       deletedCaptureId: deletedCapture.id,

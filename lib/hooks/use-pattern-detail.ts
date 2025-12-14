@@ -13,7 +13,7 @@ import {
 } from "@/app/actions/pattern-detail"
 import type { CaptureRecord } from "@/lib/repositories/captures"
 import type { Capture, Insight } from "@/lib/types"
-import { measureImageDimensions, optimizeCaptureFile } from "@/lib/utils/capture-optimizer"
+import { calculateFileHash, measureImageDimensions, optimizeCaptureFile } from "@/lib/utils/capture-optimizer"
 import { useWorkspaceData } from "@/lib/workspace-data-context"
 
 type UploadCaptureInput = {
@@ -314,6 +314,7 @@ export const usePatternDetail = (patternId?: string | null) => {
     orderedIds: string[]
     width?: number
     height?: number
+    fileHash: string
   }
 
   type UploadCaptureMutationContext = {
@@ -337,6 +338,7 @@ export const usePatternDetail = (patternId?: string | null) => {
           captureId,
           filename,
           contentType,
+          fileHash: variables.fileHash,
         }),
       })
 
@@ -346,22 +348,25 @@ export const usePatternDetail = (patternId?: string | null) => {
       }
 
       const payload = await response.json()
-      const uploadResult = await fetch(payload.uploadUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": contentType,
-          Authorization: `Bearer ${payload.token}`,
-        },
-        body: file,
-      })
-
-      if (!uploadResult.ok) {
-        await fetch("/api/captures/upload", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ workspaceId: targetWorkspaceId, patternId: targetPatternId, captureId }),
+      
+      if (payload.uploadUrl) {
+        const uploadResult = await fetch(payload.uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": contentType,
+            Authorization: `Bearer ${payload.token}`,
+          },
+          body: file,
         })
-        throw new Error("Failed to upload capture file.")
+
+        if (!uploadResult.ok) {
+          await fetch("/api/captures/upload", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ workspaceId: targetWorkspaceId, patternId: targetPatternId, captureId }),
+          })
+          throw new Error("Failed to upload capture file.")
+        }
       }
 
       const dimensionSource =
@@ -370,6 +375,14 @@ export const usePatternDetail = (patternId?: string | null) => {
           : await measureImageDimensions(file)
       const width = typeof dimensionSource.width === "number" ? dimensionSource.width : undefined
       const height = typeof dimensionSource.height === "number" ? dimensionSource.height : undefined
+
+      // If upload was skipped, we can potentially skip finalize IF the server returned a fully populated capture
+      // But we might still want to ensure width/height are set if they differ or force refresh publicUrl
+      // For now, always finalize to be safe unless server explicitly says "finalized"
+      if (payload.skippedUpload) {
+          // If skipped, the server might have returned the final capture already
+          return payload.capture
+      }
 
       const finalizeResponse = await fetch("/api/captures/finalize", {
         method: "POST",
@@ -500,6 +513,8 @@ export const usePatternDetail = (patternId?: string | null) => {
         console.warn("[usePatternDetail] capture optimization failed, using original file", error)
       }
 
+      const fileHash = await calculateFileHash(optimizedFile)
+
       try {
         await uploadCaptureMutation.mutateAsync({
           file: optimizedFile,
@@ -510,6 +525,7 @@ export const usePatternDetail = (patternId?: string | null) => {
           orderedIds,
           width: optimizedWidth,
           height: optimizedHeight,
+          fileHash,
         })
       } finally {
         pendingUploadCountRef.current = Math.max(0, pendingUploadCountRef.current - 1)

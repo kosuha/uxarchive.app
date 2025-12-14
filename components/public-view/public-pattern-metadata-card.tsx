@@ -2,16 +2,22 @@
 
 import * as React from "react"
 
+import { ForkButton } from "./fork-button"
+import { DownloadButton } from "./download-button"
 import { TagBadge } from "@/components/tag-badge"
 import type { Tag } from "@/lib/types"
 
 type PublicPatternMetadataCardProps = {
+  patternId: string
   patternName: string
   serviceName?: string | null
   summary?: string | null
   tags?: Tag[]
   author?: string | null
   updatedAt?: string | null
+  isAuthenticated: boolean
+  canDownload: boolean
+  currentCaptureUrl?: string
 }
 
 const formatDate = (value?: string | null) => {
@@ -26,12 +32,16 @@ const formatDate = (value?: string | null) => {
 }
 
 export function PublicPatternMetadataCard({
+  patternId,
   patternName,
   serviceName,
   summary,
   tags,
   author,
   updatedAt,
+  isAuthenticated,
+  canDownload,
+  currentCaptureUrl,
 }: PublicPatternMetadataCardProps) {
   const readableUpdatedAt = React.useMemo(() => formatDate(updatedAt), [updatedAt])
   const sortedTags = React.useMemo(
@@ -49,6 +59,10 @@ export function PublicPatternMetadataCard({
           <p className="text-xs font-semibold tracking-wide text-muted-foreground">{serviceName}</p>
         ) : null}
         <h2 className="text-xl font-semibold leading-tight text-foreground">{patternName}</h2>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <ForkButton patternId={patternId} isAuthenticated={isAuthenticated} />
+        <DownloadButton imageUrl={currentCaptureUrl} canDownload={canDownload} isAuthenticated={isAuthenticated} />
       </div>
       <dl className="mt-4 grid gap-4 text-sm text-muted-foreground md:grid-cols-2">
         <div>
