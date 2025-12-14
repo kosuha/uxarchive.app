@@ -22,9 +22,8 @@ export function ProfileHeader({ profile }: ProfileHeaderProps) {
 
             <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-                    {profile.display_name}
+                    @{profile.username}
                 </h1>
-                <p className="text-lg text-muted-foreground">@{profile.username}</p>
 
                 {profile.bio && (
                     <p className="mx-auto max-w-lg text-muted-foreground leading-relaxed">

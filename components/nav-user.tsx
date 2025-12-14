@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { LogOut, Moon, Settings, Sun, UserRound, Zap } from "lucide-react"
+import { ExternalLink, LogOut, Moon, Settings, Sun, UserRound, Zap } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
 
@@ -523,16 +523,35 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
                           </Button>
                         </>
                       ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setIsEditingUsername(true)
-                            setPendingUsername(profileUsername || (metadata.username ?? ""))
-                          }}
-                        >
-                          Edit
-                        </Button>
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setIsEditingUsername(true)
+                              setPendingUsername(profileUsername || (metadata.username ?? ""))
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          {(profileUsername || metadata.username) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              asChild
+                              title="View public profile"
+                              className="h-8 w-8 text-muted-foreground"
+                            >
+                              <a
+                                href={`/u/${profileUsername || metadata.username}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                              </a>
+                            </Button>
+                          )}
+                        </>
                       )}
                     </div>
                     {usernameError && (
