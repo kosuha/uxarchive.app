@@ -20,9 +20,12 @@ create table if not exists public.pattern_likes (
 alter table public.pattern_likes enable row level security;
 
 -- Policies for pattern_likes
+drop policy if exists "Users can view all likes" on public.pattern_likes;
 create policy "Users can view all likes"
     on public.pattern_likes for select
     using (true);
+
+drop policy if exists "Users can toggle their own likes" on public.pattern_likes;
 
 create policy "Users can toggle their own likes"
     on public.pattern_likes for all
@@ -86,6 +89,7 @@ begin
 end;
 $$;
 
+drop trigger if exists on_pattern_forked on public.patterns;
 create trigger on_pattern_forked
   after insert on public.patterns
   for each row
@@ -118,7 +122,6 @@ from public.patterns p
 left join public.pattern_tags pt on pt.pattern_id = p.id
 left join public.tags t on t.id = pt.tag_id and t.is_active = true
 where p.is_public = true
-  and p.published = true
   and p.is_archived = false
 group by p.id;
 

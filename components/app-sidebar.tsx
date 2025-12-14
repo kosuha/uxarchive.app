@@ -427,7 +427,7 @@ export function AppSidebar({
       handlers={{
         onPatternSelect: handlePatternSelect,
         onFolderSelect: handleFolderSelect,
-      onPatternInputSubmit: handlePatternInputSubmit,
+        onPatternInputSubmit: handlePatternInputSubmit,
         onFolderInputSubmit: handleFolderInputSubmit,
         onPatternInputCancel: () => setPendingPatternInput(null),
         onFolderInputCancel: () => setPendingFolderInput(null),

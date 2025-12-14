@@ -17,6 +17,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { updateProfileAction, getProfileAction } from "@/app/actions/profiles"
+import { useToast } from "@/components/ui/use-toast"
 import {
   Dialog,
   DialogContent,
@@ -92,7 +96,14 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
   const [portalError, setPortalError] = React.useState<string | null>(null)
   const [deleteError, setDeleteError] = React.useState<string | null>(null)
   const [deleteLoading, setDeleteLoading] = React.useState(false)
+
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
+  const [profileUsername, setProfileUsername] = React.useState<string>("")
+  const [isEditingUsername, setIsEditingUsername] = React.useState(false)
+  const [pendingUsername, setPendingUsername] = React.useState("")
+  const [usernameError, setUsernameError] = React.useState<string | null>(null)
+  const [isSavingUsername, setIsSavingUsername] = React.useState(false)
+  const { toast } = useToast()
 
   React.useEffect(() => {
     setIsMounted(true)
@@ -104,6 +115,7 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
     avatar_url?: string
     full_name?: string
     name?: string
+    username?: string
   }
 
   const avatarUrl = metadata.avatar_url ?? undefined
@@ -111,9 +123,56 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
   const displayName = metadata.full_name ?? metadata.name ?? email
   const initials = getInitials(user?.email, displayName)
 
+  // Fetch true profile data that might be newer than session metadata
+  React.useEffect(() => {
+    if (isProfileDialogOpen && user) {
+      if (metadata.username) {
+        setProfileUsername(metadata.username)
+        setPendingUsername(metadata.username)
+      }
+
+      // Also fetch fresh data to ensure we have the latest
+      getProfileAction().then((profile) => {
+        if (profile?.username) {
+          setProfileUsername(profile.username)
+          if (!metadata.username) {
+            setPendingUsername(profile.username)
+          }
+        }
+      })
+    }
+  }, [isProfileDialogOpen, user, metadata.username])
+
   const handleSignOut = async () => {
     if (!user) return
     await signOut()
+  }
+
+  const handleSaveUsername = async () => {
+    setUsernameError(null)
+    if (pendingUsername === profileUsername) {
+      setIsEditingUsername(false)
+      return
+    }
+
+    setIsSavingUsername(true)
+    try {
+      const result = await updateProfileAction(pendingUsername)
+      setProfileUsername(result.username)
+      setIsEditingUsername(false)
+      toast({
+        title: "Profile updated",
+        description: "Your username has been updated successfully.",
+      })
+      // Force a hard refresh to update session/sidebar if needed, 
+      // or rely on next/navigation router.refresh() 
+      router.refresh()
+    } catch (error) {
+      console.error("Failed to update username", error)
+      setUsernameError(error instanceof Error ? error.message : "Failed to update username")
+    } finally {
+      setIsSavingUsername(false)
+    }
   }
 
   const handleThemeToggle = (checked: boolean) => {
@@ -286,6 +345,18 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
             >
               <Settings className="h-4 w-4" /> Settings
             </DropdownMenuItem>
+            {metadata.username && (
+              <DropdownMenuItem
+                className="gap-2"
+                onSelect={(event) => {
+                  event.preventDefault()
+                  setIsMenuOpen(false)
+                  router.push(`/u/${metadata.username}`)
+                }}
+              >
+                <UserRound className="h-4 w-4" /> My Profile
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               className="cursor-default focus:bg-transparent focus:text-foreground"
               onSelect={(event) => event.preventDefault()}
@@ -414,6 +485,66 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
                     </div>
                   </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="username">Username</Label>
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                          uxarchive.app/u/
+                        </span>
+                        <Input
+                          id="username"
+                          className="pl-32"
+                          value={isEditingUsername ? pendingUsername : profileUsername || (metadata.username ?? "")}
+                          onChange={(e) => setPendingUsername(e.target.value)}
+                          disabled={!isEditingUsername || isSavingUsername}
+                        />
+                      </div>
+                      {isEditingUsername ? (
+                        <>
+                          <Button
+                            size="sm"
+                            onClick={handleSaveUsername}
+                            disabled={isSavingUsername}
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setIsEditingUsername(false)
+                              setPendingUsername(profileUsername)
+                              setUsernameError(null)
+                            }}
+                            disabled={isSavingUsername}
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setIsEditingUsername(true)
+                            setPendingUsername(profileUsername || (metadata.username ?? ""))
+                          }}
+                        >
+                          Edit
+                        </Button>
+                      )}
+                    </div>
+                    {usernameError && (
+                      <p className="text-xs text-destructive">{usernameError}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      This is your public profile URL. It must be unique.
+                    </p>
+                  </div>
+
+                  <div className="h-px bg-border my-4" />
+
                   <p className="text-xs text-destructive">
                     Deleting your account removes workspaces and patterns and cannot be undone.
                   </p>
@@ -502,13 +633,13 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
                           Upgrade plan
                         </Button>
                       ) : (
-                      <Button onClick={handleManageSubscription} disabled={portalLoading || planLoading}>
-                        {planLoading
-                          ? "Checking..."
-                          : portalLoading
-                            ? "Opening..."
-                            : "Manage subscription"}
-                      </Button>
+                        <Button onClick={handleManageSubscription} disabled={portalLoading || planLoading}>
+                          {planLoading
+                            ? "Checking..."
+                            : portalLoading
+                              ? "Opening..."
+                              : "Manage subscription"}
+                        </Button>
                       )
                     }
                   </div>

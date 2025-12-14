@@ -97,6 +97,10 @@ const mapPatternRecordToPattern = (record: PatternRecord, favorites: Set<string>
   publicUrl: record.publicUrl ?? undefined,
   thumbnailUrl: record.thumbnailUrl ?? undefined,
   views: record.views ?? undefined,
+  viewCount: record.viewCount,
+  likeCount: record.likeCount,
+  forkCount: record.forkCount,
+  originalPatternId: record.originalPatternId,
   createdAt: record.createdAt,
   updatedAt: record.updatedAt,
   captureCount: record.captureCount ?? 0,
@@ -292,6 +296,10 @@ export const WorkspaceDataProvider = ({ children }: { children: React.ReactNode 
         updatedAt: now,
         captureCount: 0,
         insightCount: 0,
+        viewCount: 0,
+        likeCount: 0,
+        forkCount: 0,
+        originalPatternId: null,
       }
 
       queryClient.setQueryData<PatternQueryData>(patternsQueryKey, (prev) => {

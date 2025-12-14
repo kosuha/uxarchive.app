@@ -84,8 +84,10 @@ export function PublicPatternMetadataCard({
         />
         <DownloadButton imageUrl={currentCaptureUrl} canDownload={canDownload} isAuthenticated={isAuthenticated} />
 
-        <div className="flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted/30 px-3 text-xs font-medium text-muted-foreground">
-          <Eye className="h-3.5 w-3.5" />
+        <div className="h-6 w-px bg-border mx-1" />
+
+        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground" title="Total Views">
+          <Eye className="size-3.5" />
           <span className="tabular-nums">{viewCount ?? 0}</span>
         </div>
       </div>
