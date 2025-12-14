@@ -6,6 +6,7 @@ export type ShareListQueryParams = {
   page?: number
   perPage?: number
   includeCaptures?: boolean
+  userId?: string
 }
 
 export type ShareListItem = {
@@ -13,6 +14,7 @@ export type ShareListItem = {
   title: string
   service?: string | null
   author?: string | null
+  authorId?: string | null
   tags?: string[]
   summary?: string | null
   updatedAt: string
@@ -68,6 +70,7 @@ const buildQueryString = (params: ShareListQueryParams): string => {
   if (params.page && params.page > 1) searchParams.set("page", String(params.page))
   if (params.perPage && params.perPage > 0) searchParams.set("perPage", String(params.perPage))
   if (params.includeCaptures) searchParams.set("includeCaptures", "true")
+  if (params.userId) searchParams.set("userId", params.userId)
 
   return searchParams.toString()
 }
@@ -77,6 +80,8 @@ type RawShareListItem = {
   title?: unknown
   service?: unknown
   author?: unknown
+  authorId?: unknown
+  author_id?: unknown
   tags?: unknown
   summary?: unknown
   updatedAt?: unknown
@@ -140,6 +145,7 @@ const normalizeShareItem = (raw: RawShareListItem): ShareListItem => {
     title,
     service: stringOrNull(raw.service) ?? null,
     author: stringOrNull(raw.author) ?? null,
+    authorId: stringOrNull(raw.authorId ?? raw.author_id) ?? null,
     tags,
     summary: stringOrNull(raw.summary) ?? null,
     updatedAt: normalizeDate(raw.updatedAt ?? raw.updated_at) ?? new Date().toISOString(),

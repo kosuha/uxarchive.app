@@ -69,6 +69,7 @@ const mapRowToShareItem = (row: Record<string, unknown>): ShareListItem => {
     title: stringOrNull(row.title) ?? "",
     service: stringOrNull(row.service) ?? null,
     author: stringOrNull(row.author) ?? null,
+    authorId: stringOrNull((row as { author_id?: unknown }).author_id) ?? null,
     tags,
     summary: stringOrNull(row.summary) ?? null,
     updatedAt: stringOrNull((row as { updated_at?: unknown }).updated_at) ?? new Date().toISOString(),
@@ -350,17 +351,23 @@ const handler = async (request: Request) => {
       MAX_PER_PAGE,
     )
 
+    const userId = sanitizeSearch(url.searchParams.get("userId"))
+
     const supabase = getServiceRoleSupabaseClient()
     let query = supabase
       .from("pattern_public_listing")
       .select(
-        "id,title,service,author,summary,tags,updated_at,is_public:sharing_enabled,views,public_url,thumbnail_url",
+        "id,title,service,author,author_id,summary,tags,updated_at,is_public:sharing_enabled,views,public_url,thumbnail_url",
         { count: "exact" },
       )
       .eq("sharing_enabled", true)
 
     if (search) {
       query = query.or(buildSearchClause(search))
+    }
+
+    if (userId) {
+      query = query.eq("author_id", userId)
     }
 
     query = query.order(sort.column, { ascending: sort.ascending, nullsFirst: false })

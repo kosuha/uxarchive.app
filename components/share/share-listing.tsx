@@ -16,9 +16,10 @@ type ComputedShareListItem = ShareListingPost & { listingVisible: boolean }
 interface ShareListingProps {
   initialPosts: ShareListingPost[]
   search?: string
+  userId?: string
 }
 
-export function ShareListing({ initialPosts, search }: ShareListingProps) {
+export function ShareListing({ initialPosts, search, userId }: ShareListingProps) {
   const router = useRouter()
   const [posts, setPosts] = useState<ShareListingPost[]>(initialPosts)
   const [page, setPage] = useState(1)
@@ -53,6 +54,7 @@ export function ShareListing({ initialPosts, search }: ShareListingProps) {
         search: search,
         sort: "recent",
         includeCaptures: true,
+        userId: userId,
       })
 
       if (newPosts.length > 0) {
