@@ -12,16 +12,25 @@ import {
 } from "@/components/ui/tooltip"
 import { useToast } from "@/components/ui/use-toast"
 import { toggleLikeAction } from "@/app/actions/interactions"
-import { cn } from "@/lib/utils"
+import { cn, formatCompactNumber } from "@/lib/utils"
 
 interface LikeButtonProps {
     patternId: string
     isAuthenticated: boolean
     initialIsLiked: boolean
     initialCount: number
+    className?: string
+    variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
 }
 
-export function LikeButton({ patternId, isAuthenticated, initialIsLiked, initialCount }: LikeButtonProps) {
+export function LikeButton({
+    patternId,
+    isAuthenticated,
+    initialIsLiked,
+    initialCount,
+    className,
+    variant = "outline"
+}: LikeButtonProps) {
     const [isPending, startTransition] = React.useTransition()
     const router = useRouter()
     const { toast } = useToast()
@@ -59,11 +68,6 @@ export function LikeButton({ patternId, isAuthenticated, initialIsLiked, initial
             try {
                 await toggleLikeAction(patternId)
             } catch (error) {
-                // Revert optimistic update (this is tricky with startTransition, simpler to just rely on revalidation or toast error)
-                // UseTransition doesn't automatically revert optimistic state if async fails unless we handle it.
-                // But useOptimistic is tied to the state passed in usually? 
-                // Actually next/navigation router.refresh() from server action revalidates props.
-                // If error, we might be out of sync until refresh.
                 toast({
                     title: "Action failed",
                     description: "Failed to update like status.",
@@ -74,26 +78,41 @@ export function LikeButton({ patternId, isAuthenticated, initialIsLiked, initial
     }
 
     return (
-        <Tooltip>
-            <TooltipTrigger asChild>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className={cn("h-8 gap-1.5 min-w-[70px]", isLiked && "text-red-500 border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900")}
-                    onClick={handleLike}
-                    disabled={isPending}
-                >
-                    {isPending ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                        <Heart className={cn("h-3.5 w-3.5", isLiked && "fill-current")} />
-                    )}
-                    <span className="tabular-nums">{count}</span>
-                </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-                {isLiked ? "Unlike this pattern" : "Like this pattern"}
-            </TooltipContent>
-        </Tooltip>
+        <div className={cn("inline-flex items-center", className)}>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button
+                        variant={variant}
+                        size="sm"
+                        className={cn(
+                            "h-7 gap-1.5 rounded-r-none border-r-0 px-3",
+                            isLiked && variant === "outline" && "text-red-500 border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900",
+                            isLiked && variant === "ghost" && "text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                        )}
+                        onClick={handleLike}
+                        disabled={isPending}
+                    >
+                        {isPending ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                            <Heart className={cn("h-3.5 w-3.5", isLiked && "fill-current")} />
+                        )}
+                        <span className="font-semibold text-xs">Like</span>
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                    {isLiked ? "Unlike this pattern" : "Like this pattern"}
+                </TooltipContent>
+            </Tooltip>
+            <div className={cn(
+                "flex h-7 items-center border border-l-0 rounded-r-md px-2.5 text-xs font-semibold tabular-nums text-muted-foreground",
+                variant === "outline" && "bg-background border-border dark:border-input dark:bg-input/30",
+                variant === "secondary" && "bg-secondary/50",
+                variant === "ghost" && "border-none bg-accent/30",
+                isLiked && variant === "outline" && "border-red-200 bg-red-50/50 text-red-600 dark:bg-red-950/20 dark:border-red-900 dark:text-red-400"
+            )}>
+                {formatCompactNumber(count)}
+            </div>
+        </div>
     )
 }

@@ -10,12 +10,15 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useToast } from "@/components/ui/use-toast"
+import { cn } from "@/lib/utils"
 
 interface DownloadButtonProps {
     imageUrl?: string
     fileName?: string
     canDownload: boolean
     isAuthenticated: boolean
+    className?: string
+    variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
 }
 
 export function DownloadButton({
@@ -23,6 +26,8 @@ export function DownloadButton({
     fileName = "pattern-capture.png",
     canDownload,
     isAuthenticated,
+    className,
+    variant = "outline"
 }: DownloadButtonProps) {
     const [isDownloading, setIsDownloading] = React.useState(false)
     const { toast } = useToast()
@@ -75,9 +80,9 @@ export function DownloadButton({
         <Tooltip>
             <TooltipTrigger asChild>
                 <Button
-                    variant="outline"
+                    variant={variant}
                     size="sm"
-                    className="h-8 gap-1.5"
+                    className={cn("h-8 gap-1.5", className)}
                     onClick={handleDownload}
                     disabled={!imageUrl || isDownloading}
                 >

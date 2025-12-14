@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Copy, Loader2 } from "lucide-react"
+import { Copy, GitFork, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -12,14 +12,23 @@ import {
 } from "@/components/ui/tooltip"
 import { useToast } from "@/components/ui/use-toast"
 import { forkPatternAction } from "@/app/actions/fork-pattern"
+import { cn, formatCompactNumber } from "@/lib/utils"
 
 interface ForkButtonProps {
     patternId: string
     isAuthenticated: boolean
     count?: number
+    className?: string
+    variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
 }
 
-export function ForkButton({ patternId, isAuthenticated, count = 0 }: ForkButtonProps) {
+export function ForkButton({
+    patternId,
+    isAuthenticated,
+    count = 0,
+    className,
+    variant = "outline"
+}: ForkButtonProps) {
     const [isPending, startTransition] = React.useTransition()
     const router = useRouter()
     const { toast } = useToast()
@@ -55,27 +64,36 @@ export function ForkButton({ patternId, isAuthenticated, count = 0 }: ForkButton
     }
 
     return (
-        <Tooltip>
-            <TooltipTrigger asChild>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-1.5"
-                    onClick={handleFork}
-                    disabled={isPending}
-                >
-                    {isPending ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                        <Copy className="h-3.5 w-3.5" />
-                    )}
-                    Fork
-                    <span className="ml-1 text-xs text-muted-foreground tabular-nums">{count}</span>
-                </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-                Copy this pattern to your workspace
-            </TooltipContent>
-        </Tooltip>
+        <div className={cn("inline-flex items-center", className)}>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button
+                        variant={variant}
+                        size="sm"
+                        className="h-7 gap-1.5 rounded-r-none border-r-0 px-3"
+                        onClick={handleFork}
+                        disabled={isPending}
+                    >
+                        {isPending ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                            <GitFork className="h-3.5 w-3.5" />
+                        )}
+                        <span className="font-semibold text-xs">Fork</span>
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                    Copy this pattern to your workspace
+                </TooltipContent>
+            </Tooltip>
+            <div className={cn(
+                "flex h-7 items-center border border-l-0 rounded-r-md px-2.5 text-xs font-semibold tabular-nums text-muted-foreground",
+                variant === "outline" && "bg-background border-border dark:border-input dark:bg-input/30",
+                variant === "secondary" && "bg-secondary/50",
+                variant === "ghost" && "border-none bg-accent/30"
+            )}>
+                {formatCompactNumber(count)}
+            </div>
+        </div>
     )
 }
