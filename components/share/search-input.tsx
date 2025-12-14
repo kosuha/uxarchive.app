@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Search } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
@@ -14,6 +14,7 @@ interface SearchInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 export function SearchInput({ className, ...props }: SearchInputProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
+    const pathname = usePathname()
     const [value, setValue] = React.useState(searchParams.get("search") || "")
 
     // Sync internal state with URL if it changes externally
@@ -28,8 +29,16 @@ export function SearchInput({ className, ...props }: SearchInputProps) {
         } else {
             params.delete("search")
         }
-        router.replace(`?${params.toString()}`, { scroll: false })
-    }, [router, searchParams, value])
+
+        const queryString = params.toString()
+        const targetUrl = queryString ? `/patterns?${queryString}` : '/patterns'
+
+        if (pathname === '/patterns') {
+            router.replace(`?${queryString}`, { scroll: false })
+        } else {
+            router.push(targetUrl)
+        }
+    }, [router, searchParams, value, pathname])
 
     const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === "Enter") {

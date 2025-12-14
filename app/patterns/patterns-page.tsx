@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 
 import { ShareListing } from "@/components/share/share-listing"
 import { FeaturedSection } from "@/components/home/featured-section"
-import { SearchInput } from "@/components/share/search-input"
+import { PatternsHeader } from "@/components/share/patterns-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -95,42 +95,7 @@ export default async function PatternsPage(props: {
   return (
     <div className="dark min-h-screen bg-[#0C0C0C] text-foreground">
       {/* Top Header - Global Nav */}
-      <nav className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#0C0C0C]/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-around px-4 sm:px-6 lg:px-8">
-          {/* Left: Logo */}
-          <div className="flex items-center justify-start gap-4 w-32">
-            <Link href="/" className="flex items-center gap-2">
-              <Image
-                src="/logo.svg"
-                alt="Logo"
-                width={50}
-                height={50}
-                className="h-12 w-12"
-              />
-            </Link>
-          </div>
-
-          {/* Center: Search */}
-          <div className="hidden flex-1 items-center justify-center px-8 md:flex">
-            <SearchInput />
-          </div>
-
-          {/* Right: Actions */}
-          <div className="flex w-32 items-center justify-end gap-2 sm:gap-4">
-            {/* Mobile Search Icon (visible only on small screens) */}
-            <Button variant="ghost" size="icon" className="text-white/60 hover:text-white md:hidden">
-              <Search className="h-5 w-5" />
-            </Button>
-            <Link href="/workspace">
-              <Button
-                variant="ghost"
-                className="px-3 ml-1 rounded-full overflow-hidden border border-white/10">
-                Workspace
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <PatternsHeader />
 
       <div className="mx-auto w-full max-w-[1600px] px-4 pt-8 sm:px-6 lg:px-8 space-y-12 pb-20">
         {error ? (
