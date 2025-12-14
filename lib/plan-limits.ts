@@ -11,6 +11,7 @@ export type PlanLimitConfig = {
   maxPrivatePatterns: number
   allowPublicSharing: boolean
   allowDownloads: boolean
+  allowFork: boolean
 }
 
 export type PlanWithLimits = {
@@ -20,8 +21,8 @@ export type PlanWithLimits = {
 }
 
 export const planLimits: Record<PlanCode, PlanLimitConfig> = {
-  free: { code: "free", maxPatterns: Infinity, maxPrivatePatterns: 3, allowPublicSharing: true, allowDownloads: false },
-  plus: { code: "plus", maxPatterns: Infinity, maxPrivatePatterns: Infinity, allowPublicSharing: true, allowDownloads: true },
+  free: { code: "free", maxPatterns: Infinity, maxPrivatePatterns: 3, allowPublicSharing: true, allowDownloads: false, allowFork: false },
+  plus: { code: "plus", maxPatterns: Infinity, maxPrivatePatterns: Infinity, allowPublicSharing: true, allowDownloads: true, allowFork: true },
 }
 
 const PAID_STATUSES: PlanStatus[] = ["active", "trialing"]
@@ -186,6 +187,7 @@ export const ensureSharingAllowed = async (
   return plan
 }
 
+
 export const ensureDownloadAllowed = async (
   supabase: SupabaseClient,
   userId: string,
@@ -194,6 +196,20 @@ export const ensureDownloadAllowed = async (
   if (!plan.limits.allowDownloads) {
     throw new RepositoryError(
       "Image downloads are only available on the Plus plan. Upgrade and try again.",
+      { status: 403 },
+    )
+  }
+  return plan
+}
+
+export const ensureForkAllowed = async (
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<PlanWithLimits> => {
+  const plan = await loadPlanWithLimits(supabase, userId)
+  if (!plan.limits.allowFork) {
+    throw new RepositoryError(
+      "Forking patterns is only available on the Plus plan. Upgrade and try again.",
       { status: 403 },
     )
   }

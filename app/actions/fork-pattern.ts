@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 
 import { createActionSupabaseClient, requireAuthenticatedUser } from "./_workspace-guards"
 import { getWorkspaceMembershipAction } from "./workspaces"
-import { ensurePatternCreationAllowed, ensurePrivatePatternAllowed } from "@/lib/plan-limits"
+import { ensurePatternCreationAllowed, ensurePrivatePatternAllowed, ensureForkAllowed } from "@/lib/plan-limits"
 import { RepositoryError } from "@/lib/repositories/types"
 import { createPatternsRepository } from "@/lib/repositories/patterns"
 import { createCapturesRepository } from "@/lib/repositories/captures"
@@ -37,6 +37,8 @@ export async function forkPatternAction(sourcePatternId: string) {
 
   // 3. Check Plan Limits
   // Forking creates a PRIVATE pattern by default
+  // Fork itself is a Plus feature
+  await ensureForkAllowed(supabase, user.id)
   await ensurePatternCreationAllowed(supabase, user.id, workspaceId)
   await ensurePrivatePatternAllowed(supabase, user.id, workspaceId)
 

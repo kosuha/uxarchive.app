@@ -4,6 +4,7 @@ import {
   assertPatternLimit,
   isPaidPlanActive,
   ensureDownloadAllowed,
+  ensureForkAllowed,
   planLimits,
   resolveEffectivePlan,
   type PlanWithLimits,
@@ -14,7 +15,7 @@ import {
 const makePlan = (code: PlanCode, status: PlanStatus = "active"): PlanWithLimits => ({
   code,
   status,
-  limits: planLimits[code],
+  limits: { ...planLimits[code] },
 })
 
 describe("resolveEffectivePlan", () => {
@@ -56,26 +57,31 @@ describe("isPaidPlanActive", () => {
 describe("assertPatternLimit", () => {
   it("allows creation below the limit", () => {
     const plan = makePlan("free")
+    // Mock a finite limit for testing logic
+    plan.limits.maxPatterns = 10
     expect(() => assertPatternLimit({ usageCount: 4, plan })).not.toThrow()
   })
 
   it("throws 403 when free plan exceeds its limit", () => {
     const plan = makePlan("free")
-    expect(() => assertPatternLimit({ usageCount: plan.limits.maxPatterns, plan })).toThrowError(
+    plan.limits.maxPatterns = 5
+    expect(() => assertPatternLimit({ usageCount: 5, plan })).toThrowError(
       /free plan/i,
     )
   })
 
   it("blocks paid plans that exceed the configured limit", () => {
     const plan = makePlan("plus")
-    expect(() => assertPatternLimit({ usageCount: plan.limits.maxPatterns, plan })).toThrowError(
+    plan.limits.maxPatterns = 100
+    expect(() => assertPatternLimit({ usageCount: 100, plan })).toThrowError(
       /limit/i,
     )
   })
 
-  it("allows paid plans below the limit", () => {
+  it("allows paid plans with infinite limit", () => {
     const plan = makePlan("plus")
-    expect(() => assertPatternLimit({ usageCount: plan.limits.maxPatterns - 1, plan })).not.toThrow()
+    // plus has Infinity by default
+    expect(() => assertPatternLimit({ usageCount: 1000000, plan })).not.toThrow()
   })
 })
 
@@ -98,5 +104,47 @@ describe("ensureDownloadAllowed", () => {
     } as unknown as Parameters<typeof ensureDownloadAllowed>[0]
 
     await expect(ensureDownloadAllowed(supabaseMock, "user-1")).rejects.toThrow(/only available on the Plus plan/i)
+  })
+})
+
+describe("ensureForkAllowed", () => {
+  it("blocks forking on the free plan", async () => {
+    const plan = makePlan("free")
+    const supabaseMock = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            limit: () => ({
+              maybeSingle: async () => ({
+                data: { plan_code: plan.code, plan_status: plan.status },
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as unknown as Parameters<typeof ensureDownloadAllowed>[0]
+
+    await expect(ensureForkAllowed(supabaseMock, "user-1")).rejects.toThrow(/only available on the Plus plan/i)
+  })
+
+  it("allows forking on the plus plan", async () => {
+    const plan = makePlan("plus")
+    const supabaseMock = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            limit: () => ({
+              maybeSingle: async () => ({
+                data: { plan_code: plan.code, plan_status: plan.status },
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as unknown as Parameters<typeof ensureDownloadAllowed>[0]
+
+    await expect(ensureForkAllowed(supabaseMock, "user-1")).resolves.not.toThrow()
   })
 })
