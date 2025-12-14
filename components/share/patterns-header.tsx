@@ -3,6 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import Image from "next/image"
+import { usePathname } from "next/navigation"
 import { Grid, LayoutDashboard, Search, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -20,6 +21,9 @@ export function PatternsHeader({ hideSearch = false }: PatternsHeaderProps) {
     React.useEffect(() => {
         if (hideSearch) setIsMobileSearchOpen(false)
     }, [hideSearch])
+
+    const pathname = usePathname()
+    const isPatternsPage = pathname === "/patterns"
 
     return (
         <nav className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#0C0C0C]/80 backdrop-blur-md">
@@ -73,15 +77,17 @@ export function PatternsHeader({ hideSearch = false }: PatternsHeaderProps) {
                         "flex items-center gap-2 transition-opacity duration-200",
                         isMobileSearchOpen ? "hidden" : "flex"
                     )}>
-                        <Button
-                            variant="ghost"
-                            asChild
-                            className="hidden md:inline-flex px-4 rounded-full border border-white/10 text-white/70 hover:text-white hover:bg-white/5"
-                        >
-                            <Link href="/patterns" className="gap-2">
-                                <span>Explore Patterns</span>
-                            </Link>
-                        </Button>
+                        {!isPatternsPage && (
+                            <Button
+                                variant="ghost"
+                                asChild
+                                className="px-4 rounded-full border border-white/10 text-white/70 hover:text-white hover:bg-white/5"
+                            >
+                                <Link href="/patterns" className="gap-2">
+                                    <span>Explore Patterns</span>
+                                </Link>
+                            </Button>
+                        )}
                         <Button
                             variant="ghost"
                             asChild
