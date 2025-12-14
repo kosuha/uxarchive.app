@@ -77,6 +77,8 @@ const mapRowToShareItem = (row: Record<string, unknown>): ShareListItem => {
     views: numberOrNull(row.views),
     publicUrl: stringOrNull((row as { public_url?: unknown }).public_url),
     thumbnailUrl: stringOrNull((row as { thumbnail_url?: unknown }).thumbnail_url),
+    likeCount: numberOrNull((row as { like_count?: unknown }).like_count) ?? 0,
+    forkCount: numberOrNull((row as { fork_count?: unknown }).fork_count) ?? 0,
   }
 }
 
