@@ -30,6 +30,11 @@ export interface Pattern extends IdentifiableEntity {
   publicUrl?: string | null
   thumbnailUrl?: string | null
   views?: number
+  viewCount: number
+  likeCount: number
+  forkCount: number
+  originalPatternId?: string | null
+  isLiked?: boolean
   createdAt: string
   updatedAt: string
   captureCount: number

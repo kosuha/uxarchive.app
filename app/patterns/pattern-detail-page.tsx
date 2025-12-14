@@ -10,6 +10,7 @@ import { getServiceRoleSupabaseClient } from "@/lib/supabase/service-client"
 import { getServerSupabaseClient } from "@/lib/supabase/server-client"
 import type { ServiceSupabaseClient } from "@/lib/supabase/service-client"
 import { loadPlanWithLimits } from "@/lib/plan-limits"
+import { incrementViewCountAction } from "@/app/actions/interactions"
 
 const SHARE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "ux-archive-captures"
 const SIGNED_URL_EXPIRATION_SECONDS = 60 * 60
@@ -63,6 +64,10 @@ const fetchSharedPattern = cache(async (patternId: string) => {
       author: pattern.author,
       updatedAt: pattern.updated_at,
       tags,
+      viewCount: pattern.view_count,
+      likeCount: pattern.like_count,
+      forkCount: pattern.fork_count,
+      originalPatternId: pattern.original_pattern_id,
     },
     captures,
     insights,
@@ -72,7 +77,7 @@ const fetchSharedPattern = cache(async (patternId: string) => {
 const loadPatternRecord = async (client: ServiceSupabaseClient, patternId: string) => {
   const { data, error } = await client
     .from("pattern_with_counts")
-    .select("id, name, service_name, summary, author, updated_at, is_public")
+    .select("id, name, service_name, summary, author, updated_at, is_public, view_count, like_count, fork_count, original_pattern_id")
     .eq("id", patternId)
     .maybeSingle()
 
@@ -80,7 +85,19 @@ const loadPatternRecord = async (client: ServiceSupabaseClient, patternId: strin
     throw new Error(`Failed to load pattern: ${error.message}`)
   }
 
-  return data as { id: string; name: string; service_name: string | null; summary: string | null; author: string | null; updated_at: string | null; is_public: boolean } | null
+  return data as {
+    id: string
+    name: string
+    service_name: string | null
+    summary: string | null
+    author: string | null
+    updated_at: string | null
+    is_public: boolean
+    view_count: number
+    like_count: number
+    fork_count: number
+    original_pattern_id: string | null
+  } | null
 }
 
 const normalizeStoragePath = (value: string | null | undefined) => (value ? value.replace(/^\/+/, "") : null)
@@ -251,6 +268,20 @@ export default async function PatternDetailPage({ params }: PatternPageProps) {
     }
   }
 
+  let isLiked = false
+  if (user) {
+    const { data: likeData } = await supabase
+      .from("pattern_likes")
+      .select("pattern_id")
+      .eq("pattern_id", patternId)
+      .eq("user_id", user.id)
+      .maybeSingle()
+    isLiked = !!likeData
+  }
+
+  // Increment view count (server-side, async fire-and-forget)
+  /* await */ incrementViewCountAction(patternId)
+
   return (
     <PublicPatternViewer
       pattern={data.pattern}
@@ -258,6 +289,7 @@ export default async function PatternDetailPage({ params }: PatternPageProps) {
       insights={data.insights}
       isAuthenticated={Boolean(user)}
       canDownload={canDownload}
+      isLiked={isLiked}
     />
   )
 }

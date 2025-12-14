@@ -16,9 +16,10 @@ import { forkPatternAction } from "@/app/actions/fork-pattern"
 interface ForkButtonProps {
     patternId: string
     isAuthenticated: boolean
+    count?: number
 }
 
-export function ForkButton({ patternId, isAuthenticated }: ForkButtonProps) {
+export function ForkButton({ patternId, isAuthenticated, count = 0 }: ForkButtonProps) {
     const [isPending, startTransition] = React.useTransition()
     const router = useRouter()
     const { toast } = useToast()
@@ -69,6 +70,7 @@ export function ForkButton({ patternId, isAuthenticated }: ForkButtonProps) {
                         <Copy className="h-3.5 w-3.5" />
                     )}
                     Fork
+                    <span className="ml-1 text-xs text-muted-foreground tabular-nums">{count}</span>
                 </Button>
             </TooltipTrigger>
             <TooltipContent>

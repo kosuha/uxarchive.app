@@ -17,14 +17,19 @@ type PublicPatternViewerProps = {
     author?: string | null
     updatedAt?: string | null
     tags: Tag[]
+    viewCount?: number
+    likeCount?: number
+    forkCount?: number
+    originalPatternId?: string | null
   }
   captures: Capture[]
   insights: Insight[]
   isAuthenticated: boolean
   canDownload: boolean
+  isLiked?: boolean
 }
 
-export function PublicPatternViewer({ pattern, captures, insights, isAuthenticated, canDownload }: PublicPatternViewerProps) {
+export function PublicPatternViewer({ pattern, captures, insights, isAuthenticated, canDownload, isLiked }: PublicPatternViewerProps) {
   const [activeCaptureId, setActiveCaptureId] = React.useState<string | undefined>(captures[0]?.id)
   const activeCapture = React.useMemo(
     () => captures.find((capture) => capture.id === activeCaptureId),
@@ -56,6 +61,10 @@ export function PublicPatternViewer({ pattern, captures, insights, isAuthenticat
           isAuthenticated={isAuthenticated}
           canDownload={canDownload}
           currentCaptureUrl={activeCapture?.imageUrl}
+          viewCount={pattern.viewCount ?? 0}
+          likeCount={pattern.likeCount ?? 0}
+          forkCount={pattern.forkCount ?? 0}
+          isLiked={isLiked ?? false}
         />
       </aside>
       <div className="order-2 flex h-full min-h-0 flex-1 lg:order-2">

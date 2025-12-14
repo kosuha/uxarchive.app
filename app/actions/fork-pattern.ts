@@ -56,7 +56,8 @@ export async function forkPatternAction(sourcePatternId: string) {
     author: user.user_metadata?.full_name ?? user.email ?? "Unknown", // Set author to current user
     isPublic: false, // Default to private
     isArchived: false,
-    createdBy: user.id
+    createdBy: user.id,
+    originalPatternId: sourcePatternId 
   })
 
   // 5. Copy Pattern Tags

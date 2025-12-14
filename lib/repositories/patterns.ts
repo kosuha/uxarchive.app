@@ -12,7 +12,7 @@ const getPostgrestErrorStatus = (error: unknown): number | undefined => {
 const PATTERN_BASE_FIELDS =
   "id, workspace_id, folder_id, name, service_name, summary, author, is_public, is_archived, public_url, thumbnail_url, views, created_by, created_at, updated_at"
 
-const PATTERN_WITH_COUNTS_FIELDS = `${PATTERN_BASE_FIELDS}, capture_count, insight_count`
+const PATTERN_WITH_COUNTS_FIELDS = `${PATTERN_BASE_FIELDS}, capture_count, insight_count, view_count, like_count, fork_count, original_pattern_id`
 
 export type PatternRecord = {
   id: string
@@ -32,6 +32,10 @@ export type PatternRecord = {
   updatedAt: string
   captureCount: number
   insightCount: number
+  viewCount: number
+  likeCount: number
+  forkCount: number
+  originalPatternId: string | null
 }
 
 type PatternRow = {
@@ -52,6 +56,10 @@ type PatternRow = {
   updated_at: string
   capture_count: number | null
   insight_count: number | null
+  view_count: number
+  like_count: number
+  fork_count: number
+  original_pattern_id: string | null
 }
 
 const mapPattern = (row: PatternRow): PatternRecord => ({
@@ -72,6 +80,10 @@ const mapPattern = (row: PatternRow): PatternRecord => ({
   updatedAt: row.updated_at,
   captureCount: row.capture_count ?? 0,
   insightCount: row.insight_count ?? 0,
+  viewCount: row.view_count,
+  likeCount: row.like_count,
+  forkCount: row.fork_count,
+  originalPatternId: row.original_pattern_id,
 })
 
 export type ListPatternsParams = {
@@ -122,6 +134,7 @@ export type CreatePatternInput = {
   isPublic?: boolean
   isArchived?: boolean
   createdBy?: string | null
+  originalPatternId?: string | null
 }
 
 export const createPattern = async (
@@ -138,6 +151,7 @@ export const createPattern = async (
     is_public: input.isPublic ?? false,
     is_archived: input.isArchived ?? false,
     created_by: input.createdBy ?? null,
+    original_pattern_id: input.originalPatternId ?? null,
   }
 
   const { data, error } = await client
