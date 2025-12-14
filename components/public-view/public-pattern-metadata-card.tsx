@@ -59,7 +59,7 @@ export function PublicPatternMetadataCard({
     () => (tags?.length ? [...tags].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) : []),
     [tags],
   )
-  const authorLabel = author?.trim() ? `@${author.trim()}` : "Unknown"
+  const authorLabel = author?.trim() ? `${author.trim()}` : "Unknown"
   const updatedLabel = readableUpdatedAt || "Not available"
   const summaryLabel = summary?.trim() || ""
 
