@@ -19,7 +19,7 @@ export default function ProPage() {
           </Badge>
           <h1 className="text-4xl font-black md:text-5xl">Pro Plan coming soon</h1>
           <p className="text-lg text-muted-foreground">
-            Pro is on the way with team workspaces, unlimited patterns, and prototyping.
+            Pro is on the way with team workspaces, advanced analytics, SSO, and priority support.
           </p>
         </header>
 

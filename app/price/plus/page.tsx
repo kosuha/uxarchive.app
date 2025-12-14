@@ -12,10 +12,10 @@ import { useToast } from "@/components/ui/use-toast"
 import { useSupabaseSession } from "@/lib/supabase/session-context"
 
 const features = [
-  "Personal workspace included",
-  "Up to 30 patterns",
-  "Image download",
-  "Sharable links",
+  "Everything in Free",
+  "Unlimited private patterns",
+  "Original quality downloads",
+  "Fork patterns to workspace",
 ]
 
 export default function PlusPage() {
