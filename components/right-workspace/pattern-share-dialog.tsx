@@ -35,6 +35,7 @@ type PatternShareDialogProps = {
   patternName?: string
   isPublic: boolean
   disabled?: boolean
+  warningMessage?: string | null
   onToggleShare: (next: boolean) => Promise<void> | void
 }
 
@@ -43,6 +44,7 @@ export function PatternShareDialog({
   patternName,
   isPublic,
   disabled,
+  warningMessage,
   onToggleShare,
 }: PatternShareDialogProps) {
   const { toast } = useToast()
@@ -138,6 +140,10 @@ export function PatternShareDialog({
                 </Button>
               </div>
             </div>
+          ) : null}
+
+          {disabled && warningMessage ? (
+            <p className="text-xs font-medium text-destructive">{warningMessage}</p>
           ) : null}
         </div>
         <DialogFooter>

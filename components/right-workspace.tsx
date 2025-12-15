@@ -310,12 +310,19 @@ export function RightWorkspace({ patternId }: RightWorkspaceProps) {
     // Always allow turning public (freed up a slot)
     const shareDisabled = pattern.isPublic && isLimitReached
 
+    const warningMessage = shareDisabled && planInfo?.code === "free"
+      ? `Free plan is limited to ${privateLimit} private patterns. Upgrade to make this private.`
+      : shareDisabled
+        ? `You have reached the private pattern limit (${privateLimit}).`
+        : null
+
     return (
       <PatternShareDialog
         patternId={pattern.id}
         patternName={pattern.name}
         isPublic={pattern.isPublic}
         disabled={shareDisabled}
+        warningMessage={warningMessage}
         onToggleShare={handleToggleShare}
       />
     )
