@@ -76,7 +76,7 @@ export function PublicRepositoryViewer({ repository, folders, assets }: PublicRe
         let curr = folders.find(f => f.id === assetFolderId)
         while (curr && curr.id !== rootFolderId) {
             path.unshift(curr.name)
-            curr = curr.parentId ? folders.find(f => f.id === curr.parentId) : undefined
+            curr = curr.parentId ? folders.find(f => f.id === curr?.parentId) : undefined
         }
         return path.join(" / ")
     }, [folders])
@@ -248,7 +248,7 @@ export function PublicRepositoryViewer({ repository, folders, assets }: PublicRe
                                             }))
 
                                             return (
-                                                <div key={folder.id} onClick={() => setCurrentFolderId(folder.id)} className="cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors group">
+                                                <div key={folder.id} onClick={() => setCurrentFolderId(folder.id)} className="cursor-pointer hover:bg-muted transition-colors group">
                                                     <RepositoryFolderSection
                                                         repositoryId={repository.id}
                                                         folderId={folder.id}

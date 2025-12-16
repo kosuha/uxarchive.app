@@ -71,7 +71,7 @@ export function RepositoryFolderSection({
                 ref={ref}
                 {...events}
                 className={cn(
-                    "flex gap-6 overflow-x-auto px-8 pb-4 scrollbar-hide snap-x",
+                    "flex gap-1 overflow-x-auto px-8 pb-4 scrollbar-hide snap-x",
                     isDragging ? "cursor-grabbing select-none snap-none" : "cursor-grab snap-mandatory"
                 )}
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}

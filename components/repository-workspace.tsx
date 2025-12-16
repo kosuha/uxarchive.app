@@ -207,7 +207,7 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
     const pageTitle = currentFolder ? currentFolder.name : currentRepository?.name
 
     return (
-        <div className={cn("flex flex-col rounded-lg h-full bg-[#FAFAFA] dark:bg-[#09090b]", className)}>
+        <div className={cn("flex flex-col rounded-lg h-full bg-background", className)}>
 
             {/* 1. Global Navigation Bar (Breadcrumbs + Actions) */}
             <div className="flex items-center gap-4 px-4 py-3 border-b border-border/40 text-sm bg-background/50 backdrop-blur-sm sticky top-0 z-20">
@@ -393,16 +393,16 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                                             }
                                         }}
                                     >
-                                        <div onClick={() => setCurrentFolderId(folder.id)} className="cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                                            <RepositoryFolderSection
-                                                repositoryId={selectedRepositoryId}
-                                                folderId={folder.id}
-                                                title={folder.name}
-                                                showIfEmpty={true}
-                                                assets={recursiveAssets}
-                                                onAssetClick={handleAssetClick}
-                                            />
-                                        </div>
+                                    <div onClick={() => setCurrentFolderId(folder.id)} className="cursor-pointer hover:bg-muted transition-colors rounded-lg">
+                                        <RepositoryFolderSection
+                                            repositoryId={selectedRepositoryId}
+                                            folderId={folder.id}
+                                            title={folder.name}
+                                            showIfEmpty={true}
+                                            assets={recursiveAssets}
+                                            onAssetClick={handleAssetClick}
+                                        />
+                                    </div>
                                     </ItemContextMenu>
                                 )
                             })}

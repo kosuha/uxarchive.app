@@ -24,10 +24,10 @@ export function PatternsHeader({ hideSearch = false }: PatternsHeaderProps) {
     }, [hideSearch])
 
     const pathname = usePathname()
-    const isPatternsPage = pathname === "/patterns"
+    const isRepositoriesPage = pathname === "/share/r"
 
     return (
-        <nav className="sticky top-0 z-50 w-full border-b border-white/5 bg-background/80 backdrop-blur-md">
+        <nav className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
             <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8">
                 {/* Left: Logo (Hidden when mobile search is open) */}
                 <div className={cn(
@@ -78,31 +78,23 @@ export function PatternsHeader({ hideSearch = false }: PatternsHeaderProps) {
                         "flex items-center gap-2 transition-opacity duration-200",
                         isMobileSearchOpen ? "hidden" : "flex"
                     )}>
-                        {isPatternsPage ? (
-                            <Button
-                                variant="ghost"
-                                asChild
-                                className="px-4 rounded-full border border-border text-foreground/70 hover:text-foreground hover:bg-white/5"
-                            >
-                                <Link href="/share/r" className="gap-2">
-                                    <span>Repositories</span>
-                                </Link>
-                            </Button>
+                        {isRepositoriesPage ? (
+                            <></>
                         ) : (
                             <Button
                                 variant="ghost"
                                 asChild
-                                className="px-4 rounded-full border border-border text-foreground/70 hover:text-foreground hover:bg-white/5"
+                                className="px-4 rounded-full border border-border text-foreground/70 hover:text-foreground hover:bg-accent"
                             >
-                                <Link href="/patterns" className="gap-2">
-                                    <span>Patterns</span>
+                                <Link href="/share/r" className="gap-2">
+                                    <span>Repositories</span>
                                 </Link>
                             </Button>
                         )}
                         <Button
                             variant="ghost"
                             asChild
-                            className="px-4 rounded-full border border-border text-foreground/70 hover:text-foreground hover:bg-white/5"
+                            className="px-4 rounded-full border border-border text-foreground/70 hover:text-foreground hover:bg-accent"
                         >
                             <Link href="/workspace" className="gap-2">
                                 {/* On mobile, usually show Icon only or just text? Reference layout used Text. */}

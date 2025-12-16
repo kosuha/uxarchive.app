@@ -61,11 +61,11 @@ export function SearchInput({ className, ...props }: SearchInputProps) {
                 onChange={(e) => setValue(e.target.value)}
                 onKeyDown={onKeyDown}
                 placeholder="Search"
-                className="h-10 w-full rounded-full border-border bg-white/5 pr-10 text-sm text-white placeholder:text-white/40 focus-visible:bg-white/10 focus-visible:ring-0"
+                className="h-10 w-full rounded-full border-border bg-muted/50 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus-visible:bg-accent focus-visible:ring-0"
             />
             <button
                 onClick={handleSearch}
-                className="absolute right-3 top-2.5 text-white/40 hover:text-white transition-colors"
+                className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground transition-colors"
                 aria-label="Search"
             >
                 <Search className="h-4 w-4" />

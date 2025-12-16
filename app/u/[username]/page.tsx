@@ -36,7 +36,7 @@ export default async function ProfilePage(props: PageProps) {
     const initialPosts = items.filter((item) => item.isPublic)
 
     return (
-        <div className="min-h-screen bg-[#0C0C0C] text-foreground">
+        <div className="min-h-screen bg-background text-foreground">
             <PatternsHeader hideSearch={true} />
             <div className="mx-auto w-full max-w-[1600px] px-4 pt-8 sm:px-6 lg:px-8">
                 <ProfileHeader profile={profile} />

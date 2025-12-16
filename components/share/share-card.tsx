@@ -81,10 +81,10 @@ export function ShareCard({ item, priority = false }: ShareCardProps) {
             className="group break-inside-avoid flex flex-col gap-4 focus-visible:outline-none hover:cursor-pointer min-w-[300px]"
         >
             {/* Card Image */}
-            <div className="relative w-full overflow-hidden rounded-[24px] bg-[#1C1C1E] p-8 transition-all duration-300 group-hover:shadow-2xl group-focus-visible:ring-2 group-focus-visible:ring-white/50 aspect-[4/3]">
+            <div className="relative w-full overflow-hidden rounded-[24px] bg-muted p-8 transition-all duration-300 group-hover:shadow-2xl group-focus-visible:ring-2 group-focus-visible:ring-ring aspect-[4/3]">
                 {/* New Badge */}
                 {isNew && (
-                    <div className="absolute left-4 top-4 z-10 rounded-md bg-white/20 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md">
+                    <div className="absolute left-4 top-4 z-10 rounded-md bg-background/80 px-2.5 py-1 text-[11px] font-medium text-foreground backdrop-blur-md border border-border/50">
                         New
                     </div>
                 )}
@@ -113,16 +113,16 @@ export function ShareCard({ item, priority = false }: ShareCardProps) {
             {/* Card Content & Stats */}
             <div className="flex flex-col gap-2">
                 <div className="flex flex-col min-w-0 pt-0.5">
-                    <h3 className="text-[15px] font-bold leading-tight text-white truncate">
+                    <h3 className="text-[15px] font-bold leading-tight text-foreground truncate">
                         {item.service || item.title}
                     </h3>
-                    <p className="text-[13px] text-white/50 truncate leading-tight mt-0.5">
+                    <p className="text-[13px] text-muted-foreground truncate leading-tight mt-0.5">
                         {item.service ? item.title : "Mobile Design Patterns"}
                     </p>
                 </div>
 
                 {/* Stats Footer */}
-                <div className="flex items-center gap-4 text-xs font-medium text-white/40 pt-1">
+                <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground pt-1">
                     <div className="flex items-center gap-1.5" title="Views">
                         <Eye className="size-3.5" />
                         <span>{item.views || 0}</span>

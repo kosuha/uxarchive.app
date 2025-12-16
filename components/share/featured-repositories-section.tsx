@@ -20,7 +20,7 @@ export function FeaturedRepositoriesSection({ title, subtitle, items, href }: Fe
         <section className="space-y-4 py-6">
             <div className="flex items-center justify-between px-1">
                 <div className="space-y-1">
-                    <h2 className="text-2xl font-semibold tracking-tight text-white">{title}</h2>
+                    <h2 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h2>
                     {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
                 </div>
                 {href && (

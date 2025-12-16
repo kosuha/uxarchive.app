@@ -101,9 +101,9 @@ export function ShareListing({ initialPosts, search, userId }: ShareListingProps
   return (
     <div className="w-full">
       {computedItems.length === 0 && !isLoading ? (
-        <div className="flex flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/5 px-6 py-20 text-center">
-          <p className="text-lg font-medium text-white">No published posts found</p>
-          <p className="mt-2 text-sm text-white/60">Try adjusting your search criteria.</p>
+        <div className="flex flex-col items-center justify-center rounded-3xl border border-border/40 bg-muted/30 px-6 py-20 text-center">
+          <p className="text-lg font-medium text-foreground">No published posts found</p>
+          <p className="mt-2 text-sm text-muted-foreground">Try adjusting your search criteria.</p>
         </div>
       ) : (
         <>
@@ -118,10 +118,10 @@ export function ShareListing({ initialPosts, search, userId }: ShareListingProps
           {/* Loading Indicator / Observer Target */}
           <div ref={observerTarget} className="flex w-full items-center justify-center py-8">
             {isLoading && (
-              <Loader2 className="h-6 w-6 animate-spin text-white/40" />
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             )}
             {!hasMore && computedItems.length > 0 && (
-              <p className="text-sm text-white/20">All posts loaded</p>
+              <p className="text-sm text-muted-foreground/60">All posts loaded</p>
             )}
           </div>
         </>

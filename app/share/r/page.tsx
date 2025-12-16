@@ -56,7 +56,7 @@ export default async function SharedRepositoriesPage({
     const { posts, editorsPick, trending } = await loadContent(search)
 
   return (
-    <div className="dark min-h-screen bg-[#0C0C0C] text-foreground">
+    <div className="min-h-screen bg-background text-foreground">
       <PatternsHeader />
 
       <div className="mx-auto w-full max-w-[1600px] px-4 pt-8 sm:px-6 lg:px-8 space-y-12 pb-20">
@@ -78,13 +78,13 @@ export default async function SharedRepositoriesPage({
                     />
                 )}
 
-                <div className="h-px w-full bg-white/5" />
+                <div className="h-px w-full bg-border/40" />
             </>
         )}
 
         <div className="space-y-6">
           <div className="flex items-center justify-between px-1">
-            <h2 className="text-2xl font-semibold tracking-tight text-white">
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">
               {search ? `Results for "${search}"` : "All Repositories"}
             </h2>
           </div>

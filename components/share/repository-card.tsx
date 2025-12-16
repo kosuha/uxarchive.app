@@ -58,7 +58,7 @@ export function RepositoryCard({ repo }: { repo: RepositoryRecord }) {
     <div className="group break-inside-avoid flex flex-col gap-4 focus-visible:outline-none min-w-[300px]">
         {/* Card Image / Cover */}
         <Link href={`/share/r/${repo.id}`} className="block focus-visible:outline-none">
-            <div className="relative w-full overflow-hidden rounded-[24px] bg-[#1C1C1E] transition-all duration-300 group-hover:shadow-2xl group-focus-visible:ring-2 group-focus-visible:ring-white/50 aspect-[3/4]">
+            <div className="relative w-full overflow-hidden rounded-[24px] bg-border transition-all duration-300 group-hover:shadow-2xl group-focus-visible:ring-2 group-focus-visible:ring-ring aspect-[3/4]">
                 <div className="relative flex w-full h-full justify-center items-center overflow-hidden rounded-2xl">
                     {repo.thumbnailUrl ? (
                         <Image
@@ -83,16 +83,16 @@ export function RepositoryCard({ repo }: { repo: RepositoryRecord }) {
         {/* Card Content & Stats */}
         <div className="flex flex-col gap-2">
             <Link href={`/share/r/${repo.id}`} className="flex flex-col min-w-0 pt-0.5 focus-visible:outline-none">
-                <h3 className="text-[15px] font-bold leading-tight text-white truncate group-hover:text-white/90 transition-colors">
+                <h3 className="text-[15px] font-bold leading-tight text-foreground truncate group-hover:text-foreground/90 transition-colors">
                     {repo.name}
                 </h3>
-                <p className="text-[13px] text-white/50 line-clamp-2 leading-snug mt-1">
+                <p className="text-[13px] text-muted-foreground line-clamp-2 leading-snug mt-1">
                     {repo.description || "No description provided."}
                 </p>
             </Link>
 
             {/* Stats Footer */}
-            <div className="flex items-center gap-4 text-xs font-medium text-white/40 pt-1">
+            <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground pt-1">
                 <div className="flex items-center gap-1.5" title="Views">
                     <Eye className="size-3.5" />
                     <span>{repo.viewCount || 0}</span>
