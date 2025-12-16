@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { RepositoryRecord } from "@/lib/repositories/repositories"
 import { RepositoryFolderRecord } from "@/lib/repositories/repository-folders"
 import { Badge } from "@/components/ui/badge"
-import { Lock, Globe, Calendar, Eye, GitFork, ChevronDown, Folder, Heart } from "lucide-react"
+import { Lock, Globe, Calendar, Eye, GitFork, ChevronDown, Folder, Heart, Copy } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { updateRepositoryAction } from "@/app/actions/repositories"
 import { updateRepositoryFolderAction } from "@/app/actions/repository-folders"
@@ -22,9 +22,10 @@ import { toast } from "sonner"
 interface RepositoryHeaderProps {
     repository: RepositoryRecord
     folder?: RepositoryFolderRecord
+    readOnly?: boolean
 }
 
-export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) {
+export function RepositoryHeader({ repository, folder, readOnly = false }: RepositoryHeaderProps) {
     // Determine initial description based on context (folder vs repo)
     const initialDescription = folder ? (folder.description || "") : (repository.description || "")
     
@@ -41,6 +42,8 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
     const queryClient = useQueryClient()
 
     const handleDescriptionBlur = async () => {
+        if (readOnly) return
+
         const currentDescription = folder ? (folder.description || "") : (repository.description || "")
         
         if (description !== currentDescription) {
@@ -69,6 +72,8 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
     }
 
     const handleVisibilityChange = async (isPublic: boolean) => {
+        if (readOnly) return
+
         // Folder visibility is inherited for now, so this is only for repo
         if (folder) return 
 
@@ -100,48 +105,84 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
                     </h1>
                     
                     {!folder && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
+                        <div className="flex items-center gap-2">
+                            {readOnly ? (
                                 <Badge 
                                     variant="secondary" 
                                     className={cn(
-                                        "gap-1.5 h-6 px-2.5 font-normal text-muted-foreground cursor-pointer hover:bg-secondary/80 transition-colors",
-                                        repository.isPublic ? "text-green-600 bg-green-500/10 hover:bg-green-500/20" : ""
+                                        "gap-1.5 h-6 px-2.5 font-normal text-muted-foreground cursor-default",
+                                        repository.isPublic ? "text-green-600 bg-green-500/10" : ""
                                     )}
                                 >
                                     {repository.isPublic ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
                                     {repository.isPublic ? "Public" : "Private"}
-                                    <ChevronDown className="w-3 h-3 opacity-50 ml-1" />
                                 </Badge>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start">
-                                <DropdownMenuItem onClick={() => handleVisibilityChange(true)}>
-                                    <Globe className="w-4 h-4 mr-2" />
-                                    Public
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleVisibilityChange(false)}>
-                                    <Lock className="w-4 h-4 mr-2" />
-                                    Private
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                            ) : (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Badge 
+                                            variant="secondary" 
+                                            className={cn(
+                                                "gap-1.5 h-6 px-2.5 font-normal text-muted-foreground cursor-pointer hover:bg-secondary/80 transition-colors",
+                                                repository.isPublic ? "text-green-600 bg-green-500/10 hover:bg-green-500/20" : ""
+                                            )}
+                                        >
+                                            {repository.isPublic ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                                            {repository.isPublic ? "Public" : "Private"}
+                                            <ChevronDown className="w-3 h-3 opacity-50 ml-1" />
+                                        </Badge>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start">
+                                        <DropdownMenuItem onClick={() => handleVisibilityChange(true)}>
+                                            <Globe className="w-4 h-4 mr-2" />
+                                            Public
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleVisibilityChange(false)}>
+                                            <Lock className="w-4 h-4 mr-2" />
+                                            Private
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
+
+                            {repository.isPublic && (
+                                <button
+                                    onClick={() => {
+                                        const url = `${window.location.origin}/share/r/${repository.id}`
+                                        navigator.clipboard.writeText(url)
+                                        toast.success("Link copied to clipboard")
+                                    }}
+                                    className="flex items-center gap-1.5 h-6 px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/80 rounded-full transition-colors"
+                                    title="Copy public link"
+                                >
+                                    <Copy className="w-3 h-3" />
+                                    Copy Link
+                                </button>
+                            )}
+                        </div>
                     )}
                 </div>
                 
                 <div className="max-w-2xl">
-                    <Textarea 
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        onBlur={handleDescriptionBlur}
-                        placeholder={folder ? "Add a folder description..." : "Add a repository description..."}
-                        className="resize-none min-h-[40px] h-auto overflow-hidden bg-transparent border-transparent hover:border-input focus:border-input transition-all px-0 py-1 text-base leading-relaxed text-muted-foreground placeholder:text-muted-foreground/50 focus-visible:ring-0 focus-visible:ring-offset-0 -ml-1 pl-1"
-                        rows={1}
-                        onInput={(e) => {
-                            const target = e.target as HTMLTextAreaElement;
-                            target.style.height = "auto";
-                            target.style.height = `${target.scrollHeight}px`;
-                        }}
-                    />
+                    {readOnly ? (
+                         description ? (
+                            <p className="text-base leading-relaxed text-muted-foreground min-h-[40px] py-1">{description}</p>
+                         ) : null
+                    ) : (
+                        <Textarea 
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            onBlur={handleDescriptionBlur}
+                            placeholder={folder ? "Add a folder description..." : "Add a repository description..."}
+                            className="resize-none min-h-[40px] h-auto overflow-hidden bg-transparent border-transparent hover:border-input focus:border-input transition-all px-0 py-1 text-base leading-relaxed text-muted-foreground placeholder:text-muted-foreground/50 focus-visible:ring-0 focus-visible:ring-offset-0 -ml-1 pl-1"
+                            rows={1}
+                            onInput={(e) => {
+                                const target = e.target as HTMLTextAreaElement;
+                                target.style.height = "auto";
+                                target.style.height = `${target.scrollHeight}px`;
+                            }}
+                        />
+                    )}
                 </div>
             </div>
 

@@ -157,3 +157,33 @@ export const listRepositories = async (
   ensureData(data, error, "Failed to list repositories.");
   return (data as RepositoryRow[]).map(mapRepository);
 };
+
+export const listPublicRepositories = async (
+  client: SupabaseRepositoryClient,
+  limit = 20,
+): Promise<RepositoryRecord[]> => {
+  const { data, error } = await client
+    .from("repositories")
+    .select()
+    .eq("is_public", true)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  ensureData(data, error, "Failed to list public repositories.");
+  return (data as RepositoryRow[]).map(mapRepository);
+};
+
+export const getPublicRepositoryById = async (
+  client: SupabaseRepositoryClient,
+  id: string,
+): Promise<RepositoryRecord> => {
+  const { data, error } = await client
+    .from("repositories")
+    .select()
+    .eq("id", id)
+    .eq("is_public", true)
+    .single();
+
+  const row = ensureData(data, error, "Repository not found or not public.");
+  return mapRepository(row);
+};
