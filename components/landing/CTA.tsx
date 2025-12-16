@@ -52,7 +52,7 @@ export function CTA() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button size="lg" asChild className="bg-primary hover:bg-primary/90 text-lg px-8 py-6 rounded-full group">
-              <Link href="/patterns">
+              <Link href="/share/r">
                 Start for Free
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>

@@ -17,7 +17,7 @@ const pricingTiers = [
     highlight: false,
     features: ["Unlimited public patterns", "Up to 3 private patterns", "Personal public profile"],
     ctaLabel: "Start free",
-    ctaHref: "/workspace",
+    ctaHref: "/share/r",
     disabled: false,
     supportingText: "Share your curation with the world.",
   },

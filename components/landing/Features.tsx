@@ -24,19 +24,19 @@ const features = [
   {
     icon: Globe,
     title: "Community Discovery",
-    description: "Explore patterns shared by the community.",
+    description: "Explore repositories shared by the community.",
     gradient: "from-cyan-500 to-blue-500",
   },
   {
     icon: Layout,
     title: "Public Profile",
-    description: "Curate and exhibit your personal pattern library to the world.",
+    description: "Curate and exhibit your personal repository library to the world.",
     gradient: "from-blue-500 to-indigo-500",
   },
   {
     icon: TrendingUp,
     title: "Engagement Stats",
-    description: "Track views, likes, and forks on your shared patterns.",
+    description: "Track views, likes, and forks on your shared repositories.",
     gradient: "from-indigo-500 to-violet-500",
   },
 ];

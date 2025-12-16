@@ -124,7 +124,7 @@ export function Hero() {
               size="lg"
               className="bg-primary hover:bg-primary/90 text-lg px-8 py-6 rounded-full group w-[250px] h-[54px]"
             >
-              <Link href="/patterns">
+              <Link href="/share/r">
                 Get Started Free
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
@@ -166,7 +166,7 @@ export function Hero() {
               variant="outline"
               className="h-[54px] w-[250px] justify-start rounded-lg border-border/70 bg-background/30 pl-2.5 shadow-lg backdrop-blur hover:bg-background/50"
             >
-              <Link href="/patterns" className="items-center gap-2.5">
+              <Link href="/share/r" className="items-center gap-2.5">
                 <div className="rounded-full bg-primary/10 p-2 text-primary">
                   <LayoutDashboard className="h-4 w-4" />
                 </div>
@@ -180,7 +180,7 @@ export function Hero() {
                       {formattedPatternCount}
                     </span>
                   )}
-                  <span className="text-xs font-bold">Shared patterns</span>
+                  <span className="text-xs font-bold">Shared repositories</span>
                 </div>
               </Link>
             </Button>
