@@ -135,26 +135,26 @@ export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId, assets
     return (
         <>
             <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-                <DialogContent showCloseButton={false} className="w-[95vw] h-[90vh] max-w-none sm:max-w-none p-0 gap-0 bg-[#1C1C1C] border-none shadow-2xl overflow-hidden flex flex-col focus:outline-none rounded-[28px]" onPointerDownOutside={(e) => e.preventDefault()}>
+                <DialogContent showCloseButton={false} className="w-[95vw] h-[90vh] max-w-none sm:max-w-none p-0 gap-0 bg-background border-none shadow-2xl overflow-hidden flex flex-col focus:outline-none rounded-[28px]" onPointerDownOutside={(e) => e.preventDefault()}>
                     <DialogTitle className="sr-only">{name}</DialogTitle>
                     
                     {/* Header */}
                     <div className="flex items-center justify-between px-8 py-6 z-10 shrink-0">
-                        <div className="flex items-center gap-3 flex-1 min-w-0 text-white">
+                        <div className="flex items-center gap-3 flex-1 min-w-0 text-foreground">
                             {isRenaming ? (
                                 <div className="flex items-center gap-2 flex-1 max-w-md">
                                     <Input
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
-                                        className="h-8 text-sm bg-transparent border-white/20 text-white focus-visible:ring-offset-0 focus-visible:ring-white/20"
+                                        className="h-8 text-sm bg-transparent border-border text-foreground focus-visible:ring-offset-0 focus-visible:ring-border"
                                         autoFocus
                                         onKeyDown={(e) => {
                                             if (e.key === "Enter") handleRename()
                                             if (e.key === "Escape") setIsRenaming(false)
                                         }}
                                     />
-                                    <Button size="sm" onClick={handleRename} className="h-8 px-3 bg-white text-black hover:bg-white/90">Save</Button>
-                                    <Button size="sm" variant="ghost" onClick={() => setIsRenaming(false)} className="h-8 px-3 text-white/70 hover:text-white hover:bg-white/10">Cancel</Button>
+                                    <Button size="sm" onClick={handleRename} className="h-8 px-3 bg-border text-foreground hover:bg-border/90">Save</Button>
+                                    <Button size="sm" variant="ghost" onClick={() => setIsRenaming(false)} className="h-8 px-3 text-foreground/70 hover:text-foreground hover:bg-border/10">Cancel</Button>
                                 </div>
                             ) : (
                                 <h2 
@@ -167,13 +167,13 @@ export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId, assets
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10 rounded-full" onClick={handleDownload}>
+                            <Button variant="ghost" size="icon" className="h-10 w-10 text-foreground/70 hover:text-foreground hover:bg-border/10 rounded-full" onClick={handleDownload}>
                                 <Download className="w-5 h-5" />
                             </Button>
                             
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10 rounded-full">
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 text-foreground/70 hover:text-foreground hover:bg-border/10 rounded-full">
                                         <MoreHorizontal className="w-5 h-5" />
                                     </Button>
                                 </DropdownMenuTrigger>
@@ -190,9 +190,9 @@ export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId, assets
                                 </DropdownMenuContent>
                             </DropdownMenu>
 
-                            <div className="w-px h-6 bg-white/10 mx-2" />
+                            <div className="w-px h-6 bg-border mx-2" />
 
-                            <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10 rounded-full" onClick={onClose}>
+                            <Button variant="ghost" size="icon" className="h-10 w-10 text-foreground/70 hover:text-foreground hover:bg-border/10 rounded-full" onClick={onClose}>
                                 <X className="w-6 h-6" />
                             </Button>
                         </div>
@@ -205,7 +205,7 @@ export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId, assets
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="absolute left-4 z-50 h-12 w-12 rounded-full bg-black/20 hover:bg-black/40 text-white/70 hover:text-white transition-colors border border-white/10"
+                                className="absolute left-4 z-50 h-12 w-12 rounded-full bg-border/40 hover:bg-border/40 text-foreground/70 hover:text-foreground transition-colors border border-border/10"
                                 onClick={(e) => {
                                     e.stopPropagation()
                                     handlePrevious()
@@ -219,7 +219,7 @@ export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId, assets
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="absolute right-4 z-50 h-12 w-12 rounded-full bg-black/20 hover:bg-black/40 text-white/70 hover:text-white transition-colors border border-white/10"
+                                className="absolute right-4 z-50 h-12 w-12 rounded-full bg-border/40 hover:bg-border/40 text-foreground/70 hover:text-foreground transition-colors border border-border/10"
                                 onClick={(e) => {
                                     e.stopPropagation()
                                     handleNext()

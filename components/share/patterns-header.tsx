@@ -27,7 +27,7 @@ export function PatternsHeader({ hideSearch = false }: PatternsHeaderProps) {
     const isPatternsPage = pathname === "/patterns"
 
     return (
-        <nav className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#0C0C0C]/80 backdrop-blur-md">
+        <nav className="sticky top-0 z-50 w-full border-b border-white/5 bg-background/80 backdrop-blur-md">
             <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8">
                 {/* Left: Logo (Hidden when mobile search is open) */}
                 <div className={cn(
@@ -62,7 +62,7 @@ export function PatternsHeader({ hideSearch = false }: PatternsHeaderProps) {
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="text-white/60 hover:text-white md:hidden"
+                            className="text-foreground/60 hover:text-foreground md:hidden"
                             onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
                         >
                             {isMobileSearchOpen ? (
@@ -82,7 +82,7 @@ export function PatternsHeader({ hideSearch = false }: PatternsHeaderProps) {
                             <Button
                                 variant="ghost"
                                 asChild
-                                className="px-4 rounded-full border border-white/10 text-white/70 hover:text-white hover:bg-white/5"
+                                className="px-4 rounded-full border border-border text-foreground/70 hover:text-foreground hover:bg-white/5"
                             >
                                 <Link href="/share/r" className="gap-2">
                                     <span>Repositories</span>
@@ -92,7 +92,7 @@ export function PatternsHeader({ hideSearch = false }: PatternsHeaderProps) {
                             <Button
                                 variant="ghost"
                                 asChild
-                                className="px-4 rounded-full border border-white/10 text-white/70 hover:text-white hover:bg-white/5"
+                                className="px-4 rounded-full border border-border text-foreground/70 hover:text-foreground hover:bg-white/5"
                             >
                                 <Link href="/patterns" className="gap-2">
                                     <span>Patterns</span>
@@ -102,7 +102,7 @@ export function PatternsHeader({ hideSearch = false }: PatternsHeaderProps) {
                         <Button
                             variant="ghost"
                             asChild
-                            className="px-4 rounded-full border border-white/10 text-white/70 hover:text-white hover:bg-white/5"
+                            className="px-4 rounded-full border border-border text-foreground/70 hover:text-foreground hover:bg-white/5"
                         >
                             <Link href="/workspace" className="gap-2">
                                 {/* On mobile, usually show Icon only or just text? Reference layout used Text. */}

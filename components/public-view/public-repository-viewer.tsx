@@ -162,7 +162,7 @@ export function PublicRepositoryViewer({ repository, folders, assets }: PublicRe
                 </Sheet>
 
                 {/* Main Content */}
-                <div className="flex flex-col flex-1 min-w-0 bg-[#FAFAFA] dark:bg-[#09090b]">
+                <div className="flex flex-col flex-1 min-w-0 bg-background dark:bg-background">
                     
                     {/* Workspace Header / Breadcrumbs */}
                     <div className="flex items-center gap-4 px-4 py-3 border-b border-border/40 text-sm bg-background/50 backdrop-blur-sm sticky top-0 z-20 shrink-0">

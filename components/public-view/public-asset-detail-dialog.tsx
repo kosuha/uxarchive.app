@@ -80,12 +80,12 @@ export function PublicAssetDetailDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent showCloseButton={false} className="w-[95vw] h-[90vh] max-w-none sm:max-w-none p-0 gap-0 bg-[#1C1C1C] border-none shadow-2xl overflow-hidden flex flex-col focus:outline-none rounded-[28px]" onPointerDownOutside={(e) => e.preventDefault()}>
+            <DialogContent showCloseButton={false} className="w-[95vw] h-[90vh] max-w-none sm:max-w-none p-0 gap-0 bg-background border-none shadow-2xl overflow-hidden flex flex-col focus:outline-none rounded-[28px]" onPointerDownOutside={(e) => e.preventDefault()}>
                 <DialogTitle className="sr-only">{name}</DialogTitle>
                 
                 {/* Header */}
                 <div className="flex items-center justify-between px-8 py-6 z-10 shrink-0">
-                    <div className="flex items-center gap-3 flex-1 min-w-0 text-white">
+                    <div className="flex items-center gap-3 flex-1 min-w-0 text-foreground">
                         <h2 className="font-medium text-lg truncate">
                             {name}
                         </h2>
@@ -93,14 +93,14 @@ export function PublicAssetDetailDialog({
 
                     <div className="flex items-center gap-2">
                         {canDownload && (
-                            <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10 rounded-full" onClick={handleDownload}>
+                            <Button variant="ghost" size="icon" className="h-10 w-10 text-foreground/70 hover:text-foreground hover:bg-foreground/10 rounded-full" onClick={handleDownload}>
                                 <Download className="w-5 h-5" />
                             </Button>
                         )}
                         
-                        <div className="w-px h-6 bg-white/10 mx-2" />
+                        <div className="w-px h-6 bg-border mx-2" />
 
-                        <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10 rounded-full" onClick={onClose}>
+                        <Button variant="ghost" size="icon" className="h-10 w-10 text-foreground/70 hover:text-foreground hover:bg-foreground/10 rounded-full" onClick={onClose}>
                             <X className="w-6 h-6" />
                         </Button>
                     </div>
@@ -113,7 +113,7 @@ export function PublicAssetDetailDialog({
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="absolute left-4 z-50 h-12 w-12 rounded-full bg-black/20 hover:bg-black/40 text-white/70 hover:text-white transition-colors border border-white/10"
+                            className="absolute left-4 z-50 h-12 w-12 rounded-full bg-border/40 hover:bg-border/40 text-foreground/70 hover:text-foreground transition-colors border border-border/10"
                             onClick={(e) => {
                                 e.stopPropagation()
                                 handlePrevious()
@@ -127,7 +127,7 @@ export function PublicAssetDetailDialog({
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="absolute right-4 z-50 h-12 w-12 rounded-full bg-black/20 hover:bg-black/40 text-white/70 hover:text-white transition-colors border border-white/10"
+                            className="absolute right-4 z-50 h-12 w-12 rounded-full bg-border/40 hover:bg-border/40 text-foreground/70 hover:text-foreground transition-colors border border-border/10"
                             onClick={(e) => {
                                 e.stopPropagation()
                                 handleNext()
