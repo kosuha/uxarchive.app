@@ -9,6 +9,7 @@ type AssetUpdate = Database["public"]["Tables"]["assets"]["Update"];
 
 export type AssetRecord = {
   id: string;
+  name: string;
   repositoryId: string | null;
   folderId: string | null;
   storagePath: string;
@@ -20,18 +21,25 @@ export type AssetRecord = {
   updatedAt: string;
 };
 
-const mapAsset = (row: AssetRow): AssetRecord => ({
-  id: row.id,
-  repositoryId: row.repository_id,
-  folderId: row.folder_id,
-  storagePath: row.storage_path,
-  width: row.width,
-  height: row.height,
-  meta: row.meta,
-  order: row.order,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
-});
+const mapAsset = (row: AssetRow): AssetRecord => {
+  const meta = row.meta as { name?: string; filename?: string } | null;
+  const name = meta?.name ?? meta?.filename ??
+    row.storage_path.split("/").pop() ?? "Untitled Asset";
+
+  return {
+    id: row.id,
+    name,
+    repositoryId: row.repository_id,
+    folderId: row.folder_id,
+    storagePath: row.storage_path,
+    width: row.width,
+    height: row.height,
+    meta: row.meta,
+    order: row.order,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+};
 
 export type CreateAssetInput = {
   repositoryId?: string | null;

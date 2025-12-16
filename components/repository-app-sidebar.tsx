@@ -50,6 +50,8 @@ export function RepositoryAppSidebar({
     const { state: sidebarState } = useSidebar()
     const [activeNavId, setActiveNavId] = React.useState(PRIMARY_NAV_ITEMS[0]?.id ?? "")
 
+    const [searchQuery, setSearchQuery] = React.useState("")
+    
     const isSidebarCollapsed = !isMobile && sidebarState === "collapsed"
 
     const navOffsetValue = React.useMemo(
@@ -116,8 +118,10 @@ export function RepositoryAppSidebar({
                         <NavViewContainer
                             activeNavId={activeNavId}
                             exploreView={<RepositoryExploreView />}
-                            // Pass empty/null for other views for now
-                            searchViewProps={null as any}
+                            searchViewProps={{
+                                query: searchQuery,
+                                setQuery: setSearchQuery,
+                            }}
                             favoritesViewProps={null as any}
                         />
                     </SidebarContent>
