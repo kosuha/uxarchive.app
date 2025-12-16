@@ -8,28 +8,34 @@ import { cn } from "@/lib/utils"
 import { ItemContextMenu } from "./item-context-menu"
 import { FileImage, Loader2 } from "lucide-react"
 
+import type { AssetRecord } from "@/lib/repositories/assets"
+
 interface RepositoryFolderSectionProps {
     repositoryId: string
     folderId: string | null
     title: string
     showIfEmpty?: boolean
+    assets?: (AssetRecord & { path?: string })[] // Optional pre-loaded assets with path info
 }
 
 export function RepositoryFolderSection({
     repositoryId,
     folderId,
     title,
-    showIfEmpty = false
+    showIfEmpty = false,
+    assets: propsAssets
 }: RepositoryFolderSectionProps) {
-    const { data: assets = [], isLoading } = useQuery({
+    const { data: fetchedAssets = [], isLoading } = useQuery({
         queryKey: ["assets", repositoryId, folderId],
         queryFn: async () => listAssetsAction({ repositoryId, folderId }),
-        enabled: !!repositoryId
+        enabled: !!repositoryId && !propsAssets
     })
+
+    const assets = propsAssets || fetchedAssets
 
     const { ref, events, isDragging } = useDraggableScroll()
 
-    if (isLoading) {
+    if (isLoading && !propsAssets) {
         return (
             <div className="py-6 space-y-4">
                 <div className="flex items-center gap-2 px-8">
@@ -91,9 +97,17 @@ export function RepositoryFolderSection({
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </div>
 
-                                <span className="text-xs text-muted-foreground font-medium pl-1 truncate w-[280px]">
-                                    {(asset.meta as any)?.name || asset.storagePath.split('/').pop()}
-                                </span>
+                                <div className="flex flex-col px-1">
+                                    <span className="text-xs text-muted-foreground font-medium truncate w-[280px]">
+                                        {(asset.meta as any)?.name || asset.storagePath.split('/').pop()}
+                                    </span>
+                                    {/* Display Path if available (Recursive view) */}
+                                    {(asset as any).path && (
+                                        <span className="text-[10px] text-muted-foreground/60 truncate w-[280px]">
+                                            {(asset as any).path}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         </ItemContextMenu>
                     ))

@@ -26,6 +26,16 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
     const currentRepository = repositories.find(r => r.id === selectedRepositoryId)
     const currentFolder = folders.find(f => f.id === currentFolderId)
 
+    // Fetch all assets for the current repository
+    const { data: assets = [] } = useQuery({
+        queryKey: ["assets", selectedRepositoryId, "recursive-all"],
+        queryFn: async () => {
+            if (!selectedRepositoryId) return []
+            return listAssetsAction({ repositoryId: selectedRepositoryId, mode: 'recursive' })
+        },
+        enabled: !!selectedRepositoryId,
+    })
+
     // Derived state: child folders of current view
     const childFolders = folders.filter(f => {
         if (!currentFolderId) return !f.parentId // Root folders
@@ -44,9 +54,33 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
         return path
     }, [currentFolderId, folders])
 
-    // Load assets for current view (folder or root) to check if empty
-    // Actually RepositoryFolderSection does the loading, but for Top Level empty check we might need it.
-    // Optimization: Let's trust RepositoryFolderSection to handle loading.
+
+    // 1. Helper to get all descendant folder IDs for a given root folder
+    const getDescendantFolderIds = React.useCallback((rootId: string) => {
+        const descendants = new Set<string>()
+        const queue = [rootId]
+        while (queue.length > 0) {
+            const currentId = queue.pop()!
+            descendants.add(currentId)
+            const children = folders.filter(f => f.parentId === currentId)
+            children.forEach(c => queue.push(c.id))
+        }
+        return descendants
+    }, [folders])
+
+    // 2. Helper to get asset path relative to a root folder
+    const getRelativeAssetPath = React.useCallback((assetFolderId: string | null, rootFolderId: string | null) => {
+        if (!assetFolderId || assetFolderId === rootFolderId) return "" // Root of section
+
+        const path = []
+        let curr = folders.find(f => f.id === assetFolderId)
+        while (curr && curr.id !== rootFolderId) {
+            path.unshift(curr.name)
+            curr = curr.parentId ? folders.find(f => f.id === curr?.parentId) : undefined
+        }
+        return path.join(" / ")
+    }, [folders])
+
 
     // Upload Logic
     const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -94,8 +128,7 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                 })
                 return { status: 'fulfilled', name: file.name }
             } catch (error) {
-                console.error("Upload failed for", file.name, error)
-                return { status: 'rejected', name: file.name }
+                console.error("Upload failed", error); return { status: 'rejected', name: file.name }
             }
         })
 
@@ -200,6 +233,67 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                         folderId={currentFolderId}
                         title="Screens"
                         showIfEmpty={childFolders.length === 0}
+                        assets={(() => {
+                            // Calculate recursive assets for current view (currentFolderId or Root)
+                            if (!currentFolderId) {
+                                // Root case: Show all repo assets? Or just orphans + roots?
+                                // User says: "Repo assets at top". Usually means direct assets of repo.
+                                // BUT: "Repo -> Folder A -> Folder B". "Repo open -> Repo assets top".
+                                // If Repo has assets directly, show them.
+                                // Recursion? User said "Repo assets at top". Doesn't explicitly say recursive repo assets.
+                                // BUT for Folder A, he said "Asset 1, 2 ALL listed".
+                                // Let's try recursive for everything to be safe based on "list all assets in folder".
+                                // If Root is "No specific folder", it contains everything.
+                                // But usually "Screens" section in Root view is for un-foldered assets.
+                                // IF we show ALL assets in "Screens", we duplicate what's in "Subfolders".
+                                // "Repo -> Folder A".
+                                // If "Screens" shows Asset 1 (from Folder A), and "Folder A" section shows Asset 1... Duplicate!
+
+                                // LOGIC:
+                                // "Screens" section = Assets belonging DIRECTLY to current view (currentFolderId or null).
+                                // "Subfolders" sections = Assets belonging to each child folder RECURSIVELY.
+
+                                // Re-reading user: "Repo assets at top... below that Folder A's assets".
+                                // This implies "Screens" = Direct assets only.
+                                // "Folder A" section = Recursive assets of A.
+
+                                // So for "Screens" section:
+                                return assets.filter(a => a.folderId === (currentFolderId || null)).map(a => ({
+                                    ...a,
+                                    path: "" // No relative path needed for direct assets
+                                }))
+                            } else {
+                                // If we are IN Folder A.
+                                // "Screens" = Direct assets of A?
+                                // Or recursive assets of A?
+                                // User: "Folder A 에셋1, 2 모두 나열". (Asset 1 in A, Asset 2 in B).
+                                // So when inside Folder A: "Screens" should be recursive?
+                                // If we are inside Folder A, we see:
+                                // 1. Screens (Assets of A + B).
+                                // 2. Subfolders (Folder B).
+                                // If Screens shows Asset 2 (from B), and Folder B section shows Asset 2... Duplicate!
+
+                                // Maybe "Subfolders" sections shouldn't be shown if "Screens" shows everything?
+                                // OR: "Screens" = Direct assets only.
+                                // "Subfolders" = Recursive assets of subfolders.
+                                // AND we need to show nested content somehow.
+
+                                // User said: "Repo open -> Repo assets top, below Folder A assets".
+                                // This is Root View.
+                                // Root View:
+                                // 1. Screens (Repo direct assets).
+                                // 2. Folder A Section (Asset 1, Asset 2).
+
+                                // This confirms:
+                                // - Top "Screens" section: Direct assets of current view ONLY.
+                                // - Child Folder Sections: Recursive assets of that child folder.
+
+                                return assets.filter(a => a.folderId === currentFolderId).map(a => ({
+                                    ...a,
+                                    path: ""
+                                }))
+                            }
+                        })()}
                     />
                 </div>
 
@@ -207,16 +301,29 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                 {childFolders.length > 0 && (
                     <div className="mt-2 border-t border-border/40 pt-6">
                         <div className="space-y-2">
-                            {childFolders.map(folder => (
-                                <div key={folder.id} onClick={() => setCurrentFolderId(folder.id)} className="cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                                    <RepositoryFolderSection
-                                        repositoryId={selectedRepositoryId}
-                                        folderId={folder.id}
-                                        title={folder.name}
-                                        showIfEmpty={true}
-                                    />
-                                </div>
-                            ))}
+                            {childFolders.map(folder => {
+                                // Calculate ALL recursive assets for this folder
+                                const descendantIds = getDescendantFolderIds(folder.id)
+                                // recursiveAssets: Assets in 'folder' (direct) OR in any of its descendants.
+                                const recursiveAssets = assets.filter(a =>
+                                    (a.folderId === folder.id) || (a.folderId && descendantIds.has(a.folderId))
+                                ).map(a => ({
+                                    ...a,
+                                    path: getRelativeAssetPath(a.folderId, folder.id)
+                                }))
+
+                                return (
+                                    <div key={folder.id} onClick={() => setCurrentFolderId(folder.id)} className="cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                                        <RepositoryFolderSection
+                                            repositoryId={selectedRepositoryId}
+                                            folderId={folder.id}
+                                            title={folder.name}
+                                            showIfEmpty={true}
+                                            assets={recursiveAssets}
+                                        />
+                                    </div>
+                                )
+                            })}
                         </div>
                     </div>
                 )}
@@ -224,3 +331,5 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
         </div>
     )
 }
+// Icon helper
+import { Folder as FoldersIcon } from "lucide-react"
