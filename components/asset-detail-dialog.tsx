@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,6 +12,16 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { MoreHorizontal, Pencil, Trash2, X, Download, FileImage, Info, ChevronLeft, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
 import type { AssetRecord } from "@/lib/repositories/assets"
@@ -27,15 +38,18 @@ interface AssetDetailDialogProps {
 }
 
 export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId, assets = [], onAssetChange }: AssetDetailDialogProps) {
+    const queryClient = useQueryClient()
     const [isRenaming, setIsRenaming] = React.useState(false)
     const [name, setName] = React.useState((asset.meta as any)?.name || "Untitled")
     const [isDeleting, setIsDeleting] = React.useState(false)
+    const [showDeleteAlert, setShowDeleteAlert] = React.useState(false)
 
     // Reset state when asset changes
     React.useEffect(() => {
         setName((asset.meta as any)?.name || "Untitled")
         setIsRenaming(false)
         setIsDeleting(false)
+        setShowDeleteAlert(false)
     }, [asset])
 
     const currentIndex = React.useMemo(() => assets.findIndex(a => a.id === asset.id), [assets, asset.id])
@@ -57,7 +71,7 @@ export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId, assets
     // Keyboard navigation
     React.useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (!isOpen || isRenaming) return
+            if (!isOpen || isRenaming || showDeleteAlert) return
             
             if (e.key === 'ArrowLeft') handlePrevious()
             if (e.key === 'ArrowRight') handleNext()
@@ -65,7 +79,7 @@ export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId, assets
 
         window.addEventListener('keydown', handleKeyDown)
         return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [isOpen, isRenaming, handlePrevious, handleNext])
+    }, [isOpen, isRenaming, showDeleteAlert, handlePrevious, handleNext])
 
     const handleRename = async () => {
         if (!name.trim()) return
@@ -84,13 +98,16 @@ export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId, assets
 
     const handleDelete = async () => {
         try {
-            setIsDeleting(true)
+            setIsDeleting(true) // Set loading state for the delete action
             await deleteAssetAction({ id: asset.id })
+            await queryClient.invalidateQueries({ queryKey: ["assets"] })
             toast.success("Asset deleted")
             onClose() // Close dialog on success
         } catch (error) {
             toast.error("Failed to delete asset")
-            setIsDeleting(false)
+        } finally {
+            setIsDeleting(false) // Reset loading state
+            setShowDeleteAlert(false) // Close the alert dialog
         }
     }
 
@@ -104,9 +121,7 @@ export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId, assets
             const link = document.createElement('a');
             link.href = url;
             link.download = name || `asset-${asset.id}.png`; 
-            document.body.appendChild(link);
             link.click();
-            document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
         } catch (e) {
             toast.error("Failed to download asset")
@@ -116,114 +131,132 @@ export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId, assets
     const imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ux-archive-captures/${asset.storagePath}`
 
     return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent showCloseButton={false} className="w-[95vw] h-[90vh] max-w-none sm:max-w-none p-0 gap-0 bg-[#1C1C1C] border-none shadow-2xl overflow-hidden flex flex-col focus:outline-none rounded-[28px]" onPointerDownOutside={(e) => e.preventDefault()}>
-                <DialogTitle className="sr-only">{name}</DialogTitle>
-                
-                {/* Header */}
-                <div className="flex items-center justify-between px-8 py-6 z-10 shrink-0">
-                    <div className="flex items-center gap-3 flex-1 min-w-0 text-white">
-                        {isRenaming ? (
-                            <div className="flex items-center gap-2 flex-1 max-w-md">
-                                <Input
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    className="h-8 text-sm bg-transparent border-white/20 text-white focus-visible:ring-offset-0 focus-visible:ring-white/20"
-                                    autoFocus
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") handleRename()
-                                        if (e.key === "Escape") setIsRenaming(false)
-                                    }}
-                                />
-                                <Button size="sm" onClick={handleRename} className="h-8 px-3 bg-white text-black hover:bg-white/90">Save</Button>
-                                <Button size="sm" variant="ghost" onClick={() => setIsRenaming(false)} className="h-8 px-3 text-white/70 hover:text-white hover:bg-white/10">Cancel</Button>
-                            </div>
-                        ) : (
-                            <h2 
-                                className="font-medium text-lg truncate cursor-pointer hover:opacity-80 transition-opacity" 
-                                onDoubleClick={() => setIsRenaming(true)}
+        <>
+            <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+                <DialogContent showCloseButton={false} className="w-[95vw] h-[90vh] max-w-none sm:max-w-none p-0 gap-0 bg-[#1C1C1C] border-none shadow-2xl overflow-hidden flex flex-col focus:outline-none rounded-[28px]" onPointerDownOutside={(e) => e.preventDefault()}>
+                    <DialogTitle className="sr-only">{name}</DialogTitle>
+                    
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-8 py-6 z-10 shrink-0">
+                        <div className="flex items-center gap-3 flex-1 min-w-0 text-white">
+                            {isRenaming ? (
+                                <div className="flex items-center gap-2 flex-1 max-w-md">
+                                    <Input
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        className="h-8 text-sm bg-transparent border-white/20 text-white focus-visible:ring-offset-0 focus-visible:ring-white/20"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") handleRename()
+                                            if (e.key === "Escape") setIsRenaming(false)
+                                        }}
+                                    />
+                                    <Button size="sm" onClick={handleRename} className="h-8 px-3 bg-white text-black hover:bg-white/90">Save</Button>
+                                    <Button size="sm" variant="ghost" onClick={() => setIsRenaming(false)} className="h-8 px-3 text-white/70 hover:text-white hover:bg-white/10">Cancel</Button>
+                                </div>
+                            ) : (
+                                <h2 
+                                    className="font-medium text-lg truncate cursor-pointer hover:opacity-80 transition-opacity" 
+                                    onDoubleClick={() => setIsRenaming(true)}
+                                >
+                                    {name}
+                                </h2>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10 rounded-full" onClick={handleDownload}>
+                                <Download className="w-5 h-5" />
+                            </Button>
+                            
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10 rounded-full">
+                                        <MoreHorizontal className="w-5 h-5" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                    <DropdownMenuItem onClick={() => setIsRenaming(true)}>
+                                        <Pencil className="w-4 h-4 mr-2" />
+                                        Rename
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => setShowDeleteAlert(true)} className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20">
+                                        <Trash2 className="w-4 h-4 mr-2" />
+                                        Delete Asset
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
+                            <div className="w-px h-6 bg-white/10 mx-2" />
+
+                            <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10 rounded-full" onClick={onClose}>
+                                <X className="w-6 h-6" />
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Main Content - Image Preview */}
+                    <div className="flex-1 relative flex items-center justify-center p-4 overflow-hidden min-h-[200px]">
+                        {/* Navigation Buttons */}
+                        {hasPrevious && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="absolute left-4 z-50 h-12 w-12 rounded-full bg-black/20 hover:bg-black/40 text-white/70 hover:text-white transition-colors border border-white/10"
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    handlePrevious()
+                                }}
                             >
-                                {name}
-                            </h2>
+                                <ChevronLeft className="w-8 h-8" />
+                            </Button>
                         )}
+
+                        {hasNext && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="absolute right-4 z-50 h-12 w-12 rounded-full bg-black/20 hover:bg-black/40 text-white/70 hover:text-white transition-colors border border-white/10"
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleNext()
+                                }}
+                            >
+                                <ChevronRight className="w-8 h-8" />
+                            </Button>
+                        )}
+
+                        <div className="relative flex items-center justify-center">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                                src={imageUrl}
+                                alt={name}
+                                className="max-w-[calc(90vw-2rem)] max-h-[calc(80vh-4rem)] w-auto h-auto object-contain rounded-lg shadow-2xl"
+                            />
+                        </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10 rounded-full" onClick={handleDownload}>
-                            <Download className="w-5 h-5" />
-                        </Button>
-                        
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10 rounded-full">
-                                    <MoreHorizontal className="w-5 h-5" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                                <DropdownMenuItem onClick={() => setIsRenaming(true)}>
-                                    <Pencil className="w-4 h-4 mr-2" />
-                                    Rename
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={handleDelete} className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20">
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete Asset
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                </DialogContent>
+            </Dialog>
 
-                        <div className="w-px h-6 bg-white/10 mx-2" />
-
-                        <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10 rounded-full" onClick={onClose}>
-                            <X className="w-6 h-6" />
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Main Content - Image Preview */}
-                <div className="flex-1 relative flex items-center justify-center p-4 overflow-hidden min-h-[200px]">
-                    {/* Navigation Buttons */}
-                    {hasPrevious && (
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="absolute left-4 z-50 h-12 w-12 rounded-full bg-black/20 hover:bg-black/40 text-white/70 hover:text-white transition-colors border border-white/10"
-                            onClick={(e) => {
-                                e.stopPropagation()
-                                handlePrevious()
-                            }}
-                        >
-                            <ChevronLeft className="w-8 h-8" />
-                        </Button>
-                    )}
-
-                    {hasNext && (
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="absolute right-4 z-50 h-12 w-12 rounded-full bg-black/20 hover:bg-black/40 text-white/70 hover:text-white transition-colors border border-white/10"
-                            onClick={(e) => {
-                                e.stopPropagation()
-                                handleNext()
-                            }}
-                        >
-                            <ChevronRight className="w-8 h-8" />
-                        </Button>
-                    )}
-
-                    <div className="relative flex items-center justify-center">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                            src={imageUrl}
-                            alt={name}
-                            className="max-w-[calc(90vw-2rem)] max-h-[calc(80vh-4rem)] w-auto h-auto object-contain rounded-lg shadow-2xl"
-                        />
-                    </div>
-                </div>
-
-                {/* Optional Footer or Info Panel could go here */}
-
-            </DialogContent>
-        </Dialog>
+            <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the asset.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
     )
 }
+

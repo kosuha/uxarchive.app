@@ -8,6 +8,16 @@ import { SnapshotsDialog } from "@/components/snapshots-dialog"
 import { deleteRepositoryAction, forkRepositoryAction } from "@/app/actions/repositories"
 import { deleteRepositoryFolderAction, updateRepositoryFolderAction, moveRepositoryFolderAction } from "@/app/actions/repository-folders"
 import { moveRepositoryAssetAction, deleteRepositoryAssetAction, updateRepositoryAssetAction } from "@/app/actions/repository-assets"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 // Wrapper to bridge data and logic
 export function RepositoryExploreView() {
@@ -17,14 +27,36 @@ export function RepositoryExploreView() {
     const [snapshotRepoId, setSnapshotRepoId] = React.useState<string | null>(null)
     const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
 
+    // Alert Dialog State
+    const [alertState, setAlertState] = React.useState<{
+        open: boolean
+        title: string
+        description: string
+        action: () => Promise<void>
+    }>({
+        open: false,
+        title: "",
+        description: "",
+        action: async () => { }
+    })
+
+    const closeAlert = () => setAlertState(prev => ({ ...prev, open: false }))
+
     // Handlers
     const handleDeleteRepository = async (id: string) => {
         const repo = repositories.find(r => r.id === id)
         if (!repo) return
-        if (confirm("Delete repository?")) {
-            await deleteRepositoryAction({ id, workspaceId: repo.workspaceId })
-            refresh()
-        }
+
+        setAlertState({
+            open: true,
+            title: "Delete Repository?",
+            description: `Are you sure you want to delete "${repo.name}"? This action cannot be undone.`,
+            action: async () => {
+                await deleteRepositoryAction({ id, workspaceId: repo.workspaceId })
+                refresh()
+                closeAlert()
+            }
+        })
     }
 
     const handleForkRepository = async (repo: any) => {
@@ -42,11 +74,20 @@ export function RepositoryExploreView() {
     }
 
     const handleDeleteFolder = async (id: string, repositoryId: string) => {
-        console.log("handleDeleteFolder called", { id, repositoryId })
-        if (confirm("Delete folder and all its contents?")) {
-            await deleteRepositoryFolderAction({ id, repositoryId })
-            refresh()
-        }
+        // Find folder name for better UX
+        const folder = folders.find(f => f.id === id)
+        const folderName = folder ? folder.name : "Folder"
+
+        setAlertState({
+            open: true,
+            title: "Delete Folder?",
+            description: `Are you sure you want to delete "${folderName}" and all its contents? This cannot be undone.`,
+            action: async () => {
+                await deleteRepositoryFolderAction({ id, repositoryId })
+                refresh()
+                closeAlert()
+            }
+        })
     }
 
     const handleRenameFolder = async (id: string, newName: string, repositoryId: string) => {
@@ -88,11 +129,16 @@ export function RepositoryExploreView() {
     }
 
     const handleDeleteAsset = async (id: string, repositoryId: string) => {
-        console.log("handleDeleteAsset called", { id, repositoryId })
-        if (confirm("Delete asset?")) {
-            await deleteRepositoryAssetAction({ id, repositoryId })
-            refresh()
-        }
+        setAlertState({
+            open: true,
+            title: "Delete Asset?",
+            description: "Are you sure you want to permanently delete this asset? This cannot be undone.",
+            action: async () => {
+                await deleteRepositoryAssetAction({ id, repositoryId })
+                refresh()
+                closeAlert()
+            }
+        })
     }
 
     return (
@@ -131,6 +177,23 @@ export function RepositoryExploreView() {
                     onOpenChange={(open: boolean) => !open && setSnapshotRepoId(null)}
                 />
             )}
+
+            <AlertDialog open={alertState.open} onOpenChange={(open) => !open && closeAlert()}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{alertState.title}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {alertState.description}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={alertState.action} className="bg-red-600 hover:bg-red-700">
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     )
 }
