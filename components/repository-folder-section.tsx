@@ -4,7 +4,7 @@ import * as React from "react"
 import { useQuery } from "@tanstack/react-query"
 import { listAssetsAction } from "@/app/actions/assets"
 import { useDraggableScroll } from "@/hooks/use-draggable-scroll"
-import { useRepositoryData } from "@/components/repository-data-context"
+import { useRepositoryData, RepositoryDataContext } from "@/components/repository-data-context"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { ItemContextMenu } from "./item-context-menu"
@@ -38,7 +38,10 @@ export function RepositoryFolderSection({
 
     const assets = propsAssets || fetchedAssets
     const { ref, events, isDragging } = useDraggableScroll()
-    const { setClipboard } = useRepositoryData()
+    
+    // safe usage of context since this might be used in public view without provider
+    const context = React.useContext(RepositoryDataContext)
+    const setClipboard = context?.setClipboard
 
     if (isLoading && !propsAssets) {
         return (
@@ -85,8 +88,10 @@ export function RepositoryFolderSection({
                             onRename={() => { }} 
                             onDelete={() => { }}
                             onCopy={() => {
-                                setClipboard({ type: 'asset', id: asset.id, repositoryId })
-                                toast.success("Copied asset to clipboard")
+                                if (setClipboard) {
+                                    setClipboard({ type: 'asset', id: asset.id, repositoryId })
+                                    toast.success("Copied asset to clipboard")
+                                }
                             }}
                         >
                             <div className="relative snap-center shrink-0 flex flex-col gap-3 group">

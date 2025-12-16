@@ -235,8 +235,7 @@ export function RepositoryExploreView() {
                  } catch (e: any) {
                      toast.dismiss(toastId)
                      console.error("Paste failed", e)
-                     alert("Paste Error: " + (e.message || e))
-                     toast.error("Failed to paste repository")
+                     toast.error(`Paste failed: ${e.message || "Unknown error"}`)
                  }
             }
             await refresh()
@@ -252,10 +251,6 @@ export function RepositoryExploreView() {
     }
 
     const handlePasteToRepository = async (targetRepoId: string) => {
-        console.log("handlePasteToRepository called", { targetRepoId, clipboard })
-        alert(`Target Repo ID Check: ${targetRepoId}`)
-        // alert(`Clipboard State: ${JSON.stringify(clipboard)}`)
-        
         if (!clipboard) return
 
         try {
@@ -272,9 +267,8 @@ export function RepositoryExploreView() {
                     toast.success("Repository pasted as folder")
                 } catch (e: any) {
                     toast.dismiss(toastId)
-                    console.error("Paste Error", e)
-                    alert("Paste Error: " + (e.message || e))
-                    toast.error("Failed to paste repository: " + (e.message || "Unknown error"))
+                    console.error("Paste failed", e)
+                    toast.error(`Paste failed: ${e.message || "Unknown error"}`)
                 }
             } else if (clipboard.type === 'asset') {
                 // Paste Asset into Repository Root

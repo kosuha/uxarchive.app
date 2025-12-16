@@ -26,7 +26,7 @@ type RepositoryDataContextValue = {
     setClipboard: (cb: { type: 'asset' | 'folder' | 'repository', id: string, repositoryId: string } | null) => void
 }
 
-const RepositoryDataContext = React.createContext<RepositoryDataContextValue | null>(null)
+export const RepositoryDataContext = React.createContext<RepositoryDataContextValue | null>(null)
 
 export const useRepositoryData = () => {
     const context = React.useContext(RepositoryDataContext)
