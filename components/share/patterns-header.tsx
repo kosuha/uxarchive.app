@@ -8,6 +8,7 @@ import { Grid, LayoutDashboard, Search, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { SearchInput } from "@/components/share/search-input"
+import { NavUser } from "@/components/nav-user"
 import { cn } from "@/lib/utils"
 
 interface PatternsHeaderProps {
@@ -55,7 +56,7 @@ export function PatternsHeader({ hideSearch = false }: PatternsHeaderProps) {
                 )}
 
                 {/* Right: Actions */}
-                <div className="flex w-auto md:w-32 items-center justify-end gap-2 sm:gap-4">
+                <div className="flex w-auto md:w-auto items-center justify-end gap-2 sm:gap-4">
                     {/* Mobile Search Toggle */}
                     {!hideSearch && (
                         <Button
@@ -121,6 +122,7 @@ export function PatternsHeader({ hideSearch = false }: PatternsHeaderProps) {
                                 <span>Workspace</span>
                             </Link>
                         </Button>
+                        <NavUser />
                     </div>
                 </div>
             </div>
