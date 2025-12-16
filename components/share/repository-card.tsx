@@ -58,7 +58,7 @@ export function RepositoryCard({ repo }: { repo: RepositoryRecord }) {
     <div className="group break-inside-avoid flex flex-col gap-4 focus-visible:outline-none min-w-[300px]">
         {/* Card Image / Cover */}
         <Link href={`/share/r/${repo.id}`} className="block focus-visible:outline-none">
-            <div className="relative w-full overflow-hidden rounded-[24px] bg-[#1C1C1E] transition-all duration-300 group-hover:shadow-2xl group-focus-visible:ring-2 group-focus-visible:ring-white/50 aspect-[4/3]">
+            <div className="relative w-full overflow-hidden rounded-[24px] bg-[#1C1C1E] transition-all duration-300 group-hover:shadow-2xl group-focus-visible:ring-2 group-focus-visible:ring-white/50 aspect-[3/4]">
                 <div className="relative flex w-full h-full justify-center items-center overflow-hidden rounded-2xl">
                     {repo.thumbnailUrl ? (
                         <Image
