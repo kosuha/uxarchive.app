@@ -20,6 +20,11 @@ import {
   listRepositoryFolders,
 } from "@/lib/repositories/repository-folders";
 import { createAsset } from "@/lib/repositories/assets";
+import {
+  ensureForkAllowed,
+  ensurePrivateRepositoryAllowed,
+  ensureRepositoryCreationAllowed,
+} from "@/lib/plan-limits";
 
 export async function listRepositoriesAction(workspaceId: string) {
   const supabase = await createActionSupabaseClient();
@@ -30,7 +35,13 @@ export async function listRepositoriesAction(workspaceId: string) {
 
 export async function createRepositoryAction(input: CreateRepositoryInput) {
   const supabase = await createActionSupabaseClient();
-  await requireAuthenticatedUser(supabase);
+  const user = await requireAuthenticatedUser(supabase);
+
+  // Check limits
+  await ensureRepositoryCreationAllowed(supabase, user.id, input.workspaceId);
+  if (!input.isPublic) {
+    await ensurePrivateRepositoryAllowed(supabase, user.id, input.workspaceId);
+  }
 
   const record = await createRepository(supabase, input);
   revalidatePath("/", "layout");
@@ -64,6 +75,11 @@ export async function forkRepositoryAction(input: {
 }) {
   const supabase = await createActionSupabaseClient();
   const user = await requireAuthenticatedUser(supabase);
+
+  // Check limits
+  await ensureForkAllowed(supabase, user.id);
+  await ensureRepositoryCreationAllowed(supabase, user.id, input.workspaceId);
+  await ensurePrivateRepositoryAllowed(supabase, user.id, input.workspaceId);
 
   // 1. Create Forked Repository Record
   const newRepo = await createRepository(supabase, {
@@ -177,6 +193,11 @@ export async function forkFolderAction(input: {
 }) {
   const supabase = await createActionSupabaseClient();
   const user = await requireAuthenticatedUser(supabase);
+
+  // Check limits
+  await ensureForkAllowed(supabase, user.id);
+  await ensureRepositoryCreationAllowed(supabase, user.id, input.workspaceId);
+  await ensurePrivateRepositoryAllowed(supabase, user.id, input.workspaceId);
 
   // 1. Create Forked Repository
   const newRepo = await createRepository(supabase, {
