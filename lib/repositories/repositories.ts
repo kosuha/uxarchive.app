@@ -38,6 +38,7 @@ export type CreateRepositoryInput = {
   name: string
   description?: string | null
   isPublic?: boolean
+  isPrivate?: boolean
   forkOriginId?: string | null
 }
 

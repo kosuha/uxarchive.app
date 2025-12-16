@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
+// import { Checkbox } from "@/components/ui/checkbox" // Unused
 import { createRepositoryAction } from "@/app/actions/repositories"
 import { useRepositoryData } from "@/components/repository-data-context"
 import { Plus } from "lucide-react"
@@ -50,6 +50,7 @@ export function CreateRepositoryDialog({ open: controlledOpen, onOpenChange: set
         setLoading(true)
         try {
             await createRepositoryAction({
+                workspaceId,
                 name,
                 description,
                 isPrivate
@@ -106,14 +107,16 @@ export function CreateRepositoryDialog({ open: controlledOpen, onOpenChange: set
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label className="text-right">Visibility</Label>
                             <div className="flex items-center space-x-2 col-span-3">
-                                <input
-                                    type="checkbox"
-                                    id="private"
-                                    checked={isPrivate}
-                                    onChange={e => setIsPrivate(e.target.checked)}
-                                    className="h-4 w-4 rounded border-gray-300"
-                                />
-                                <Label htmlFor="private">Private Repository</Label>
+                                <div className="flex items-center h-5">
+                                    <input
+                                        type="checkbox"
+                                        id="isPrivate"
+                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                        checked={isPrivate}
+                                        onChange={(e) => setIsPrivate(e.target.checked)}
+                                    />
+                                </div>
+                                <Label htmlFor="isPrivate">Private Repository</Label>
                             </div>
                         </div>
                     </div>
