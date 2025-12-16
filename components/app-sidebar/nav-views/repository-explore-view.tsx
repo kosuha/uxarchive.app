@@ -28,7 +28,12 @@ export function RepositoryExploreView() {
     // State for Context Menus and Dialogs
     const [snapshotRepoId, setSnapshotRepoId] = React.useState<string | null>(null)
     const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
-    const [viewingAsset, setViewingAsset] = React.useState<any | null>(null)
+    const [viewingAssetId, setViewingAssetId] = React.useState<string | null>(null)
+
+    // Derived State
+    const viewingAsset = React.useMemo(() => 
+        assets.find(a => a.id === viewingAssetId) || null
+    , [assets, viewingAssetId])
 
     // Alert Dialog State
     const [alertState, setAlertState] = React.useState<{
@@ -145,7 +150,7 @@ export function RepositoryExploreView() {
     }
 
     const handleSelectAsset = (asset: any) => {
-        setViewingAsset(asset)
+        setViewingAssetId(asset.id)
     }
 
     // Filter assets for navigation (siblings in same folder/repo)
@@ -176,7 +181,6 @@ export function RepositoryExploreView() {
                 onDeleteRepository={handleDeleteRepository}
                 onDeleteFolder={handleDeleteFolder}
                 onRenameFolder={handleRenameFolder}
-                onMoveFolder={handleMoveFolder}
                 onMoveFolder={handleMoveFolder}
                 onMoveAsset={handleMoveAsset}
                 onDeleteAsset={handleDeleteAsset}
@@ -215,11 +219,11 @@ export function RepositoryExploreView() {
             {viewingAsset && (
                 <AssetDetailDialog
                     isOpen={!!viewingAsset}
-                    onClose={() => setViewingAsset(null)}
+                    onClose={() => setViewingAssetId(null)}
                     asset={viewingAsset}
                     repositoryId={viewingAsset.repositoryId}
                     assets={viewingAssetSiblings}
-                    onAssetChange={setViewingAsset}
+                    onAssetChange={(asset) => setViewingAssetId(asset.id)}
                 />
             )}
         </div>

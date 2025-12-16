@@ -89,6 +89,8 @@ export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId, assets
                 id: asset.id,
                 meta: { ...(asset.meta as object), name: name.trim() }
             })
+            // Invalidate queries to refresh the list and derived state in parents
+            await queryClient.invalidateQueries({ queryKey: ["assets"] })
             toast.success("Asset renamed")
             setIsRenaming(false)
         } catch (error) {

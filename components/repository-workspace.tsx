@@ -38,6 +38,7 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
 
     // Derived state: child folders of current view
     const childFolders = folders.filter(f => {
+        if (f.repositoryId !== selectedRepositoryId) return false
         if (!currentFolderId) return !f.parentId // Root folders
         return f.parentId === currentFolderId
     }).sort((a, b) => a.order - b.order)

@@ -36,7 +36,11 @@ export function RepositoryFolderSection({
     const assets = propsAssets || fetchedAssets
 
     const { ref, events, isDragging } = useDraggableScroll()
-    const [selectedAsset, setSelectedAsset] = React.useState<AssetRecord | null>(null)
+    const [selectedAssetId, setSelectedAssetId] = React.useState<string | null>(null)
+
+    const selectedAsset = React.useMemo(() => 
+        assets.find(a => a.id === selectedAssetId) || null
+    , [assets, selectedAssetId])
 
 
     if (isLoading && !propsAssets) {
@@ -103,7 +107,7 @@ export function RepositoryFolderSection({
                                     {/* Click Handler Overlay */}
                                     <div 
                                         className="absolute inset-0 cursor-pointer"
-                                        onClick={() => setSelectedAsset(asset)}
+                                        onClick={() => setSelectedAssetId(asset.id)}
                                     />
                                 </div>
 
@@ -129,14 +133,13 @@ export function RepositoryFolderSection({
             {selectedAsset && (
                 <AssetDetailDialog
                     isOpen={!!selectedAsset}
-                    onClose={() => setSelectedAsset(null)}
+                    onClose={() => setSelectedAssetId(null)}
                     asset={selectedAsset}
                     repositoryId={repositoryId}
                     assets={assets}
-                    onAssetChange={setSelectedAsset}
+                    onAssetChange={(asset) => setSelectedAssetId(asset.id)}
                 />
             )}
         </div>
-
     )
 }
