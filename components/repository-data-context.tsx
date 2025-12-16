@@ -40,10 +40,7 @@ export const RepositoryDataProvider = ({ children }: { children: React.ReactNode
     const [selectedRepositoryId, setSelectedRepositoryId] = React.useState<string | null>(null)
     const [currentFolderId, setCurrentFolderId] = React.useState<string | null>(null)
 
-    // Reset folder when repo changes
-    React.useEffect(() => {
-        setCurrentFolderId(null)
-    }, [selectedRepositoryId])
+
 
     // 1. Get Workspace ID (assuming single workspace for now or derived from membership)
     const { data: membership } = useQuery({
@@ -93,6 +90,22 @@ export const RepositoryDataProvider = ({ children }: { children: React.ReactNode
         enabled: !!workspaceId
     })
 
+    // Custom setter for folder that also switches repository if needed
+    // NOTE: We removed separate useEffect that resets currentFolderId on selectedRepositoryId change
+    // to avoid race conditions.
+    const handleSetCurrentFolderId = React.useCallback((folderId: string | null) => {
+        setCurrentFolderId(folderId)
+        
+        if (folderId) {
+            // Find the folder to get its repository
+            const folder = folders.find(f => f.id === folderId)
+            if (folder && folder.repositoryId !== selectedRepositoryId) {
+                console.log("Switching repository due to folder change", folder.repositoryId)
+                setSelectedRepositoryId(folder.repositoryId)
+            }
+        }
+    }, [folders, selectedRepositoryId])
+
     const loading = sessionLoading || reposLoading || foldersLoading || assetsLoading
 
     const refresh = async () => {
@@ -107,7 +120,7 @@ export const RepositoryDataProvider = ({ children }: { children: React.ReactNode
         selectedRepositoryId,
         setSelectedRepositoryId,
         currentFolderId,
-        setCurrentFolderId,
+        setCurrentFolderId: handleSetCurrentFolderId,
         folders,
         assets,
         loading,

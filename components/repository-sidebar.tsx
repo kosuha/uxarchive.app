@@ -24,7 +24,7 @@ import { listAssetsAction } from "@/app/actions/assets"
 import { useQuery } from "@tanstack/react-query"
 
 export function RepositorySidebar({ className }: { className?: string }) {
-    const { repositories, selectedRepositoryId, setSelectedRepositoryId, folders, refresh } = useRepositoryData()
+    const { repositories, selectedRepositoryId, setSelectedRepositoryId, folders, refresh, setCurrentFolderId } = useRepositoryData()
     const [snapshotRepoId, setSnapshotRepoId] = React.useState<string | null>(null) // State to control which repo's snapshots to show
 
     // Actually, I should update context to expose workspaceId.
@@ -95,7 +95,10 @@ export function RepositorySidebar({ className }: { className?: string }) {
                                             >
                                                 <SidebarMenuButton
                                                     isActive={repo.id === selectedRepositoryId}
-                                                    onClick={() => setSelectedRepositoryId(repo.id)}
+                                                    onClick={() => {
+                                                        setSelectedRepositoryId(repo.id)
+                                                        setCurrentFolderId(null)
+                                                    }}
                                                 >
                                                     <Archive className="mr-2 h-4 w-4" />
                                                     <span>{repo.name}</span>
