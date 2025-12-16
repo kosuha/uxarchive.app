@@ -40,15 +40,27 @@ export function ItemContextMenu({ children, onRename, onDelete, onFork, onSnapsh
                         Snapshots
                     </ContextMenuItem>
                 )}
-                <ContextMenuItem onSelect={onRename}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Rename
-                </ContextMenuItem>
-                <ContextMenuSeparator />
-                <ContextMenuItem onSelect={onDelete} className="text-red-600 focus:text-red-600 focus:bg-red-100">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete {type}
-                </ContextMenuItem>
+                {onRename && (
+                    <ContextMenuItem onSelect={(e) => {
+                        console.log("ContextMenu: Rename selected")
+                        onRename?.()
+                    }}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Rename
+                    </ContextMenuItem>
+                )}
+                {onDelete && (
+                    <>
+                        <ContextMenuSeparator />
+                        <ContextMenuItem onSelect={(e) => {
+                            console.log("ContextMenu: Delete selected")
+                            onDelete?.()
+                        }} className="text-red-600 focus:text-red-600 focus:bg-red-100">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete {type}
+                        </ContextMenuItem>
+                    </>
+                )}
             </ContextMenuContent>
         </ContextMenu>
     )

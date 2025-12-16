@@ -100,9 +100,12 @@ interface RepositoryTreeProps {
     onForkRepository?: (repo: { id: string, name: string, description?: string }) => void
     onSnapshotRepository?: (id: string) => void
     onDeleteRepository?: (id: string) => void
-    onDeleteFolder?: (id: string) => void
-    onRenameFolder?: (id: string, newName: string) => void
-    onMoveFolder?: (id: string, newParentId: string | null) => void // newParentId null means root of repo
+    onDeleteFolder?: (id: string, repositoryId: string) => void
+    onRenameFolder?: (id: string, newName: string, repositoryId: string) => void
+    onMoveFolder?: (id: string, newParentId: string | null, repositoryId: string) => void // newParentId null means root of repo
+    onMoveAsset?: (id: string, newFolderId: string | null, repositoryId: string) => void // newFolderId null means root (no folder)
+    onDeleteAsset?: (id: string, repositoryId: string) => void
+    onRenameAsset?: (id: string, newName: string, repositoryId: string) => void
 }
 
 export function RepositoryTree({
@@ -119,7 +122,10 @@ export function RepositoryTree({
     onDeleteRepository,
     onDeleteFolder,
     onRenameFolder,
-    onMoveFolder
+    onMoveFolder,
+    onMoveAsset,
+    onDeleteAsset,
+    onRenameAsset
 }: RepositoryTreeProps) {
 
     // Helper to build tree for a specific repo
@@ -217,11 +223,25 @@ export function RepositoryTree({
         // Safety: Don't move if dropped on itself
         if (activeId === overId) return
 
+        if (activeId === overId) return
+
         // Extract real IDs
         // Drag ID format: "folder-{id}"
         // Drop ID format: "folder-{id}" or "repo-{id}" (for root drop)
 
-        const folderId = activeId.replace("folder-", "")
+        let itemType: 'folder' | 'asset' | null = null
+        let itemId: string | null = null
+
+        if (activeId.startsWith("folder-")) {
+            itemType = 'folder'
+            itemId = activeId.replace("folder-", "")
+        } else if (activeId.startsWith("asset-")) {
+            itemType = 'asset'
+            itemId = activeId.replace("asset-", "")
+        } else {
+            return
+        }
+
         let newParentId: string | null = null
 
         if (overId.startsWith("repo-")) {
@@ -234,17 +254,25 @@ export function RepositoryTree({
             return // Unknown drop target
         }
 
-        if (onMoveFolder) {
+        if (itemType === 'folder' && onMoveFolder) {
             // Prevent moving into self or descendants (simple check: if overId is descendant of activeId)
             // But we can just optimistically call move and let backend/parent handle validation or revert
             // Ideally we check here. descendant check is expensive unless we have utility.
             // For now, assume backend blocks invalid moves or simple same-parent check:
             // Fetch folder to check current parent?
             // "folders" prop is available.
-            const movingFolder = folders.find(f => f.id === folderId)
-            if (movingFolder && movingFolder.parentId === newParentId) return // No change
+            const movingFolder = folders.find(f => f.id === itemId)
+            if (!movingFolder) return
+            if (movingFolder.parentId === newParentId) return // No change
 
-            onMoveFolder(folderId, newParentId)
+            onMoveFolder(itemId!, newParentId, movingFolder.repositoryId)
+        } else if (itemType === 'asset' && onMoveAsset) {
+            const asset = assets.find(a => a.id === itemId)
+            if (!asset) return
+            const currentFolderId = asset?.folderId || null
+            if (currentFolderId === newParentId) return // No change
+
+            onMoveAsset(itemId!, newParentId, asset.repositoryId)
         }
     }
 
@@ -269,7 +297,7 @@ export function RepositoryTree({
                         selectedFolderId={selectedFolderId}
                         onSelectRepository={onSelectRepository}
                         onSelectFolder={onSelectFolder}
-                        handlers={{ onForkRepository, onSnapshotRepository, onDeleteRepository, onDeleteFolder, onRenameFolder }}
+                        handlers={{ onForkRepository, onSnapshotRepository, onDeleteRepository, onDeleteFolder, onRenameFolder, onMoveFolder, onMoveAsset, onDeleteAsset, onRenameAsset }}
                     />
                 ))}
             </SidebarMenu>
@@ -379,17 +407,73 @@ function FolderList({ data, selectedFolderId, onSelectFolder, handlers }: any) {
             ))}
 
             {data.rootAssets.map((asset: any) => (
-                <div key={asset.id} className="flex items-center w-full gap-0.5">
-                    <div className="w-[24px] h-6 shrink-0" />
+                <AssetItem
+                    key={asset.id}
+                    asset={asset}
+                    onSelectFolder={onSelectFolder}
+                    handlers={handlers}
+                />
+            ))}
+        </>
+    )
+}
+
+function AssetItem({ asset, onSelectFolder, handlers }: any) {
+    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+        id: `asset-${asset.id}`,
+        data: { type: 'asset', id: asset.id, name: (asset.meta as any)?.name || "Asset" }
+    })
+    const [isRenaming, setIsRenaming] = React.useState(false)
+
+    // Fallback name
+    const assetName = (asset.meta as any)?.name || "Asset"
+
+    const handleRenameSubmit = (newName: string) => {
+        if (newName && newName.trim() !== "" && newName !== assetName) {
+            handlers.onRenameAsset?.(asset.id, newName, asset.repositoryId)
+        }
+        setIsRenaming(false)
+    }
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={{ opacity: isDragging ? 0.5 : 1 }}
+            className="flex items-center w-full gap-0.5 rounded-sm"
+        >
+            <div className="w-[24px] h-6 shrink-0" />
+
+            {isRenaming ? (
+                <div className="flex-1 px-2">
+                    <InlineInput
+                        value={assetName}
+                        onSubmit={handleRenameSubmit}
+                        onCancel={() => setIsRenaming(false)}
+                    />
+                </div>
+            ) : (
+                <ItemContextMenu
+                    type="asset"
+                    onDelete={() => {
+                        console.log("AssetItem: onDelete triggered", asset.id)
+                        handlers.onDeleteAsset?.(asset.id, asset.repositoryId)
+                    }}
+                    onRename={() => setIsRenaming(true)}
+                >
                     <SidebarMenuButton
+                        {...allowContextMenuProps}
+                        {...attributes}
+                        {...listeners}
+                        data-tree-interactive="true"
+                        style={{ touchAction: "none" }}
                         className="h-7 px-2 flex-1 min-w-0 text-muted-foreground hover:text-foreground"
                     >
                         <FileImage className="mr-2 h-4 w-4 shrink-0" />
-                        <span className="truncate">{(asset.meta as any)?.name || "Asset"}</span>
+                        <span className="truncate">{assetName}</span>
                     </SidebarMenuButton>
-                </div>
-            ))}
-        </>
+                </ItemContextMenu>
+            )}
+        </div>
     )
 }
 
@@ -416,7 +500,7 @@ function FolderItem({ node, isOpen, toggleOpen, selectedFolderId, onSelectFolder
 
     const handleRenameSubmit = (newName: string) => {
         if (newName && newName.trim() !== "" && newName !== node.name) {
-            handlers.onRenameFolder?.(node.id, newName)
+            handlers.onRenameFolder?.(node.id, newName, node.repositoryId)
         }
         setIsRenaming(false)
     }
@@ -449,20 +533,26 @@ function FolderItem({ node, isOpen, toggleOpen, selectedFolderId, onSelectFolder
                     <div className="w-[24px] h-6 shrink-0" />
                 )}
 
-                <ItemContextMenu
-                    type="folder"
-                    onDelete={() => handlers.onDeleteFolder?.(node.id)}
-                    onRename={() => setIsRenaming(true)}
-                >
-                    {isRenaming ? (
-                        <div className="flex-1 px-2">
-                            <InlineInput
-                                value={node.name}
-                                onSubmit={handleRenameSubmit}
-                                onCancel={() => setIsRenaming(false)}
-                            />
-                        </div>
-                    ) : (
+                {isRenaming ? (
+                    <div className="flex-1 px-2">
+                        <InlineInput
+                            value={node.name}
+                            onSubmit={handleRenameSubmit}
+                            onCancel={() => setIsRenaming(false)}
+                        />
+                    </div>
+                ) : (
+                    <ItemContextMenu
+                        type="folder"
+                        onDelete={() => {
+                            console.log("FolderItem: onDelete triggered", node.id)
+                            handlers.onDeleteFolder?.(node.id, node.repositoryId)
+                        }}
+                        onRename={() => {
+                            console.log("FolderItem: onRename triggered", node.id)
+                            setIsRenaming(true)
+                        }}
+                    >
                         <SidebarMenuButton
                             isActive={node.id === selectedFolderId}
                             onClick={() => onSelectFolder(node.id)}
@@ -476,8 +566,8 @@ function FolderItem({ node, isOpen, toggleOpen, selectedFolderId, onSelectFolder
                             <FolderIcon className="mr-2 h-4 w-4 shrink-0" />
                             <span className="truncate">{node.name}</span>
                         </SidebarMenuButton>
-                    )}
-                </ItemContextMenu>
+                    </ItemContextMenu>
+                )}
             </div>
 
             <CollapsibleContent>

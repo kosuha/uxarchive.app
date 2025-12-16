@@ -7,6 +7,7 @@ import { CreateRepositoryDialog } from "@/components/create-repository-dialog"
 import { SnapshotsDialog } from "@/components/snapshots-dialog"
 import { deleteRepositoryAction, forkRepositoryAction } from "@/app/actions/repositories"
 import { deleteRepositoryFolderAction, updateRepositoryFolderAction, moveRepositoryFolderAction } from "@/app/actions/repository-folders"
+import { moveRepositoryAssetAction, deleteRepositoryAssetAction, updateRepositoryAssetAction } from "@/app/actions/repository-assets"
 
 // Wrapper to bridge data and logic
 export function RepositoryExploreView() {
@@ -40,24 +41,24 @@ export function RepositoryExploreView() {
         }
     }
 
-    const handleDeleteFolder = async (id: string) => {
-        if (!selectedRepositoryId) return
+    const handleDeleteFolder = async (id: string, repositoryId: string) => {
+        console.log("handleDeleteFolder called", { id, repositoryId })
         if (confirm("Delete folder and all its contents?")) {
-            await deleteRepositoryFolderAction({ id, repositoryId: selectedRepositoryId })
+            await deleteRepositoryFolderAction({ id, repositoryId })
             refresh()
         }
     }
 
-    const handleRenameFolder = async (id: string, newName: string) => {
-        if (!selectedRepositoryId) return
-        await updateRepositoryFolderAction({ id, repositoryId: selectedRepositoryId, name: newName })
+    const handleRenameFolder = async (id: string, newName: string, repositoryId: string) => {
+        console.log("handleRenameFolder called", { id, newName, repositoryId })
+        await updateRepositoryFolderAction({ id, repositoryId, name: newName })
         refresh()
     }
 
-    const handleMoveFolder = async (id: string, newParentId: string | null) => {
-        if (!selectedRepositoryId) return
+    const handleMoveFolder = async (id: string, newParentId: string | null, repositoryId: string) => {
+        console.log("handleMoveFolder called", { id, newParentId, repositoryId })
         try {
-            await moveRepositoryFolderAction({ id, repositoryId: selectedRepositoryId, newParentId })
+            await moveRepositoryFolderAction({ id, repositoryId, newParentId })
             refresh()
         } catch (error) {
             console.error("Failed to move folder", error)
@@ -65,6 +66,34 @@ export function RepositoryExploreView() {
         }
     }
 
+    const handleMoveAsset = async (id: string, newFolderId: string | null, repositoryId: string) => {
+        try {
+            await moveRepositoryAssetAction({ id, repositoryId, newFolderId })
+            refresh()
+        } catch (error) {
+            console.error("Failed to move asset", error)
+            alert("Failed to move asset")
+        }
+    }
+
+
+    const handleRenameAsset = async (id: string, newName: string, repositoryId: string) => {
+        console.log("handleRenameAsset called", { id, newName, repositoryId })
+        const asset = assets.find(a => a.id === id)
+        const meta = (asset?.meta as any) || {}
+        const newMeta = { ...meta, name: newName }
+
+        await updateRepositoryAssetAction({ id, repositoryId, meta: newMeta })
+        refresh()
+    }
+
+    const handleDeleteAsset = async (id: string, repositoryId: string) => {
+        console.log("handleDeleteAsset called", { id, repositoryId })
+        if (confirm("Delete asset?")) {
+            await deleteRepositoryAssetAction({ id, repositoryId })
+            refresh()
+        }
+    }
 
     return (
         <div className="flex flex-col flex-1 h-full">
@@ -86,6 +115,10 @@ export function RepositoryExploreView() {
                 onDeleteFolder={handleDeleteFolder}
                 onRenameFolder={handleRenameFolder}
                 onMoveFolder={handleMoveFolder}
+                onMoveFolder={handleMoveFolder}
+                onMoveAsset={handleMoveAsset}
+                onDeleteAsset={handleDeleteAsset}
+                onRenameAsset={handleRenameAsset}
             />
 
             {/* Dialogs */}
