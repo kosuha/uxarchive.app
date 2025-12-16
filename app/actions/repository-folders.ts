@@ -14,6 +14,13 @@ import { revalidatePath } from "next/cache"
 import { createActionSupabaseClient, requireAuthenticatedUser } from "./_workspace-guards"
 import type { SupabaseRepositoryClient } from "@/lib/repositories/types"
 
+export async function listRepositoryFoldersAction(repositoryId: string) {
+  const supabase = await createActionSupabaseClient()
+  await requireAuthenticatedUser(supabase)
+
+  return listRepositoryFolders(supabase, { repositoryId })
+}
+
 export async function createRepositoryFolderAction(input: CreateRepositoryFolderInput) {
   const supabase = await createActionSupabaseClient()
   await requireAuthenticatedUser(supabase)

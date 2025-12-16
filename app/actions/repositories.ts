@@ -6,9 +6,17 @@ import {
   type CreateRepositoryInput,
   type UpdateRepositoryInput,
   updateRepository,
+  listRepositories,
 } from "@/lib/repositories/repositories"
 import { revalidatePath } from "next/cache"
 import { createActionSupabaseClient, requireAuthenticatedUser } from "./_workspace-guards"
+
+export async function listRepositoriesAction(workspaceId: string) {
+  const supabase = await createActionSupabaseClient()
+  await requireAuthenticatedUser(supabase)
+  
+  return listRepositories(supabase, { workspaceId })
+}
 
 export async function createRepositoryAction(input: CreateRepositoryInput) {
   const supabase = await createActionSupabaseClient()

@@ -6,9 +6,17 @@ import {
   type CreateAssetInput,
   type UpdateAssetInput,
   updateAsset,
+  listAssets,
 } from "@/lib/repositories/assets"
 import { revalidatePath } from "next/cache"
 import { createActionSupabaseClient, requireAuthenticatedUser } from "./_workspace-guards"
+
+export async function listAssetsAction(folderId: string) {
+  const supabase = await createActionSupabaseClient()
+  await requireAuthenticatedUser(supabase)
+
+  return listAssets(supabase, { folderId })
+}
 
 export async function createAssetAction(input: CreateAssetInput) {
   const supabase = await createActionSupabaseClient()
