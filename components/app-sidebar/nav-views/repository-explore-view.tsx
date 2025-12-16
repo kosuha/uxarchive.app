@@ -5,8 +5,8 @@ import { RepositoryTree } from "../repository-tree"
 import { useRepositoryData } from "@/components/repository-data-context"
 import { CreateRepositoryDialog } from "@/components/create-repository-dialog"
 import { SnapshotsDialog } from "@/components/snapshots-dialog"
-import { ItemContextMenu } from "@/components/item-context-menu"
 import { deleteRepositoryAction, forkRepositoryAction } from "@/app/actions/repositories"
+import { deleteRepositoryFolderAction, updateRepositoryFolderAction, moveRepositoryFolderAction } from "@/app/actions/repository-folders"
 
 // Wrapper to bridge data and logic
 export function RepositoryExploreView() {
@@ -15,15 +15,6 @@ export function RepositoryExploreView() {
     // State for Context Menus and Dialogs
     const [snapshotRepoId, setSnapshotRepoId] = React.useState<string | null>(null)
     const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
-
-    // Context Menu Handling (We might move specific logic inside RepositoryTree later, but for now here)
-    const handleContextMenu = (type: "repository" | "folder", id: string) => {
-        // This is a placeholder. 
-        // The real implementation in `RepositoryTree` uses DropdownMenu.
-        // But the requirement was to use `ItemContextMenu`.
-        // I should integrate `ItemContextMenu` inside `RepositoryTree` directly instead of generic dropdowns.
-        // Let's refactor `RepositoryTree` to use `ItemContextMenu` component we created in Phase 3.
-    }
 
     // Handlers
     const handleDeleteRepository = async (id: string) => {
@@ -49,6 +40,32 @@ export function RepositoryExploreView() {
         }
     }
 
+    const handleDeleteFolder = async (id: string) => {
+        if (!selectedRepositoryId) return
+        if (confirm("Delete folder and all its contents?")) {
+            await deleteRepositoryFolderAction({ id, repositoryId: selectedRepositoryId })
+            refresh()
+        }
+    }
+
+    const handleRenameFolder = async (id: string, newName: string) => {
+        if (!selectedRepositoryId) return
+        await updateRepositoryFolderAction({ id, repositoryId: selectedRepositoryId, name: newName })
+        refresh()
+    }
+
+    const handleMoveFolder = async (id: string, newParentId: string | null) => {
+        if (!selectedRepositoryId) return
+        try {
+            await moveRepositoryFolderAction({ id, repositoryId: selectedRepositoryId, newParentId })
+            refresh()
+        } catch (error) {
+            console.error("Failed to move folder", error)
+            alert("Failed to move folder")
+        }
+    }
+
+
     return (
         <div className="flex flex-col flex-1 h-full">
             <RepositoryTree
@@ -66,13 +83,9 @@ export function RepositoryExploreView() {
                 onForkRepository={handleForkRepository}
                 onSnapshotRepository={setSnapshotRepoId}
                 onDeleteRepository={handleDeleteRepository}
-                onDeleteFolder={(id: string) => {
-                    // Implement folder delete
-                    if (confirm("Delete folder?")) {
-                        // call delete folder action (need to import)
-                        alert("Delete folder logic todo")
-                    }
-                }}
+                onDeleteFolder={handleDeleteFolder}
+                onRenameFolder={handleRenameFolder}
+                onMoveFolder={handleMoveFolder}
             />
 
             {/* Dialogs */}

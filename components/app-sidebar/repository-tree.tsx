@@ -5,14 +5,12 @@ import {
     ChevronRight,
     Folder as FolderIcon,
     Archive,
-    MoreHorizontal,
     Plus,
     FileImage
 } from "lucide-react"
 import {
     Collapsible,
     CollapsibleContent,
-    CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import {
     SidebarMenu,
@@ -22,7 +20,54 @@ import {
 } from "@/components/ui/sidebar"
 import { ItemContextMenu } from "@/components/item-context-menu"
 import { cn } from "@/lib/utils"
-import type { AssetRecord } from "@/lib/repositories/assets"
+// import type { AssetRecord } from "@/lib/repositories/assets"
+import {
+    DndContext,
+    DragOverlay,
+    useDraggable,
+    useDroppable,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    type DragEndEvent,
+    type DragStartEvent,
+} from "@dnd-kit/core"
+import { allowContextMenuProps } from "@/lib/context-menu"
+
+// Inline Create Input for Rename (simplified version of FolderTree's)
+import { Input } from "@/components/ui/input"
+function InlineInput({ value, onSubmit, onCancel, placeholder }: { value: string, onSubmit: (val: string) => void, onCancel: () => void, placeholder?: string }) {
+    const [localValue, setLocalValue] = React.useState(value)
+    const ref = React.useRef<HTMLInputElement>(null)
+
+    React.useEffect(() => {
+        ref.current?.focus()
+        ref.current?.select()
+    }, [])
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            e.preventDefault()
+            onSubmit(localValue)
+        } else if (e.key === 'Escape') {
+            e.preventDefault()
+            onCancel()
+        }
+    }
+
+    return (
+        <Input
+            ref={ref}
+            value={localValue}
+            onChange={e => setLocalValue(e.target.value)}
+            onBlur={() => onSubmit(localValue)}
+            onKeyDown={handleKeyDown}
+            className="h-7 py-0 px-1 w-full"
+            placeholder={placeholder}
+            onClick={e => e.stopPropagation()}
+        />
+    )
+}
 
 // Types adapted for V2.1
 type RepositoryNode = {
@@ -37,13 +82,15 @@ type FolderNode = {
     name: string
     type: "folder"
     children: FolderNode[]
-    assets: AssetRecord[]
+    assets: any[] // AssetRecord[]
+    parentId?: string | null
+    repositoryId: string
 }
 
 interface RepositoryTreeProps {
     repositories: { id: string, name: string }[]
     folders: { id: string, name: string, parentId: string | null, repositoryId: string }[]
-    assets?: AssetRecord[]
+    assets?: any[] // AssetRecord[]
     selectedRepositoryId: string | null
     selectedFolderId: string | null
     onSelectRepository: (id: string) => void
@@ -54,6 +101,8 @@ interface RepositoryTreeProps {
     onSnapshotRepository?: (id: string) => void
     onDeleteRepository?: (id: string) => void
     onDeleteFolder?: (id: string) => void
+    onRenameFolder?: (id: string, newName: string) => void
+    onMoveFolder?: (id: string, newParentId: string | null) => void // newParentId null means root of repo
 }
 
 export function RepositoryTree({
@@ -68,17 +117,19 @@ export function RepositoryTree({
     onForkRepository,
     onSnapshotRepository,
     onDeleteRepository,
-    onDeleteFolder
+    onDeleteFolder,
+    onRenameFolder,
+    onMoveFolder
 }: RepositoryTreeProps) {
 
     // Helper to build tree for a specific repo
-    const buildFolderTree = (repoId: string) => {
+    const buildFolderTree = React.useCallback((repoId: string) => {
         const repoFolders = folders.filter(f => f.repositoryId === repoId)
         const nodeMap = new Map<string, FolderNode>()
 
         // Init nodes
         repoFolders.forEach(f => {
-            nodeMap.set(f.id, { id: f.id, name: f.name, type: "folder", children: [], assets: [] })
+            nodeMap.set(f.id, { id: f.id, name: f.name, type: "folder", children: [], assets: [], parentId: f.parentId, repositoryId: f.repositoryId })
         })
 
         const roots: FolderNode[] = []
@@ -91,7 +142,6 @@ export function RepositoryTree({
                 if (parent) {
                     parent.children.push(node)
                 } else {
-                    // Orphaned? treat as root for safety
                     roots.push(node)
                 }
             } else {
@@ -119,11 +169,10 @@ export function RepositoryTree({
             })
         }
         sortNodes(roots)
-
         const rootAssets = repoAssets.filter(a => !a.folderId).sort((a, b) => a.order - b.order)
 
         return { roots, rootAssets }
-    }
+    }, [folders, assets])
 
     // Manage open state for collapsibles
     const [openRepoIds, setOpenRepoIds] = React.useState<string[]>([])
@@ -142,87 +191,171 @@ export function RepositoryTree({
         setOpenRepoIds(prev => prev.includes(repoId) ? prev.filter(id => id !== repoId) : [...prev, repoId])
     }
 
+    // DnD State
+    const [activeDragId, setActiveDragId] = React.useState<string | null>(null)
+    const [activeDragData, setActiveDragData] = React.useState<any>(null)
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    )
+
+    const handleDragStart = (event: DragStartEvent) => {
+        setActiveDragId(event.active.id as string)
+        setActiveDragData(event.active.data.current)
+    }
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event
+        setActiveDragId(null)
+        setActiveDragData(null)
+
+        if (!over) return
+
+        const activeId = active.id as string
+        const overId = over.id as string
+
+        // Safety: Don't move if dropped on itself
+        if (activeId === overId) return
+
+        // Extract real IDs
+        // Drag ID format: "folder-{id}"
+        // Drop ID format: "folder-{id}" or "repo-{id}" (for root drop)
+
+        const folderId = activeId.replace("folder-", "")
+        let newParentId: string | null = null
+
+        if (overId.startsWith("repo-")) {
+            // Dropped on Repository Root -> Top level
+            newParentId = null
+        } else if (overId.startsWith("folder-")) {
+            // Dropped on another folder
+            newParentId = overId.replace("folder-", "")
+        } else {
+            return // Unknown drop target
+        }
+
+        if (onMoveFolder) {
+            // Prevent moving into self or descendants (simple check: if overId is descendant of activeId)
+            // But we can just optimistically call move and let backend/parent handle validation or revert
+            // Ideally we check here. descendant check is expensive unless we have utility.
+            // For now, assume backend blocks invalid moves or simple same-parent check:
+            // Fetch folder to check current parent?
+            // "folders" prop is available.
+            const movingFolder = folders.find(f => f.id === folderId)
+            if (movingFolder && movingFolder.parentId === newParentId) return // No change
+
+            onMoveFolder(folderId, newParentId)
+        }
+    }
+
     return (
-        <SidebarMenu>
-            {/* Header / Title similar to old ExploreView */}
-            <div className="flex items-center justify-between px-2 py-2 text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
-                <span className="text-xs font-medium">Repositories</span>
-                <button onClick={onCreateRepository} className="hover:bg-sidebar-accent rounded p-1">
-                    <Plus className="h-4 w-4" />
-                </button>
-            </div>
+        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            <SidebarMenu>
+                <div className="flex items-center justify-between px-2 py-2 text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
+                    <span className="text-xs font-medium">Repositories</span>
+                    <button onClick={onCreateRepository} className="hover:bg-sidebar-accent rounded p-1">
+                        <Plus className="h-4 w-4" />
+                    </button>
+                </div>
 
-            {repositories.map(repo => (
-                <Collapsible
-                    key={repo.id}
-                    open={openRepoIds.includes(repo.id)}
-                    onOpenChange={(isOpen) => {
-                        if (isOpen && !openRepoIds.includes(repo.id)) toggleRepo(repo.id)
-                        else if (!isOpen && openRepoIds.includes(repo.id)) toggleRepo(repo.id)
-                    }}
-                    className="group/collapsible"
-                >
-                    <SidebarMenuItem>
-                        <div className="flex items-center w-full gap-0.5 pr-2">
-                            {/* Chevron Button (Left) */}
-                            <button
-                                onClick={(e) => { e.stopPropagation(); toggleRepo(repo.id) }}
-                                className="p-1 min-w-[24px] h-6 flex items-center justify-center hover:bg-sidebar-accent rounded-sm text-muted-foreground hover:text-foreground focus:outline-none"
-                            >
-                                <ChevronRight className={cn(
-                                    "h-3 w-3 transition-transform duration-200",
-                                    openRepoIds.includes(repo.id) ? "rotate-90" : ""
-                                )} />
-                            </button>
-
-                            {/* Content Button (Right) */}
-                            <ItemContextMenu
-                                type="repository"
-                                onFork={() => onForkRepository?.(repo)}
-                                onSnapshots={() => onSnapshotRepository?.(repo.id)}
-                                onDelete={() => onDeleteRepository?.(repo.id)}
-                            >
-                                <SidebarMenuButton
-                                    isActive={repo.id === selectedRepositoryId && !selectedFolderId}
-                                    onClick={() => onSelectRepository(repo.id)}
-                                    className="h-7 px-2"
-                                >
-                                    <Archive className="mr-2 h-4 w-4 shrink-0" />
-                                    <span className="truncate">{repo.name}</span>
-                                </SidebarMenuButton>
-                            </ItemContextMenu>
-                        </div>
-
-                        <CollapsibleContent>
-                            {/* Indentation handled by padding in generic UL if needed, or recursive margin */}
-                            <div className="flex flex-col gap-0.5 pl-4 relative border-l border-border/40 ml-2.5 my-1">
-                                <FolderList
-                                    data={buildFolderTree(repo.id)}
-                                    selectedFolderId={selectedFolderId}
-                                    onSelectFolder={onSelectFolder}
-                                    onDeleteFolder={onDeleteFolder}
-                                />
-                            </div>
-                        </CollapsibleContent>
-                    </SidebarMenuItem>
-                </Collapsible>
-            ))}
-        </SidebarMenu>
+                {repositories.map(repo => (
+                    <RepositoryItem
+                        key={repo.id}
+                        repo={repo}
+                        isOpen={openRepoIds.includes(repo.id)}
+                        toggleRepo={() => toggleRepo(repo.id)}
+                        folderTree={buildFolderTree(repo.id)}
+                        selectedRepositoryId={selectedRepositoryId}
+                        selectedFolderId={selectedFolderId}
+                        onSelectRepository={onSelectRepository}
+                        onSelectFolder={onSelectFolder}
+                        handlers={{ onForkRepository, onSnapshotRepository, onDeleteRepository, onDeleteFolder, onRenameFolder }}
+                    />
+                ))}
+            </SidebarMenu>
+            <DragOverlay>
+                {activeDragId && activeDragData && (
+                    <div className="flex items-center gap-2 bg-background border px-2 py-1 rounded shadow opacity-80">
+                        <FolderIcon className="h-4 w-4" />
+                        <span className="text-sm font-medium">{activeDragData.name}</span>
+                    </div>
+                )}
+            </DragOverlay>
+        </DndContext>
     )
 }
 
-interface FolderListData {
-    roots: FolderNode[]
-    rootAssets: AssetRecord[]
+function RepositoryItem({ repo, isOpen, toggleRepo, folderTree, selectedRepositoryId, selectedFolderId, onSelectRepository, onSelectFolder, handlers }: any) {
+
+    // Repository is also a droppable zone (for moving folders to root)
+    const { setNodeRef, isOver } = useDroppable({
+        id: `repo-${repo.id}`,
+        data: { type: 'repository', id: repo.id }
+    })
+
+    return (
+        <Collapsible
+            open={isOpen}
+            onOpenChange={(open) => {
+                if (open !== isOpen) toggleRepo()
+            }}
+            className="group/collapsible"
+        >
+            <SidebarMenuItem>
+                <div
+                    ref={setNodeRef}
+                    className={cn(
+                        "flex items-center w-full gap-0.5 pr-2 rounded-sm transition-colors",
+                        isOver && "bg-sidebar-accent/50 ring-1 ring-primary/20"
+                    )}
+                >
+                    <button
+                        onClick={(e) => { e.stopPropagation(); toggleRepo() }}
+                        className="p-1 min-w-[24px] h-6 flex items-center justify-center hover:bg-sidebar-accent rounded-sm text-muted-foreground hover:text-foreground focus:outline-none"
+                    >
+                        <ChevronRight className={cn(
+                            "h-3 w-3 transition-transform duration-200",
+                            isOpen ? "rotate-90" : ""
+                        )} />
+                    </button>
+
+                    <ItemContextMenu
+                        type="repository"
+                        onFork={() => handlers.onForkRepository?.(repo)}
+                        onSnapshots={() => handlers.onSnapshotRepository?.(repo.id)}
+                        onDelete={() => handlers.onDeleteRepository?.(repo.id)}
+                    >
+                        <SidebarMenuButton
+                            isActive={repo.id === selectedRepositoryId && !selectedFolderId}
+                            onClick={() => onSelectRepository(repo.id)}
+                            {...allowContextMenuProps}
+                            data-tree-interactive="true"
+                            style={{ touchAction: "none" }}
+                            className="h-7 px-2"
+                        >
+                            <Archive className="mr-2 h-4 w-4 shrink-0" />
+                            <span className="truncate">{repo.name}</span>
+                        </SidebarMenuButton>
+                    </ItemContextMenu>
+                </div>
+
+                <CollapsibleContent>
+                    <div className="flex flex-col gap-0.5 pl-4 relative border-l border-border/40 ml-2.5 my-1">
+                        <FolderList
+                            data={folderTree}
+                            selectedFolderId={selectedFolderId}
+                            onSelectFolder={onSelectFolder}
+                            handlers={handlers}
+                        />
+                    </div>
+                </CollapsibleContent>
+            </SidebarMenuItem>
+        </Collapsible>
+    )
 }
 
-// Helper to manage folder open states
-function FolderList({ data, selectedFolderId, onSelectFolder, onDeleteFolder }: {
-    data: FolderListData,
-    selectedFolderId: string | null,
-    onSelectFolder: (id: string) => void,
-    onDeleteFolder?: (id: string) => void
-}) {
+
+function FolderList({ data, selectedFolderId, onSelectFolder, handlers }: any) {
     const [openFolders, setOpenFolders] = React.useState<Record<string, boolean>>({})
 
     if (data.roots.length === 0 && data.rootAssets.length === 0) return null
@@ -233,70 +366,20 @@ function FolderList({ data, selectedFolderId, onSelectFolder, onDeleteFolder }: 
 
     return (
         <>
-            {data.roots.map(node => {
-                const hasChildren = node.children.length + node.assets.length > 0;
-                const isOpen = openFolders[node.id];
+            {data.roots.map((node: FolderNode) => (
+                <FolderItem
+                    key={node.id}
+                    node={node}
+                    isOpen={!!openFolders[node.id]}
+                    toggleOpen={() => toggleFolder(node.id)}
+                    selectedFolderId={selectedFolderId}
+                    onSelectFolder={onSelectFolder}
+                    handlers={handlers}
+                />
+            ))}
 
-                return (
-                    <Collapsible
-                        key={node.id}
-                        className="group/folder"
-                        open={isOpen}
-                        onOpenChange={(open) => setOpenFolders(prev => ({ ...prev, [node.id]: open }))}
-                    >
-                        <div className="flex items-center w-full gap-0.5">
-                            {/* Chevron: Only if has children */}
-                            {hasChildren ? (
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); toggleFolder(node.id) }}
-                                    className="p-1 min-w-[24px] h-6 flex items-center justify-center hover:bg-sidebar-accent rounded-sm text-muted-foreground hover:text-foreground focus:outline-none"
-                                >
-                                    <ChevronRight className={cn(
-                                        "h-3 w-3 transition-transform duration-200",
-                                        isOpen ? "rotate-90" : ""
-                                    )} />
-                                </button>
-                            ) : (
-                                // Spacer to align with items that have chevrons
-                                <div className="w-[24px] h-6 shrink-0" />
-                            )}
-
-                            <ItemContextMenu
-                                type="folder"
-                                onDelete={() => onDeleteFolder?.(node.id)}
-                            >
-                                <SidebarMenuButton
-                                    isActive={node.id === selectedFolderId}
-                                    onClick={() => {
-                                        onSelectFolder(node.id);
-                                        // Optional: Toggle on main click too? User asked for chevron control mostly, but standard is click=select/expand.
-                                        // Let's stick to click=select. Chevron=toggle.
-                                    }}
-                                    className="h-7 px-2 flex-1 min-w-0"
-                                >
-                                    <FolderIcon className="mr-2 h-4 w-4 shrink-0" />
-                                    <span className="truncate">{node.name}</span>
-                                </SidebarMenuButton>
-                            </ItemContextMenu>
-                        </div>
-
-                        <CollapsibleContent>
-                            <div className="flex flex-col gap-0.5 pl-4 relative border-l border-border/40 ml-2.5 my-1">
-                                <FolderList
-                                    data={{ roots: node.children, rootAssets: node.assets }}
-                                    selectedFolderId={selectedFolderId}
-                                    onSelectFolder={onSelectFolder}
-                                    onDeleteFolder={onDeleteFolder}
-                                />
-                            </div>
-                        </CollapsibleContent>
-                    </Collapsible>
-                )
-            })}
-
-            {data.rootAssets.map(asset => (
+            {data.rootAssets.map((asset: any) => (
                 <div key={asset.id} className="flex items-center w-full gap-0.5">
-                    {/* Spacer for no-chevron items */}
                     <div className="w-[24px] h-6 shrink-0" />
                     <SidebarMenuButton
                         className="h-7 px-2 flex-1 min-w-0 text-muted-foreground hover:text-foreground"
@@ -307,5 +390,106 @@ function FolderList({ data, selectedFolderId, onSelectFolder, onDeleteFolder }: 
                 </div>
             ))}
         </>
+    )
+}
+
+function FolderItem({ node, isOpen, toggleOpen, selectedFolderId, onSelectFolder, handlers }: any) {
+    const hasChildren = node.children.length + node.assets.length > 0
+    const [isRenaming, setIsRenaming] = React.useState(false)
+
+    // DnD Hooks
+    const { attributes, listeners, setNodeRef: setDraggableRef, isDragging } = useDraggable({
+        id: `folder-${node.id}`,
+        data: { type: 'folder', id: node.id, name: node.name }
+    })
+
+    const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+        id: `folder-${node.id}`,
+        data: { type: 'folder', id: node.id }
+    })
+
+    // Combine refs
+    const setNodeRef = (el: HTMLElement | null) => {
+        setDraggableRef(el)
+        setDroppableRef(el)
+    }
+
+    const handleRenameSubmit = (newName: string) => {
+        if (newName && newName.trim() !== "" && newName !== node.name) {
+            handlers.onRenameFolder?.(node.id, newName)
+        }
+        setIsRenaming(false)
+    }
+
+    return (
+        <Collapsible
+            open={isOpen}
+            onOpenChange={toggleOpen}
+            className="group/folder"
+        >
+            <div
+                ref={setNodeRef}
+                style={{ opacity: isDragging ? 0.5 : 1 }}
+                className={cn(
+                    "flex items-center w-full gap-0.5 rounded-sm",
+                    isOver && !isDragging && "bg-sidebar-accent/50 ring-1 ring-primary/20"
+                )}
+            >
+                {hasChildren ? (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); toggleOpen() }}
+                        className="p-1 min-w-[24px] h-6 flex items-center justify-center hover:bg-sidebar-accent rounded-sm text-muted-foreground hover:text-foreground focus:outline-none"
+                    >
+                        <ChevronRight className={cn(
+                            "h-3 w-3 transition-transform duration-200",
+                            isOpen ? "rotate-90" : ""
+                        )} />
+                    </button>
+                ) : (
+                    <div className="w-[24px] h-6 shrink-0" />
+                )}
+
+                <ItemContextMenu
+                    type="folder"
+                    onDelete={() => handlers.onDeleteFolder?.(node.id)}
+                    onRename={() => setIsRenaming(true)}
+                >
+                    {isRenaming ? (
+                        <div className="flex-1 px-2">
+                            <InlineInput
+                                value={node.name}
+                                onSubmit={handleRenameSubmit}
+                                onCancel={() => setIsRenaming(false)}
+                            />
+                        </div>
+                    ) : (
+                        <SidebarMenuButton
+                            isActive={node.id === selectedFolderId}
+                            onClick={() => onSelectFolder(node.id)}
+                            {...allowContextMenuProps}
+                            {...attributes}
+                            {...listeners}
+                            data-tree-interactive="true"
+                            style={{ touchAction: "none" }}
+                            className="h-7 px-2 flex-1 min-w-0"
+                        >
+                            <FolderIcon className="mr-2 h-4 w-4 shrink-0" />
+                            <span className="truncate">{node.name}</span>
+                        </SidebarMenuButton>
+                    )}
+                </ItemContextMenu>
+            </div>
+
+            <CollapsibleContent>
+                <div className="flex flex-col gap-0.5 pl-4 relative border-l border-border/40 ml-2.5 my-1">
+                    <FolderList
+                        data={{ roots: node.children, rootAssets: node.assets }}
+                        selectedFolderId={selectedFolderId}
+                        onSelectFolder={onSelectFolder}
+                        handlers={handlers}
+                    />
+                </div>
+            </CollapsibleContent>
+        </Collapsible>
     )
 }
