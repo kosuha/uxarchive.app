@@ -10,6 +10,7 @@ import { formatDistanceToNow } from "date-fns"
 import { updateRepositoryAction } from "@/app/actions/repositories"
 import { updateRepositoryFolderAction } from "@/app/actions/repository-folders"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -27,9 +28,12 @@ interface RepositoryHeaderProps {
 export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) {
     // Determine initial description based on context (folder vs repo)
     const initialDescription = folder ? (folder.description || "") : (repository.description || "")
+    const initialTitle = folder ? folder.name : repository.name
     
     // Local state for description editing
     const [description, setDescription] = React.useState(initialDescription)
+    // Local state for title editing
+    const [titleState, setTitleState] = React.useState(initialTitle)
     // Copy feedback state
     const [isCopied, setIsCopied] = React.useState(false)
 
@@ -37,7 +41,8 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
     React.useEffect(() => {
         const desc = folder ? (folder.description || "") : (repository.description || "")
         setDescription(desc)
-    }, [folder, repository.description])
+        setTitleState(folder ? folder.name : repository.name)
+    }, [folder, repository.description, repository.name])
 
     // Use QueryClient to invalidate cache after mutations
     const queryClient = useQueryClient()
@@ -97,6 +102,36 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
         setTimeout(() => setIsCopied(false), 2000)
     }
 
+    const handleTitleBlur = async () => {
+        const currentTitle = folder ? folder.name : repository.name
+        
+        if (titleState !== currentTitle && titleState.trim() !== "") {
+            try {
+                if (folder) {
+                    await updateRepositoryFolderAction({
+                        id: folder.id,
+                        repositoryId: repository.id,
+                        name: titleState
+                    })
+                    queryClient.invalidateQueries({ queryKey: ["repository-folders"] })
+                } else {
+                    await updateRepositoryAction({
+                        id: repository.id,
+                        workspaceId: repository.workspaceId,
+                        name: titleState
+                    })
+                    queryClient.invalidateQueries({ queryKey: ["repositories"] })
+                }
+                toast.success("Name updated")
+            } catch (error) {
+                toast.error("Failed to update name")
+                setTitleState(currentTitle) // Revert
+            }
+        } else if (titleState.trim() === "") {
+            setTitleState(currentTitle) // Revert if empty
+        }
+    }
+
     const title = folder ? folder.name : repository.name
     const creationDate = folder ? folder.createdAt : repository.createdAt
 
@@ -104,13 +139,18 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
         <div className="px-6 py-8 border-b border-border/40 space-y-4">
             <div className="space-y-2">
                 <div className="flex items-center gap-3">
-                    <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-                        {folder && <Folder className="w-6 h-6 text-muted-foreground/50" />}
-                        {title}
-                    </h1>
+                    {folder && <Folder className="w-6 h-6 text-muted-foreground/50 shrink-0" />}
+                    <div className="flex-1 min-w-0">
+                        <Input
+                            value={titleState}
+                            onChange={(e) => setTitleState(e.target.value)}
+                            onBlur={handleTitleBlur}
+                            className="text-2xl md:text-2xl font-semibold tracking-tight h-auto p-0 border-none hover:bg-transparent focus-visible:ring-0 px-1 -ml-1 w-full truncate shadow-none"
+                        />
+                    </div>
                     
                     {!folder && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Badge 
