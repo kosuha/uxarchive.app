@@ -1,10 +1,11 @@
 "use client"
 
 import * as React from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { RepositoryRecord } from "@/lib/repositories/repositories"
 import { RepositoryFolderRecord } from "@/lib/repositories/repository-folders"
 import { Badge } from "@/components/ui/badge"
-import { Lock, Globe, Calendar, Eye, GitFork, ChevronDown, Folder } from "lucide-react"
+import { Lock, Globe, Calendar, Eye, GitFork, ChevronDown, Folder, Heart } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { updateRepositoryAction } from "@/app/actions/repositories"
 import { updateRepositoryFolderAction } from "@/app/actions/repository-folders"
@@ -36,6 +37,9 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
         setDescription(desc)
     }, [folder, repository.description])
 
+    // Use QueryClient to invalidate cache after mutations
+    const queryClient = useQueryClient()
+
     const handleDescriptionBlur = async () => {
         const currentDescription = folder ? (folder.description || "") : (repository.description || "")
         
@@ -47,12 +51,14 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
                         repositoryId: repository.id,
                         description: description
                     })
+                    queryClient.invalidateQueries({ queryKey: ["repository-folders"] })
                 } else {
                     await updateRepositoryAction({
                         id: repository.id,
                         workspaceId: repository.workspaceId,
                         description: description
                     })
+                    queryClient.invalidateQueries({ queryKey: ["repositories"] })
                 }
                 toast.success("Description updated")
             } catch (error) {
@@ -74,6 +80,7 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
                 workspaceId: repository.workspaceId,
                 isPublic: isPublic
             })
+            queryClient.invalidateQueries({ queryKey: ["repositories"] })
             toast.success(`Repository is now ${isPublic ? 'Public' : 'Private'}`)
         } catch (error) {
             toast.error("Failed to update visibility")
@@ -138,22 +145,27 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
                 </div>
             </div>
 
+
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                     <Calendar className="w-4 h-4 opacity-70" />
                     <span>Created {formatDistanceToNow(new Date(creationDate), { addSuffix: true })}</span>
                 </div>
-                {!folder && repository.viewCount > 0 && (
-                     <div className="flex items-center gap-1.5">
-                        <Eye className="w-4 h-4 opacity-70" />
-                        <span>{repository.viewCount} views</span>
-                    </div>
-                )}
-                 {!folder && repository.forkCount > 0 && (
-                     <div className="flex items-center gap-1.5">
-                        <GitFork className="w-4 h-4 opacity-70" />
-                        <span>{repository.forkCount} forks</span>
-                    </div>
+                {!folder && (
+                    <>
+                        <div className="flex items-center gap-1.5">
+                            <Eye className="w-4 h-4 opacity-70" />
+                            <span>{repository.viewCount} views</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <GitFork className="w-4 h-4 opacity-70" />
+                            <span>{repository.forkCount} forks</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <Heart className="w-4 h-4 opacity-70" />
+                            <span>{repository.likeCount} likes</span>
+                        </div>
+                    </>
                 )}
             </div>
         </div>
