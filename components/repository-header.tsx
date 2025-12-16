@@ -146,13 +146,13 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
             </div>
 
 
-            <div className="flex items-center gap-6 text-sm text-muted-foreground">
+            <div className="flex flex-col items-start gap-1 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                     <Calendar className="w-4 h-4 opacity-70" />
                     <span>Created {formatDistanceToNow(new Date(creationDate), { addSuffix: true })}</span>
                 </div>
                 {!folder && (
-                    <>
+                    <div className="flex items-center gap-4">
                         <div className="flex items-center gap-1.5">
                             <Eye className="w-4 h-4 opacity-70" />
                             <span>{repository.viewCount} views</span>
@@ -165,7 +165,7 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
                             <Heart className="w-4 h-4 opacity-70" />
                             <span>{repository.likeCount} likes</span>
                         </div>
-                    </>
+                    </div>
                 )}
             </div>
         </div>
