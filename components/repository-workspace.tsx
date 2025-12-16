@@ -11,6 +11,8 @@ import { getBrowserSupabaseClient } from "@/lib/supabase/browser-client"
 import { toast } from "sonner"
 import { CreateFolderDialog } from "./create-folder-dialog"
 import { RepositoryFolderSection } from "./repository-folder-section"
+import { AssetDetailDialog } from "@/components/asset-detail-dialog"
+import type { AssetRecord } from "@/lib/repositories/assets"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 
 export function RepositoryWorkspace({ className }: { className?: string }) {
@@ -42,6 +44,13 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
         if (!currentFolderId) return !f.parentId // Root folders
         return f.parentId === currentFolderId
     }).sort((a, b) => a.order - b.order)
+
+    // Viewing Asset State
+    const [viewingContext, setViewingContext] = React.useState<{ asset: AssetRecord, siblings: AssetRecord[] } | null>(null)
+
+    const handleAssetClick = (asset: AssetRecord, siblings: AssetRecord[]) => {
+        setViewingContext({ asset, siblings })
+    }
 
     // Breadcrumb Navigation construction
     const breadcrumbs = React.useMemo(() => {
@@ -298,6 +307,7 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                                 }))
                             }
                         })()}
+                        onAssetClick={handleAssetClick}
                     />
                 </div>
 
@@ -324,6 +334,7 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                                             title={folder.name}
                                             showIfEmpty={true}
                                             assets={recursiveAssets}
+                                            onAssetClick={handleAssetClick}
                                         />
                                     </div>
                                 )
@@ -332,6 +343,17 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                     </div>
                 )}
             </div>
+
+            {viewingContext && (
+                <AssetDetailDialog
+                    isOpen={!!viewingContext}
+                    onClose={() => setViewingContext(null)}
+                    asset={viewingContext.asset}
+                    repositoryId={selectedRepositoryId || ""}
+                    assets={viewingContext.siblings}
+                    onAssetChange={(asset) => setViewingContext(prev => prev ? { ...prev, asset } : null)}
+                />
+            )}
         </div>
     )
 }

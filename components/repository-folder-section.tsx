@@ -7,7 +7,6 @@ import { useDraggableScroll } from "@/hooks/use-draggable-scroll"
 import { cn } from "@/lib/utils"
 import { ItemContextMenu } from "./item-context-menu"
 import { FileImage, Loader2 } from "lucide-react"
-import { AssetDetailDialog } from "@/components/asset-detail-dialog"
 
 
 import type { AssetRecord } from "@/lib/repositories/assets"
@@ -18,6 +17,7 @@ interface RepositoryFolderSectionProps {
     title: string
     showIfEmpty?: boolean
     assets?: (AssetRecord & { path?: string })[] // Optional pre-loaded assets with path info
+    onAssetClick?: (asset: AssetRecord, siblings: AssetRecord[]) => void
 }
 
 export function RepositoryFolderSection({
@@ -25,7 +25,8 @@ export function RepositoryFolderSection({
     folderId,
     title,
     showIfEmpty = false,
-    assets: propsAssets
+    assets: propsAssets,
+    onAssetClick
 }: RepositoryFolderSectionProps) {
     const { data: fetchedAssets = [], isLoading } = useQuery({
         queryKey: ["assets", repositoryId, folderId],
@@ -34,13 +35,7 @@ export function RepositoryFolderSection({
     })
 
     const assets = propsAssets || fetchedAssets
-
     const { ref, events, isDragging } = useDraggableScroll()
-    const [selectedAssetId, setSelectedAssetId] = React.useState<string | null>(null)
-
-    const selectedAsset = React.useMemo(() => 
-        assets.find(a => a.id === selectedAssetId) || null
-    , [assets, selectedAssetId])
 
 
     if (isLoading && !propsAssets) {
@@ -107,7 +102,10 @@ export function RepositoryFolderSection({
                                     {/* Click Handler Overlay */}
                                     <div 
                                         className="absolute inset-0 cursor-pointer"
-                                        onClick={() => setSelectedAssetId(asset.id)}
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            onAssetClick?.(asset, assets)
+                                        }}
                                     />
                                 </div>
 
@@ -130,16 +128,7 @@ export function RepositoryFolderSection({
             </div>
 
 
-            {selectedAsset && (
-                <AssetDetailDialog
-                    isOpen={!!selectedAsset}
-                    onClose={() => setSelectedAssetId(null)}
-                    asset={selectedAsset}
-                    repositoryId={repositoryId}
-                    assets={assets}
-                    onAssetChange={(asset) => setSelectedAssetId(asset.id)}
-                />
-            )}
+
         </div>
     )
 }
