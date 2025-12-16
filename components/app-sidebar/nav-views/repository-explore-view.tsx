@@ -19,6 +19,8 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
+import { AssetDetailDialog } from "@/components/asset-detail-dialog"
+
 // Wrapper to bridge data and logic
 export function RepositoryExploreView() {
     const { repositories, folders, assets, selectedRepositoryId, setSelectedRepositoryId, currentFolderId, setCurrentFolderId, refresh } = useRepositoryData()
@@ -26,6 +28,7 @@ export function RepositoryExploreView() {
     // State for Context Menus and Dialogs
     const [snapshotRepoId, setSnapshotRepoId] = React.useState<string | null>(null)
     const [createDialogOpen, setCreateDialogOpen] = React.useState(false)
+    const [viewingAsset, setViewingAsset] = React.useState<any | null>(null)
 
     // Alert Dialog State
     const [alertState, setAlertState] = React.useState<{
@@ -141,6 +144,19 @@ export function RepositoryExploreView() {
         })
     }
 
+    const handleSelectAsset = (asset: any) => {
+        setViewingAsset(asset)
+    }
+
+    // Filter assets for navigation (siblings in same folder/repo)
+    const viewingAssetSiblings = React.useMemo(() => {
+        if (!viewingAsset) return []
+        return assets.filter(a =>
+            a.repositoryId === viewingAsset.repositoryId &&
+            a.folderId === viewingAsset.folderId
+        ).sort((a, b) => a.order - b.order)
+    }, [viewingAsset, assets])
+
     return (
         <div className="flex flex-col flex-1 h-full">
             <RepositoryTree
@@ -165,6 +181,7 @@ export function RepositoryExploreView() {
                 onMoveAsset={handleMoveAsset}
                 onDeleteAsset={handleDeleteAsset}
                 onRenameAsset={handleRenameAsset}
+                onSelectAsset={handleSelectAsset}
             />
 
             {/* Dialogs */}
@@ -194,6 +211,17 @@ export function RepositoryExploreView() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {viewingAsset && (
+                <AssetDetailDialog
+                    isOpen={!!viewingAsset}
+                    onClose={() => setViewingAsset(null)}
+                    asset={viewingAsset}
+                    repositoryId={viewingAsset.repositoryId}
+                    assets={viewingAssetSiblings}
+                    onAssetChange={setViewingAsset}
+                />
+            )}
         </div>
     )
 }

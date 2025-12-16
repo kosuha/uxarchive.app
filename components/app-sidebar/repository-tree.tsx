@@ -106,6 +106,7 @@ interface RepositoryTreeProps {
     onMoveAsset?: (id: string, newFolderId: string | null, repositoryId: string) => void // newFolderId null means root (no folder)
     onDeleteAsset?: (id: string, repositoryId: string) => void
     onRenameAsset?: (id: string, newName: string, repositoryId: string) => void
+    onSelectAsset?: (asset: any) => void
 }
 
 export function RepositoryTree({
@@ -125,7 +126,8 @@ export function RepositoryTree({
     onMoveFolder,
     onMoveAsset,
     onDeleteAsset,
-    onRenameAsset
+    onRenameAsset,
+    onSelectAsset
 }: RepositoryTreeProps) {
 
     // Helper to build tree for a specific repo
@@ -350,7 +352,7 @@ export function RepositoryTree({
                         selectedFolderId={selectedFolderId}
                         onSelectRepository={onSelectRepository}
                         onSelectFolder={onSelectFolder}
-                        handlers={{ onForkRepository, onSnapshotRepository, onDeleteRepository, onDeleteFolder, onRenameFolder, onMoveFolder, onMoveAsset, onDeleteAsset, onRenameAsset }}
+                        handlers={{ onForkRepository, onSnapshotRepository, onDeleteRepository, onDeleteFolder, onRenameFolder, onMoveFolder, onMoveAsset, onDeleteAsset, onRenameAsset, onSelectAsset }}
                     />
                 ))}
             </SidebarMenu>
@@ -520,6 +522,7 @@ function AssetItem({ asset, onSelectFolder, handlers }: any) {
                         data-tree-interactive="true"
                         style={{ touchAction: "none" }}
                         className="h-7 px-2 flex-1 min-w-0 text-muted-foreground hover:text-foreground"
+                        onClick={() => handlers.onSelectAsset?.(asset)}
                     >
                         <FileImage className="mr-2 h-4 w-4 shrink-0" />
                         <span className="truncate">{assetName}</span>
