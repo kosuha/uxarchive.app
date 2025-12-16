@@ -2,8 +2,9 @@
 
 import * as React from "react"
 import { useRepositoryData } from "@/components/repository-data-context"
-import { FolderIcon, FileImage, Upload as UploadIcon, Loader2 } from "lucide-react"
+import { FolderIcon, FileImage, Upload as UploadIcon, Loader2, FolderPlus } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { CreateFolderDialog } from "./create-folder-dialog"
 // import { AssetCard } from "./asset-card" // Need to create or reuse
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { listAssetsAction, createAssetAction } from "@/app/actions/assets"
@@ -129,6 +130,18 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
 
                 {/* Actions - Always enabled if repository selected */}
                 <div className="flex items-center gap-2">
+                    <CreateFolderDialog
+                        repositoryId={selectedRepositoryId}
+                        parentId={currentFolderId || null}
+                        trigger={
+                            <Button variant="outline" size="sm" className="gap-2">
+                                <FolderPlus className="w-4 h-4" />
+                                New Folder
+                            </Button>
+                        }
+                    />
+                    <div className="w-px h-6 bg-border mx-1" /> {/* Divider */}
+
                     <input
                         type="file"
                         ref={fileInputRef}
