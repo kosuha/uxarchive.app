@@ -4,6 +4,8 @@ import * as React from "react"
 import { useQuery } from "@tanstack/react-query"
 import { listAssetsAction } from "@/app/actions/assets"
 import { useDraggableScroll } from "@/hooks/use-draggable-scroll"
+import { useRepositoryData } from "@/components/repository-data-context"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { ItemContextMenu } from "./item-context-menu"
 import { FileImage, Loader2 } from "lucide-react"
@@ -36,7 +38,7 @@ export function RepositoryFolderSection({
 
     const assets = propsAssets || fetchedAssets
     const { ref, events, isDragging } = useDraggableScroll()
-
+    const { setClipboard } = useRepositoryData()
 
     if (isLoading && !propsAssets) {
         return (
@@ -77,7 +79,16 @@ export function RepositoryFolderSection({
                     </div>
                 ) : (
                     assets.map((asset, index) => (
-                        <ItemContextMenu key={asset.id} type="asset" onRename={() => { }} onDelete={() => { }}>
+                        <ItemContextMenu 
+                            key={asset.id} 
+                            type="asset" 
+                            onRename={() => { }} 
+                            onDelete={() => { }}
+                            onCopy={() => {
+                                setClipboard({ type: 'asset', id: asset.id, repositoryId })
+                                toast.success("Copied asset to clipboard")
+                            }}
+                        >
                             <div className="relative snap-center shrink-0 flex flex-col gap-3 group">
                                 <div className="w-[280px] aspect-[9/16] rounded-2xl overflow-hidden border bg-background shadow-sm hover:shadow-md transition-all relative select-none">
                                     <div className="absolute inset-0 bg-muted/10" />
@@ -126,9 +137,6 @@ export function RepositoryFolderSection({
                     ))
                 )}
             </div>
-
-
-
         </div>
     )
 }

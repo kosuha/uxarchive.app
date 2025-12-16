@@ -6,7 +6,9 @@ import { useRepositoryData } from "@/components/repository-data-context"
 import { CreateRepositoryDialog } from "@/components/create-repository-dialog"
 import { SnapshotsDialog } from "@/components/snapshots-dialog"
 import { deleteRepositoryAction, forkRepositoryAction, moveRepositoryToRepositoryAction, updateRepositoryAction } from "@/app/actions/repositories"
-import { deleteRepositoryFolderAction, updateRepositoryFolderAction, moveRepositoryFolderAction } from "@/app/actions/repository-folders"
+import { deleteRepositoryFolderAction, updateRepositoryFolderAction, moveRepositoryFolderAction, copyRepositoryFolderAction } from "@/app/actions/repository-folders"
+import { duplicateAssetAction } from "@/app/actions/copy-paste"
+import { toast } from "sonner"
 import { moveRepositoryAssetAction, deleteRepositoryAssetAction, updateRepositoryAssetAction } from "@/app/actions/repository-assets"
 import {
     AlertDialog,
@@ -23,7 +25,7 @@ import { AssetDetailDialog } from "@/components/asset-detail-dialog"
 
 // Wrapper to bridge data and logic
 export function RepositoryExploreView() {
-    const { repositories, folders, assets, selectedRepositoryId, setSelectedRepositoryId, currentFolderId, setCurrentFolderId, refresh } = useRepositoryData()
+    const { repositories, folders, assets, selectedRepositoryId, setSelectedRepositoryId, currentFolderId, setCurrentFolderId, refresh, setClipboard, clipboard } = useRepositoryData()
 
     // State for Context Menus and Dialogs
     const [snapshotRepoId, setSnapshotRepoId] = React.useState<string | null>(null)
@@ -175,6 +177,7 @@ export function RepositoryExploreView() {
         }
     }
 
+
     // Filter assets for navigation (siblings in same folder/repo)
     const viewingAssetSiblings = React.useMemo(() => {
         if (!viewingAsset) return []
@@ -183,6 +186,102 @@ export function RepositoryExploreView() {
             a.folderId === viewingAsset.folderId
         ).sort((a, b) => a.order - b.order)
     }, [viewingAsset, assets])
+
+    const handleCopyAsset = (assetId: string, repositoryId: string) => {
+        setClipboard({ type: 'asset', id: assetId, repositoryId })
+        toast.success("Copied asset")
+    }
+
+    const handleCopyFolder = (folderId: string, repositoryId: string) => {
+        setClipboard({ type: 'folder', id: folderId, repositoryId })
+        toast.success("Copied folder")
+    }
+
+    const handlePasteToFolder = async (folderId: string, repositoryId: string) => {
+        if (!clipboard) return
+
+        try {
+             if (clipboard.type === 'asset') {
+                toast.promise(duplicateAssetAction({
+                    assetId: clipboard.id,
+                    targetRepositoryId: repositoryId,
+                    targetFolderId: folderId
+                }), {
+                    loading: "Pasting asset...",
+                    success: "Asset pasted",
+                    error: "Failed to paste asset"
+                })
+            } else if (clipboard.type === 'folder') {
+                toast.promise(copyRepositoryFolderAction({
+                    sourceFolderId: clipboard.id,
+                    sourceRepositoryId: clipboard.repositoryId,
+                    targetRepositoryId: repositoryId,
+                    targetParentId: folderId
+                }), {
+                    loading: "Pasting folder...",
+                    success: "Folder pasted",
+                    error: "Failed to paste folder"
+                })
+            }
+            await refresh()
+        } catch (e) {
+            console.error("Paste failed", e)
+            toast.error("Failed to paste")
+        }
+    }
+
+    const handleCopyRepository = (repositoryId: string) => {
+        setClipboard({ type: 'repository', id: repositoryId, repositoryId: repositoryId })
+        toast.success("Copied repository")
+    }
+
+    const handlePasteToRepository = async (targetRepoId: string) => {
+        if (!clipboard) return
+
+        try {
+            if (clipboard.type === 'repository') {
+                // Duplicate Repository
+                // We find the source repository to get its details
+                const sourceRepo = repositories.find(r => r.id === clipboard.id)
+                if (!sourceRepo) return
+
+                await forkRepositoryAction({
+                    sourceRepositoryId: clipboard.id,
+                    workspaceId: sourceRepo.workspaceId,
+                    name: `${sourceRepo.name} (Copy)`,
+                    description: sourceRepo.description
+                })
+                toast.success("Repository duplicated")
+            } else if (clipboard.type === 'asset') {
+                // Paste Asset into Repository Root
+                 toast.promise(duplicateAssetAction({
+                    assetId: clipboard.id,
+                    targetRepositoryId: targetRepoId,
+                    targetFolderId: null // Root
+                }), {
+                    loading: "Pasting asset...",
+                    success: "Asset pasted",
+                    error: "Failed to paste asset"
+                })
+            } else if (clipboard.type === 'folder') {
+                // Paste Folder into Repository Root
+                 toast.promise(copyRepositoryFolderAction({
+                    sourceFolderId: clipboard.id,
+                    sourceRepositoryId: clipboard.repositoryId,
+                    targetRepositoryId: targetRepoId,
+                    targetParentId: null // Root
+                }), {
+                    loading: "Pasting folder...",
+                    success: "Folder pasted",
+                    error: "Failed to paste folder"
+                })
+            }
+            await refresh()
+        } catch (e) {
+            console.error("Paste failed", e)
+            toast.error("Failed to paste")
+        }
+    }
 
     return (
         <div className="flex flex-col flex-1 h-full">
@@ -210,6 +309,12 @@ export function RepositoryExploreView() {
                 onRenameAsset={handleRenameAsset}
                 onSelectAsset={handleSelectAsset}
                 onMoveRepository={handleMoveRepository}
+                onCopyAsset={handleCopyAsset}
+                onCopyFolder={handleCopyFolder}
+                onPasteToFolder={handlePasteToFolder}
+                onCopyRepository={handleCopyRepository}
+                onPasteToRepository={handlePasteToRepository}
+                isClipboardEmpty={!clipboard}
             />
 
             {/* Dialogs */}

@@ -22,6 +22,9 @@ import { SnapshotsDialog } from "./snapshots-dialog"
 import { deleteRepositoryAction, forkRepositoryAction } from "@/app/actions/repositories"
 import { listAssetsAction } from "@/app/actions/assets"
 import { useQuery } from "@tanstack/react-query"
+import { toast } from "sonner"
+import { duplicateAssetAction } from "@/app/actions/copy-paste"
+import { copyRepositoryFolderAction, deleteRepositoryFolderAction } from "@/app/actions/repository-folders"
 
 export function RepositorySidebar({ className }: { className?: string }) {
     const { repositories, selectedRepositoryId, setSelectedRepositoryId, folders, refresh, setCurrentFolderId } = useRepositoryData()
@@ -156,6 +159,7 @@ function FolderTree({ repositoryId, folders }: { repositoryId: string, folders: 
 }
 
 function RootAssets({ repositoryId }: { repositoryId: string }) {
+    const { setClipboard } = useRepositoryData()
     const { data: assets = [] } = useQuery({
         queryKey: ["assets", repositoryId, "root"],
         queryFn: async () => listAssetsAction({ repositoryId, folderId: null }),
@@ -167,10 +171,19 @@ function RootAssets({ repositoryId }: { repositoryId: string }) {
     return (
         <>
             {assets.map(asset => (
-                <SidebarMenuButton key={asset.id} className="pl-6 h-8 text-muted-foreground">
-                    <FileIcon className="mr-2 h-3.5 w-3.5" />
-                    <span className="truncate">{(asset.meta as any)?.name || "Untitled"}</span>
-                </SidebarMenuButton>
+                <ItemContextMenu
+                    key={asset.id}
+                    type="asset"
+                    onCopy={() => {
+                        setClipboard({ type: 'asset', id: asset.id, repositoryId })
+                        toast.success("Copied asset to clipboard")
+                    }}
+                >
+                    <SidebarMenuButton className="pl-6 h-8 text-muted-foreground">
+                        <FileIcon className="mr-2 h-3.5 w-3.5" />
+                        <span className="truncate">{(asset.meta as any)?.name || "Untitled"}</span>
+                    </SidebarMenuButton>
+                </ItemContextMenu>
             ))}
         </>
     )
@@ -186,6 +199,8 @@ function SidebarFolderItem({
     allFolders: any[]
 }) {
     const [isOpen, setIsOpen] = React.useState(false)
+    const { setClipboard, refresh, clipboard } = useRepositoryData()
+    
     const children = allFolders.filter(f => f.parentId === folder.id).sort((a, b) => a.order - b.order)
 
     // Load assets when folder is open
@@ -197,15 +212,64 @@ function SidebarFolderItem({
 
     const hasChildren = children.length > 0 || assets.length > 0
 
+    const triggerContent = (
+         <ItemContextMenu
+            type="folder"
+            onCopy={() => {
+                setClipboard({ type: 'folder', id: folder.id, repositoryId })
+                toast.success("Copied folder to clipboard")
+            }}
+            onDelete={async () => {
+                if (confirm(`Are you sure you want to delete folder ${folder.name}?`)) {
+                    await deleteRepositoryFolderAction({ id: folder.id, repositoryId })
+                    toast.success("Folder deleted")
+                    refresh()
+                }
+            }}
+            onPaste={clipboard ? async () => {
+                try {
+                    if (clipboard.type === 'asset') {
+                        toast.promise(duplicateAssetAction({
+                            assetId: clipboard.id,
+                            targetRepositoryId: repositoryId,
+                            targetFolderId: folder.id
+                        }), {
+                            loading: "Pasting asset...",
+                            success: "Asset pasted",
+                            error: "Failed to paste asset"
+                        })
+                    } else if (clipboard.type === 'folder') {
+                        toast.promise(copyRepositoryFolderAction({
+                            sourceFolderId: clipboard.id,
+                            sourceRepositoryId: clipboard.repositoryId,
+                            targetRepositoryId: repositoryId,
+                            targetParentId: folder.id
+                        }), {
+                            loading: "Pasting folder...",
+                            success: "Folder pasted",
+                            error: "Failed to paste folder"
+                        })
+                    }
+                    await refresh()
+                } catch (e) {
+                    console.error("Paste failed", e)
+                    toast.error("Failed to paste")
+                }
+            } : undefined}
+        >
+            <SidebarMenuButton className="pl-6 h-8">
+                <FolderIcon className="mr-2 h-3.5 w-3.5 text-blue-500/80 fill-blue-500/10" />
+                <span>{folder.name}</span>
+                <ChevronRight className="ml-auto h-3 w-3 transition-transform group-data-[state=open]/folder:rotate-90" />
+            </SidebarMenuButton>
+        </ItemContextMenu>
+    )
+
     if (!hasChildren) {
         return (
             <Collapsible open={isOpen} onOpenChange={setIsOpen} className="group/folder">
                 <CollapsibleTrigger asChild>
-                    <SidebarMenuButton className="pl-6 h-8">
-                        <FolderIcon className="mr-2 h-3.5 w-3.5 text-blue-500/80 fill-blue-500/10" />
-                        <span>{folder.name}</span>
-                        <ChevronRight className="ml-auto h-3 w-3 transition-transform group-data-[state=open]/folder:rotate-90" />
-                    </SidebarMenuButton>
+                    {triggerContent}
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                     <div className="border-l border-border/50 ml-6 pl-2 py-1 space-y-1">
@@ -219,11 +283,7 @@ function SidebarFolderItem({
     return (
         <Collapsible open={isOpen} onOpenChange={setIsOpen} className="group/folder">
             <CollapsibleTrigger asChild>
-                <SidebarMenuButton className="pl-6 h-8">
-                    <FolderIcon className="mr-2 h-3.5 w-3.5 text-blue-500/80 fill-blue-500/10" />
-                    <span>{folder.name}</span>
-                    <ChevronRight className="ml-auto h-3 w-3 transition-transform group-data-[state=open]/folder:rotate-90" />
-                </SidebarMenuButton>
+                {triggerContent}
             </CollapsibleTrigger>
             <CollapsibleContent>
                 <div className="border-l border-border/50 ml-6 pl-2 py-1 flex flex-col gap-1">
@@ -236,10 +296,19 @@ function SidebarFolderItem({
                         />
                     ))}
                     {assets.map(asset => (
-                        <SidebarMenuButton key={asset.id} className="pl-6 h-8 text-muted-foreground">
-                            <FileIcon className="mr-2 h-3.5 w-3.5" />
-                            <span className="truncate">{(asset.meta as any)?.name || "Untitled"}</span>
-                        </SidebarMenuButton>
+                        <ItemContextMenu
+                            key={asset.id}
+                            type="asset"
+                            onCopy={() => {
+                                setClipboard({ type: 'asset', id: asset.id, repositoryId })
+                                toast.success("Copied asset to clipboard")
+                            }}
+                        >
+                            <SidebarMenuButton className="pl-6 h-8 text-muted-foreground">
+                                <FileIcon className="mr-2 h-3.5 w-3.5" />
+                                <span className="truncate">{(asset.meta as any)?.name || "Untitled"}</span>
+                            </SidebarMenuButton>
+                        </ItemContextMenu>
                     ))}
                     {assets.length === 0 && children.length === 0 && (
                         <span className="text-xs text-muted-foreground pl-2">Empty</span>

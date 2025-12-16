@@ -22,6 +22,8 @@ type RepositoryDataContextValue = {
     assets: AssetRecord[]
     loading: boolean
     refresh: () => Promise<void>
+    clipboard: { type: 'asset' | 'folder' | 'repository', id: string, repositoryId: string } | null
+    setClipboard: (cb: { type: 'asset' | 'folder' | 'repository', id: string, repositoryId: string } | null) => void
 }
 
 const RepositoryDataContext = React.createContext<RepositoryDataContextValue | null>(null)
@@ -39,6 +41,7 @@ export const RepositoryDataProvider = ({ children }: { children: React.ReactNode
     const queryClient = useQueryClient()
     const [selectedRepositoryId, setSelectedRepositoryId] = React.useState<string | null>(null)
     const [currentFolderId, setCurrentFolderId] = React.useState<string | null>(null)
+    const [clipboard, setClipboard] = React.useState<{ type: 'asset' | 'folder' | 'repository', id: string, repositoryId: string } | null>(null)
 
 
 
@@ -124,7 +127,9 @@ export const RepositoryDataProvider = ({ children }: { children: React.ReactNode
         folders,
         assets,
         loading,
-        refresh
+        refresh,
+        clipboard,
+        setClipboard
     }
 
     return (

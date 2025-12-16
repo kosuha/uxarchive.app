@@ -15,6 +15,9 @@ import { AssetDetailDialog } from "@/components/asset-detail-dialog"
 import type { AssetRecord } from "@/lib/repositories/assets"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { RepositoryHeader } from "./repository-header"
+import { ItemContextMenu } from "./item-context-menu"
+import { duplicateAssetAction } from "@/app/actions/copy-paste"
+import { copyRepositoryFolderAction, deleteRepositoryFolderAction } from "@/app/actions/repository-folders"
 
 export function RepositoryWorkspace({ className }: { className?: string }) {
     const {
@@ -23,11 +26,49 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
         setCurrentFolderId,
         folders,
         repositories,
+        clipboard,
+        setClipboard,
+        refresh
     } = useRepositoryData()
     const queryClient = useQueryClient()
 
     const currentRepository = repositories.find(r => r.id === selectedRepositoryId)
     const currentFolder = folders.find(f => f.id === currentFolderId)
+
+    // Paste Handler
+    const handlePaste = async (targetFolderId: string | null) => {
+        if (!clipboard || !selectedRepositoryId) return
+        
+        try {
+            if (clipboard.type === 'asset') {
+                toast.promise(duplicateAssetAction({
+                    assetId: clipboard.id,
+                    targetRepositoryId: selectedRepositoryId,
+                    targetFolderId
+                }), {
+                    loading: "Pasting asset...",
+                    success: "Asset pasted",
+                    error: "Failed to paste asset"
+                })
+            } else if (clipboard.type === 'folder') {
+                toast.promise(copyRepositoryFolderAction({
+                    sourceFolderId: clipboard.id,
+                    sourceRepositoryId: clipboard.repositoryId,
+                    targetRepositoryId: selectedRepositoryId,
+                    targetParentId: targetFolderId
+                }), {
+                    loading: "Pasting folder...",
+                    success: "Folder pasted",
+                    error: "Failed to paste folder"
+                })
+            }
+            await refresh() 
+        } catch (e) {
+            console.error("Paste failed", e)
+            toast.error("Failed to paste")
+        }
+    }
+
 
     // Fetch all assets for the current repository
     const { data: assets = [] } = useQuery({
@@ -336,16 +377,33 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                                 }))
 
                                 return (
-                                    <div key={folder.id} onClick={() => setCurrentFolderId(folder.id)} className="cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                                        <RepositoryFolderSection
-                                            repositoryId={selectedRepositoryId}
-                                            folderId={folder.id}
-                                            title={folder.name}
-                                            showIfEmpty={true}
-                                            assets={recursiveAssets}
-                                            onAssetClick={handleAssetClick}
-                                        />
-                                    </div>
+                                    <ItemContextMenu
+                                        key={folder.id}
+                                        type="folder"
+                                        onCopy={() => {
+                                            setClipboard({ type: 'folder', id: folder.id, repositoryId: folder.repositoryId })
+                                            toast.success("Copied folder to clipboard")
+                                        }}
+                                        onPaste={clipboard ? () => handlePaste(folder.id) : undefined}
+                                        onDelete={async () => {
+                                            if (confirm(`Are you sure you want to delete folder ${folder.name}?`)) {
+                                                await deleteRepositoryFolderAction({ id: folder.id, repositoryId: folder.repositoryId })
+                                                toast.success("Folder deleted")
+                                                refresh()
+                                            }
+                                        }}
+                                    >
+                                        <div onClick={() => setCurrentFolderId(folder.id)} className="cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                                            <RepositoryFolderSection
+                                                repositoryId={selectedRepositoryId}
+                                                folderId={folder.id}
+                                                title={folder.name}
+                                                showIfEmpty={true}
+                                                assets={recursiveAssets}
+                                                onAssetClick={handleAssetClick}
+                                            />
+                                        </div>
+                                    </ItemContextMenu>
                                 )
                             })}
                         </div>

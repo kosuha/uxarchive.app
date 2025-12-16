@@ -119,6 +119,12 @@ interface RepositoryTreeProps {
     onRenameAsset?: (id: string, newName: string, repositoryId: string) => void
     onSelectAsset?: (asset: any) => void
     onMoveRepository?: (sourceId: string, targetId: string, targetFolderId?: string | null) => void
+    onCopyAsset?: (assetId: string, repositoryId: string) => void
+    onCopyFolder?: (folderId: string, repositoryId: string) => void
+    onPasteToFolder?: (folderId: string, repositoryId: string) => void
+    onCopyRepository?: (repositoryId: string) => void
+    onPasteToRepository?: (repositoryId: string) => void
+    isClipboardEmpty?: boolean
 }
 
 export function RepositoryTree({
@@ -141,7 +147,13 @@ export function RepositoryTree({
     onDeleteAsset,
     onRenameAsset,
     onSelectAsset,
-    onMoveRepository
+    onMoveRepository,
+    onCopyAsset,
+    onCopyFolder,
+    onPasteToFolder,
+    onCopyRepository,
+    onPasteToRepository,
+    isClipboardEmpty
 }: RepositoryTreeProps) {
     const [moveRepoState, setMoveRepoState] = React.useState<{ sourceId: string, targetId: string, targetFolderId: string | null, sourceName: string, targetName: string } | null>(null)
 
@@ -407,7 +419,14 @@ export function RepositoryTree({
                         selectedFolderId={selectedFolderId}
                         onSelectRepository={onSelectRepository}
                         onSelectFolder={onSelectFolder}
-                        handlers={{ onForkRepository, onSnapshotRepository, onDeleteRepository, onRenameRepository, onDeleteFolder, onRenameFolder, onMoveFolder, onMoveAsset, onDeleteAsset, onRenameAsset, onSelectAsset }}
+                        handlers={{ 
+                            onForkRepository, onSnapshotRepository, onDeleteRepository, onRenameRepository, 
+                            onDeleteFolder, onRenameFolder, onMoveFolder, onMoveAsset, 
+                            onDeleteAsset, onRenameAsset, onSelectAsset,
+                            onCopyAsset, onCopyFolder, onPasteToFolder,
+                            onCopyRepository, onPasteToRepository
+                        }}
+                        isClipboardEmpty={isClipboardEmpty}
                     />
                 ))}
             </SidebarMenu>
@@ -449,7 +468,7 @@ export function RepositoryTree({
     )
 }
 
-function RepositoryItem({ repo, isOpen, toggleRepo, folderTree, selectedRepositoryId, selectedFolderId, onSelectRepository, onSelectFolder, handlers }: any) {
+function RepositoryItem({ repo, isOpen, toggleRepo, folderTree, selectedRepositoryId, selectedFolderId, onSelectRepository, onSelectFolder, handlers, isClipboardEmpty }: any) {
 
     const { setNodeRef: setDroppableRef, isOver } = useDroppable({
         id: `repo-${repo.id}`,
@@ -515,6 +534,9 @@ function RepositoryItem({ repo, isOpen, toggleRepo, folderTree, selectedReposito
                             onFork={() => handlers.onForkRepository?.(repo)}
                             onDelete={() => handlers.onDeleteRepository?.(repo.id)}
                             onRename={() => setIsRenaming(true)}
+                            onCopy={() => handlers.onCopyRepository?.(repo.id)}
+                            onPaste={() => handlers.onPasteToRepository?.(repo.id)}
+                            disablePaste={isClipboardEmpty}
                         >
                             <SidebarMenuButton
                                 isActive={repo.id === selectedRepositoryId && !selectedFolderId}
@@ -540,6 +562,7 @@ function RepositoryItem({ repo, isOpen, toggleRepo, folderTree, selectedReposito
                             selectedFolderId={selectedFolderId}
                             onSelectFolder={onSelectFolder}
                             handlers={handlers}
+                            isClipboardEmpty={isClipboardEmpty}
                         />
                     </div>
                 </CollapsibleContent>
@@ -549,7 +572,7 @@ function RepositoryItem({ repo, isOpen, toggleRepo, folderTree, selectedReposito
 }
 
 
-function FolderList({ data, selectedFolderId, onSelectFolder, handlers }: any) {
+function FolderList({ data, selectedFolderId, onSelectFolder, handlers, isClipboardEmpty }: any) {
     const [openFolders, setOpenFolders] = React.useState<Record<string, boolean>>({})
 
     if (data.roots.length === 0 && data.rootAssets.length === 0) return null
@@ -569,6 +592,7 @@ function FolderList({ data, selectedFolderId, onSelectFolder, handlers }: any) {
                     selectedFolderId={selectedFolderId}
                     onSelectFolder={onSelectFolder}
                     handlers={handlers}
+                    isClipboardEmpty={isClipboardEmpty}
                 />
             ))}
 
@@ -625,6 +649,7 @@ function AssetItem({ asset, onSelectFolder, handlers }: any) {
                         handlers.onDeleteAsset?.(asset.id, asset.repositoryId)
                     }}
                     onRename={() => setIsRenaming(true)}
+                    onCopy={() => handlers.onCopyAsset?.(asset.id, asset.repositoryId)}
                 >
                     <SidebarMenuButton
                         {...allowContextMenuProps}
@@ -644,7 +669,7 @@ function AssetItem({ asset, onSelectFolder, handlers }: any) {
     )
 }
 
-function FolderItem({ node, isOpen, toggleOpen, selectedFolderId, onSelectFolder, handlers }: any) {
+function FolderItem({ node, isOpen, toggleOpen, selectedFolderId, onSelectFolder, handlers, isClipboardEmpty }: any) {
     const hasChildren = node.children.length + node.assets.length > 0
     const [isRenaming, setIsRenaming] = React.useState(false)
 
@@ -719,6 +744,9 @@ function FolderItem({ node, isOpen, toggleOpen, selectedFolderId, onSelectFolder
                             console.log("FolderItem: onRename triggered", node.id)
                             setIsRenaming(true)
                         }}
+                        onCopy={() => handlers.onCopyFolder?.(node.id, node.repositoryId)}
+                        onPaste={() => handlers.onPasteToFolder?.(node.id, node.repositoryId)}
+                        disablePaste={isClipboardEmpty}
                     >
                         <SidebarMenuButton
                             isActive={node.id === selectedFolderId}
@@ -744,6 +772,7 @@ function FolderItem({ node, isOpen, toggleOpen, selectedFolderId, onSelectFolder
                         selectedFolderId={selectedFolderId}
                         onSelectFolder={onSelectFolder}
                         handlers={handlers}
+                        isClipboardEmpty={isClipboardEmpty}
                     />
                 </div>
             </CollapsibleContent>

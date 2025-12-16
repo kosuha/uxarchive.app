@@ -8,7 +8,7 @@ import {
     ContextMenuSeparator,
     ContextMenuTrigger,
 } from "@/components/ui/context-menu"
-import { Pencil, Trash2, FolderInput, GitBranch, GitFork } from "lucide-react"
+import { Pencil, Trash2, FolderInput, GitBranch, GitFork, Copy, ClipboardPaste } from "lucide-react"
 
 interface ItemContextMenuProps {
     children: React.ReactNode
@@ -17,10 +17,13 @@ interface ItemContextMenuProps {
     onFork?: () => void
     onSnapshots?: () => void
     onMove?: () => void // For future
+    onCopy?: () => void
+    onPaste?: () => void
+    disablePaste?: boolean
     type: "repository" | "folder" | "asset"
 }
 
-export function ItemContextMenu({ children, onRename, onDelete, onFork, onSnapshots, type }: ItemContextMenuProps) {
+export function ItemContextMenu({ children, onRename, onDelete, onFork, onSnapshots, onCopy, onPaste, disablePaste, type }: ItemContextMenuProps) {
     return (
         <ContextMenu>
             <ContextMenuTrigger asChild>
@@ -38,6 +41,27 @@ export function ItemContextMenu({ children, onRename, onDelete, onFork, onSnapsh
                     <ContextMenuItem onSelect={onSnapshots}>
                         <span className="mr-2">📸</span>
                         Snapshots
+                    </ContextMenuItem>
+                )}
+                {onCopy && (
+                    <ContextMenuItem onSelect={(e) => {
+                        console.log("ContextMenu: Copy selected")
+                        onCopy()
+                    }}>
+                        <Copy className="mr-2 h-4 w-4" />
+                        Copy
+                    </ContextMenuItem>
+                )}
+                {onPaste && (
+                    <ContextMenuItem 
+                        onSelect={(e) => {
+                            console.log("ContextMenu: Paste selected")
+                            onPaste()
+                        }}
+                        disabled={disablePaste}
+                    >
+                        <ClipboardPaste className="mr-2 h-4 w-4" />
+                        Paste
                     </ContextMenuItem>
                 )}
                 {onRename && (
