@@ -19,21 +19,35 @@ export type RepositoryRecord = {
   forkOriginId: string | null;
   createdAt: string;
   updatedAt: string;
+  thumbnailUrl: string | null;
 };
 
-const mapRepository = (row: RepositoryRow): RepositoryRecord => ({
-  id: row.id,
-  workspaceId: row.workspace_id,
-  name: row.name,
-  description: row.description,
-  isPublic: row.is_public,
-  viewCount: row.view_count,
-  forkCount: row.fork_count,
-  likeCount: (row as any).like_count ?? 0, // Cast to any until types are regenerated
-  forkOriginId: row.fork_origin_id ?? null, // handle missing column if types not generated yet (but we added migration)
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
-});
+const mapRepository = (
+  row: RepositoryRow & { assets?: { storage_path: string }[] },
+): RepositoryRecord => {
+  let thumbnailUrl = null;
+  if (row.assets && row.assets.length > 0) {
+    thumbnailUrl =
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ux-archive-captures/${
+        row.assets[0].storage_path
+      }`;
+  }
+
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    name: row.name,
+    description: row.description,
+    isPublic: row.is_public,
+    viewCount: row.view_count,
+    forkCount: row.fork_count,
+    likeCount: (row as any).like_count ?? 0,
+    forkOriginId: row.fork_origin_id ?? null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    thumbnailUrl,
+  };
+};
 
 export type CreateRepositoryInput = {
   workspaceId: string;
@@ -162,15 +176,38 @@ export const listPublicRepositories = async (
   client: SupabaseRepositoryClient,
   limit = 20,
 ): Promise<RepositoryRecord[]> => {
+  // We want to fetch the first asset to use as a thumbnail.
+  // Note: Nested limit() support depends on Supabase/PostgREST version.
+  // "assets(storage_path, order)" ordered by order, limit 1.
   const { data, error } = await client
     .from("repositories")
-    .select()
+    // @ts-ignore - Supabase type definition might not infer the nested select correctly
+    .select("*, assets(storage_path, order)")
     .eq("is_public", true)
     .order("created_at", { ascending: false })
     .limit(limit);
 
   ensureData(data, error, "Failed to list public repositories.");
-  return (data as RepositoryRow[]).map(mapRepository);
+
+  // Sort assets manually if the API didn't sort them, and pick the first one.
+  // PostgREST 9+ supports resource embedding with order/limit, but to be safe we sort in map or ensure correct query.
+  // Here we just accept what we got. Usually we'd want .order('order', {foreignTable: 'assets', ascending: true}).limit(1, {foreignTable: 'assets'})
+  // Since we can't easily express that with simple string select in all versions without specific JS syntax:
+
+  // Refined query for safety if using latest supabase-js:
+  // .select('*, assets(storage_path, order)')
+  // In mapRepository we'll pick the first one. To be best, we should order assets.
+  // However default order might be insertion. Let's assume the returned assets is array.
+
+  // We'll perform a client-side sort of the single repository's assets just in case multiple came back.
+  const rows = (data as any[]).map((row) => {
+    if (row.assets && Array.isArray(row.assets)) {
+      row.assets.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
+    }
+    return row;
+  });
+
+  return rows.map(mapRepository);
 };
 
 export const getPublicRepositoryById = async (

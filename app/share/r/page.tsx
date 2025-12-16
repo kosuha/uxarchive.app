@@ -1,8 +1,8 @@
-
-import { Metadata } from "next"
+import type { Metadata } from "next"
 import { getServiceRoleSupabaseClient } from "@/lib/supabase/service-client"
 import { listPublicRepositories } from "@/lib/repositories/repositories"
 import { PublicRepositoryList } from "@/components/public-view/public-repository-list"
+import { PatternsHeader } from "@/components/share/patterns-header"
 
 export const metadata: Metadata = {
   title: "Shared Repositories · UX Archive",
@@ -17,19 +17,19 @@ export default async function SharedRepositoriesPage() {
   const repositories = await listPublicRepositories(supabase as any)
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b sticky top-0 bg-background/95 backdrop-blur z-50">
-        <div className="container mx-auto px-6 h-14 flex items-center justify-between">
-            <div className="flex items-center gap-2 font-semibold">
-                <span>UX Archive</span>
-                <span className="text-muted-foreground">/</span>
-                <span>Repositories</span>
-            </div>
+    <div className="dark min-h-screen bg-[#0C0C0C] text-foreground">
+      <PatternsHeader />
+
+      <div className="mx-auto w-full max-w-[1600px] px-4 pt-8 sm:px-6 lg:px-8 space-y-12 pb-20">
+        <div className="space-y-6">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-2xl font-semibold tracking-tight text-white">
+              All Repositories
+            </h2>
+          </div>
+          <PublicRepositoryList repositories={repositories} />
         </div>
-      </header>
-      <main className="container mx-auto py-8">
-        <PublicRepositoryList repositories={repositories} />
-      </main>
+      </div>
     </div>
   )
 }
