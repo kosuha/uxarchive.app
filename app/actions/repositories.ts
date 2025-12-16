@@ -63,7 +63,7 @@ export async function forkRepositoryAction(input: {
   description?: string | null;
 }) {
   const supabase = await createActionSupabaseClient();
-  await requireAuthenticatedUser(supabase);
+  const user = await requireAuthenticatedUser(supabase);
 
   // 1. Create Forked Repository Record
   const newRepo = await createRepository(supabase, {
@@ -75,17 +75,27 @@ export async function forkRepositoryAction(input: {
   });
 
   // 2. Increment Fork Count on Source
-  // Logic: fetch source, update +1.
-  // Is there an atomic increment in Supabase JS? or RPC?
-  // Doing read-update-write for now.
-  // Or just let it slide for MVP if race condition isn't critical.
+  // Logic: fetch source, update +1 only if NOT a self-fork (user is not member of source workspace).
   const { data: sourceRepo } = await supabase.from("repositories").select(
-    "fork_count",
+    "fork_count, workspace_id",
   ).eq("id", input.sourceRepositoryId).single();
+
   if (sourceRepo) {
-    await supabase.from("repositories").update({
-      fork_count: (sourceRepo.fork_count || 0) + 1,
-    }).eq("id", input.sourceRepositoryId);
+    // Check if user is member of source workspace
+    const { data: membership } = await supabase
+      .from("workspace_members")
+      .select("id")
+      .eq("workspace_id", sourceRepo.workspace_id)
+      .eq("profile_id", user.id)
+      .maybeSingle();
+
+    const isSelfFork = !!membership;
+
+    if (!isSelfFork) {
+      await supabase.from("repositories").update({
+        fork_count: (sourceRepo.fork_count || 0) + 1,
+      }).eq("id", input.sourceRepositoryId);
+    }
   }
 
   // 3. Copy Content
@@ -166,7 +176,7 @@ export async function forkFolderAction(input: {
   description?: string | null;
 }) {
   const supabase = await createActionSupabaseClient();
-  await requireAuthenticatedUser(supabase);
+  const user = await requireAuthenticatedUser(supabase);
 
   // 1. Create Forked Repository
   const newRepo = await createRepository(supabase, {
@@ -179,12 +189,25 @@ export async function forkFolderAction(input: {
 
   // 2. Increment Fork Count on Source Repo (optional but good for tracking)
   const { data: sourceRepo } = await supabase.from("repositories").select(
-    "fork_count",
+    "fork_count, workspace_id",
   ).eq("id", input.sourceRepositoryId).single();
+
   if (sourceRepo) {
-    await supabase.from("repositories").update({
-      fork_count: (sourceRepo.fork_count || 0) + 1,
-    }).eq("id", input.sourceRepositoryId);
+    // Check if user is member of source workspace
+    const { data: membership } = await supabase
+      .from("workspace_members")
+      .select("id")
+      .eq("workspace_id", sourceRepo.workspace_id)
+      .eq("profile_id", user.id)
+      .maybeSingle();
+
+    const isSelfFork = !!membership;
+
+    if (!isSelfFork) {
+      await supabase.from("repositories").update({
+        fork_count: (sourceRepo.fork_count || 0) + 1,
+      }).eq("id", input.sourceRepositoryId);
+    }
   }
 
   // 3. Copy Content (Promote Folder Content to Root)
