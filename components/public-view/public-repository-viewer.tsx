@@ -9,7 +9,7 @@ import { PublicAssetDetailDialog } from "./public-asset-detail-dialog"
 import { PublicRepositoryTree } from "./public-repository-tree"
 import { Lock, ChevronRight, PanelLeft } from "lucide-react"
 import { PatternsHeader } from "@/components/share/patterns-header"
-import { RepositoryHeader } from "@/components/repository-header"
+import { PublicRepositoryHeader } from "./public-repository-header"
 import { cn } from "@/lib/utils"
 
 interface PublicRepositoryViewerProps {
@@ -91,15 +91,15 @@ export function PublicRepositoryViewer({ repository, folders, assets }: PublicRe
     return (
         <div className="flex flex-col h-screen bg-background overflow-hidden">
              {/* Top Global Header (UX Archive) */}
-             <div className="shrink-0 border-b bg-background z-50">
+             <div className="shrink-0 border-b border-border bg-background z-50">
                 <PatternsHeader hideSearch />
              </div>
 
-             <div className="flex flex-1 overflow-hidden">
+             <div className="flex flex-1 overflow-hidden m-4">
                 {/* Sidebar */}
                 <div 
                     className={cn(
-                        "w-[260px] border-r bg-card flex flex-col transition-all duration-300 ease-in-out shrink-0",
+                        "w-[260px] border border-border bg-card rounded-2xl flex flex-col transition-all duration-300 ease-in-out shrink-0",
                         !isSidebarOpen && "-ml-[260px] opacity-0 w-0 border-r-0 overflow-hidden"
                     )}
                 >
@@ -166,11 +166,10 @@ export function PublicRepositoryViewer({ repository, folders, assets }: PublicRe
 
                     {/* Scrollable Content Area */}
                     <div className="flex-1 overflow-y-auto p-0">
-                         {/* Repository/Folder Header - Reusing the component! */}
-                         <RepositoryHeader 
+                         {/* Repository/Folder Header - Public Version */}
+                         <PublicRepositoryHeader 
                              repository={repository} 
                              folder={currentFolder} 
-                             readOnly={true}
                          />
 
                          <div className="pb-32">
@@ -228,16 +227,16 @@ export function PublicRepositoryViewer({ repository, folders, assets }: PublicRe
                 </div>
              </div>
 
-            {selectedAsset && (
-                <PublicAssetDetailDialog
-                    isOpen={!!selectedAsset}
-                    onClose={() => setSelectedAsset(null)}
-                    asset={selectedAsset}
-                    assets={viewerAssets}
-                    onAssetChange={setSelectedAsset}
-                    canDownload
-                />
-            )}
+             {selectedAsset && (
+                 <PublicAssetDetailDialog
+                     isOpen={!!selectedAsset}
+                     onClose={() => setSelectedAsset(null)}
+                     asset={selectedAsset}
+                     assets={viewerAssets}
+                     onAssetChange={setSelectedAsset}
+                     canDownload
+                 />
+             )}
         </div>
     )
 }
