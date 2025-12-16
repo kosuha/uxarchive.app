@@ -8,6 +8,11 @@ import { Lock, Globe, Calendar, Eye, GitFork, Folder, Heart, Copy, Check } from 
 import { formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { Button } from "../ui/button"
+import { toggleRepositoryLikeAction } from "@/app/actions/interactions"
+import { forkRepositoryToDefaultAction, forkFolderToDefaultAction } from "@/app/actions/repositories"
+import { useRouter } from "next/navigation"
+import { Loader2 } from "lucide-react"
 
 interface PublicRepositoryHeaderProps {
     repository: RepositoryRecord
@@ -31,9 +36,76 @@ export function PublicRepositoryHeader({ repository, folder }: PublicRepositoryH
         setTimeout(() => setIsCopied(false), 2000)
     }
 
+    const router = useRouter()
+    const [isLikePending, startLikeTransition] = React.useTransition()
+    const [isForkPending, startForkTransition] = React.useTransition()
+    // Local state for like visualization (optimistic/result-based)
+    const [hasLiked, setHasLiked] = React.useState(false)
+
+    const handleLike = () => {
+        startLikeTransition(async () => {
+            try {
+                const result = await toggleRepositoryLikeAction(repository.id)
+                setHasLiked(!!result)
+                toast.success(result ? "Repository liked" : "Repository unliked")
+            } catch (error) {
+                toast.error("Failed to update like status")
+                console.error(error)
+            }
+        })
+    }
+
+    const handleFork = () => {
+        startForkTransition(async () => {
+            try {
+                let newRepo;
+                if (folder) {
+                    newRepo = await forkFolderToDefaultAction({
+                        sourceFolderId: folder.id,
+                        sourceRepositoryId: repository.id,
+                        name: `${folder.name} (Fork)`,
+                        description: folder.description
+                    })
+                } else {
+                    newRepo = await forkRepositoryToDefaultAction({
+                        sourceRepositoryId: repository.id,
+                        name: `${repository.name} (Fork)`,
+                        description: repository.description
+                    })
+                }
+                
+                toast.success("Forked successfully")
+                router.push(`/workspace?repositoryId=${newRepo.id}`)
+            } catch (error) {
+                if (error instanceof Error && error.message.includes("authenticated")) {
+                    toast.error("Please sign in to fork")
+                } else {
+                    toast.error("Failed to fork")
+                }
+                console.error(error)
+            }
+        })
+    }
+
     return (
         <div className="px-6 py-8 border-b border-border/40 space-y-4">
             <div className="space-y-2">
+                {!folder && (
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1.5">
+                            <Eye className="w-4 h-4 opacity-70" />
+                            <span>{repository.viewCount}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <GitFork className="w-4 h-4 opacity-70" />
+                            <span>{repository.forkCount}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <Heart className="w-4 h-4 opacity-70" />
+                            <span>{repository.likeCount}</span>
+                        </div>
+                    </div>
+                )}
                 <div className="flex items-center gap-3">
                     <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
                         {folder && <Folder className="w-6 h-6 text-muted-foreground/50" />}
@@ -71,27 +143,37 @@ export function PublicRepositoryHeader({ repository, folder }: PublicRepositoryH
             </div>
 
 
-            <div className="flex flex-col items-start gap-1 text-sm text-muted-foreground">
+            <div className="flex flex-col items-start gap-4 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                     <Calendar className="w-4 h-4 opacity-70" />
                     <span>Created {formatDistanceToNow(new Date(creationDate), { addSuffix: true })}</span>
                 </div>
-                {!folder && (
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5">
-                            <Eye className="w-4 h-4 opacity-70" />
-                            <span>{repository.viewCount} views</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <GitFork className="w-4 h-4 opacity-70" />
-                            <span>{repository.forkCount} forks</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <Heart className="w-4 h-4 opacity-70" />
-                            <span>{repository.likeCount} likes</span>
-                        </div>
-                    </div>
-                )}
+                <div className="flex items-center gap-2">
+                    {!folder && (
+                        <Button 
+                            variant="outline" 
+                            className={cn("w-24 gap-1.5 transition-colors", hasLiked && "text-red-500 border-red-200 bg-red-50 hover:bg-red-100 hover:text-red-600 dark:bg-red-950/20 dark:border-red-900/50")}
+                            onClick={handleLike}
+                            disabled={isLikePending}
+                        >
+                            {isLikePending ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <Heart className={cn("w-4 h-4", hasLiked && "fill-current")} />
+                            )}
+                            <span>{hasLiked ? "Liked" : "Like"}</span>
+                        </Button>
+                    )}
+                    <Button 
+                        variant="outline" 
+                        className="w-24 gap-1.5"
+                        onClick={handleFork}
+                        disabled={isForkPending}
+                    >
+                        {isForkPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <GitFork className="w-4 h-4" />}
+                        <span>Fork</span>
+                    </Button>
+                </div>
             </div>
         </div>
     )

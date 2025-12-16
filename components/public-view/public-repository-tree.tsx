@@ -223,29 +223,41 @@ function TreeNodeItem({
         const isActive = currentFolderId === node.id && !selectedAssetId
         const isOpen = openFolders.has(node.id)
 
+        const handleFolderClick = (e: React.MouseEvent) => {
+            e.stopPropagation()
+            if (isActive) {
+                onToggleFolder(node.id, e)
+            } else {
+                onSelectFolder(node.id)
+            }
+        }
+
         return (
             <Collapsible open={isOpen}>
                  <div 
                     className={cn(
-                        "flex items-center gap-1 px-2 py-1.5 text-sm rounded-md transition-colors w-full group select-none cursor-pointer",
+                        "flex items-center gap-1.5 px-2 py-1.5 text-sm rounded-md transition-colors w-full group select-none cursor-pointer",
                         isActive 
                              ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" 
                              : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                     )}
-                    onClick={() => onSelectFolder(node.id)}
+                    onClick={handleFolderClick}
                  >
-                    <button
-                        onClick={(e) => onToggleFolder(node.id, e)}
-                        className={cn(
-                            "p-0.5 rounded-sm hover:bg-sidebar-accent hover:text-foreground transition-colors",
-                             !hasChildren && "invisible"
-                        )}
-                    >
-                        <ChevronRight className={cn(
-                            "w-3.5 h-3.5 transition-transform",
-                            isOpen && "rotate-90"
-                        )} />
-                    </button>
+                    {/* Fixed width arrow container for alignment */}
+                    <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                         <button
+                            onClick={(e) => onToggleFolder(node.id, e)}
+                            className={cn(
+                                "flex items-center justify-center w-4 h-4 rounded-sm hover:bg-sidebar-accent hover:text-foreground transition-colors",
+                                 !hasChildren && "invisible hover:bg-transparent"
+                            )}
+                        >
+                            <ChevronRight className={cn(
+                                "w-3 h-3 transition-transform",
+                                isOpen && "rotate-90"
+                            )} />
+                        </button>
+                    </div>
                     
                     <FolderIcon className={cn("w-4 h-4 shrink-0 fill-current opacity-70", isActive && "text-blue-500 opacity-100")} />
                     <span className="truncate flex-1">{node.name}</span>
@@ -253,7 +265,7 @@ function TreeNodeItem({
     
                  {hasChildren && (
                      <CollapsibleContent>
-                         <div className="pl-4 border-l border-border/40 ml-[11px] flex flex-col gap-0.5 mt-0.5">
+                         <div className="pl-4 ml-[11px] border-l border-border/40 flex flex-col gap-0.5 mt-0.5">
                              {node.children!.map(child => (
                                  <TreeNodeItem
                                      key={child.id}
@@ -280,12 +292,14 @@ function TreeNodeItem({
             <div
                 onClick={() => onSelectAsset?.(node.data)}
                 className={cn(
-                    "flex items-center gap-2 px-2 py-1.5 text-sm rounded-md transition-colors w-full cursor-pointer pl-8", // Extra padding to align with folder content
+                    "flex items-center gap-1.5 px-2 py-1.5 text-sm rounded-md transition-colors w-full cursor-pointer", // No extra pl-8 here, relying on structure or adding empty spacer
                     isSelected 
                         ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" 
                         : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
                 )}
             >
+                {/* Empty container to align with Folder Arrow */}
+                <div className="w-4 h-4 shrink-0" />
                 <FileImage className="w-4 h-4 shrink-0 opacity-70" />
                 <span className="truncate flex-1">{node.name}</span>
             </div>

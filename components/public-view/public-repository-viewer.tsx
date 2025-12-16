@@ -11,6 +11,7 @@ import { Lock, ChevronRight, PanelLeft } from "lucide-react"
 import { PatternsHeader } from "@/components/share/patterns-header"
 import { PublicRepositoryHeader } from "./public-repository-header"
 import { cn } from "@/lib/utils"
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 
 interface PublicRepositoryViewerProps {
     repository: RepositoryRecord
@@ -22,7 +23,11 @@ export function PublicRepositoryViewer({ repository, folders, assets }: PublicRe
     const [currentFolderId, setCurrentFolderId] = React.useState<string | null>(null)
     const [selectedAsset, setSelectedAsset] = React.useState<AssetRecord | null>(null)
     const [viewerAssets, setViewerAssets] = React.useState<AssetRecord[]>([])
+    
+    // Desktop Sidebar State
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(true)
+    // Mobile Sidebar State
+    const [isMobileOpen, setIsMobileOpen] = React.useState(false)
 
     // Current context
     const currentFolder = React.useMemo(() => folders.find(f => f.id === currentFolderId), [folders, currentFolderId])
@@ -40,14 +45,12 @@ export function PublicRepositoryViewer({ repository, folders, assets }: PublicRe
     }, [currentFolderId, folders])
 
     // Filter assets for current view logic
-    // Same as Workspace:
-    // 1. Child Folders of current
     const childFolders = React.useMemo(() => folders.filter(f => {
         if (!currentFolderId) return !f.parentId
         return f.parentId === currentFolderId
     }).sort((a, b) => a.name.localeCompare(b.name)), [folders, currentFolderId])
 
-    // 2. Recursive assets helper
+    // Recursive assets helper
     const getDescendantFolderIds = React.useCallback((rootId: string) => {
         const descendants = new Set<string>()
         const queue = [rootId]
@@ -96,10 +99,10 @@ export function PublicRepositoryViewer({ repository, folders, assets }: PublicRe
              </div>
 
              <div className="flex flex-1 overflow-hidden m-4">
-                {/* Sidebar */}
+                {/* Desktop Sidebar */}
                 <div 
                     className={cn(
-                        "w-[260px] border border-border bg-card rounded-2xl flex flex-col transition-all duration-300 ease-in-out shrink-0",
+                        "hidden md:flex border border-border bg-card rounded-2xl flex-col transition-all duration-300 ease-in-out shrink-0 w-[260px]",
                         !isSidebarOpen && "w-0 -ml-4 border-0 opacity-0 overflow-hidden p-0"
                     )}
                 >
@@ -112,7 +115,6 @@ export function PublicRepositoryViewer({ repository, folders, assets }: PublicRe
                             selectedAssetId={selectedAsset?.id}
                             onSelectFolder={setCurrentFolderId}
                             onSelectAsset={(asset) => {
-                                // Find siblings logic for viewer (based on folder)
                                 const siblings = assets
                                     .filter(a => a.folderId === asset.folderId)
                                     .sort((a, b) => a.order - b.order)
@@ -122,18 +124,59 @@ export function PublicRepositoryViewer({ repository, folders, assets }: PublicRe
                     </div>
                 </div>
 
+                {/* Mobile Sidebar (Sheet) */}
+                <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
+                    <SheetContent side="left" className="p-0 w-[280px]">
+                         <div className="flex flex-col h-full bg-card">
+                             <div className="p-4 border-b border-border flex items-center">
+                                 <SheetTitle>{repository.name}</SheetTitle>
+                             </div>
+                             <div className="flex-1 overflow-y-auto p-2">
+                                <PublicRepositoryTree
+                                    repositoryName={repository.name}
+                                    folders={folders}
+                                    assets={assets}
+                                    currentFolderId={currentFolderId}
+                                    selectedAssetId={selectedAsset?.id}
+                                    onSelectFolder={(id) => {
+                                        setCurrentFolderId(id)
+                                        setIsMobileOpen(false)
+                                    }}
+                                    onSelectAsset={(asset) => {
+                                        const siblings = assets
+                                            .filter(a => a.folderId === asset.folderId)
+                                            .sort((a, b) => a.order - b.order)
+                                        handleAssetClick(asset, siblings)
+                                        setIsMobileOpen(false)
+                                    }}
+                                />
+                             </div>
+                         </div>
+                    </SheetContent>
+                </Sheet>
+
                 {/* Main Content */}
                 <div className="flex flex-col flex-1 min-w-0 bg-[#FAFAFA] dark:bg-[#09090b]">
                     
                     {/* Workspace Header / Breadcrumbs */}
                     <div className="flex items-center gap-4 px-4 py-3 border-b border-border/40 text-sm bg-background/50 backdrop-blur-sm sticky top-0 z-20 shrink-0">
                          <div className="flex items-center gap-2">
+                             {/* Desktop Toggle Button */}
                              <button 
                                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                                className="text-muted-foreground hover:text-foreground p-1 hover:bg-muted rounded-md transition-colors"
+                                className="hidden md:block text-muted-foreground hover:text-foreground p-1 hover:bg-muted rounded-md transition-colors"
                              >
                                  <PanelLeft className="w-4 h-4" />
                              </button>
+
+                             {/* Mobile Toggle Button */}
+                             <button 
+                                onClick={() => setIsMobileOpen(true)}
+                                className="md:hidden text-muted-foreground hover:text-foreground p-1 hover:bg-muted rounded-md transition-colors"
+                             >
+                                 <PanelLeft className="w-4 h-4" />
+                             </button>
+
                              <div className="w-px h-4 bg-border/60 mx-1" />
                          </div>
 
@@ -207,12 +250,6 @@ export function PublicRepositoryViewer({ repository, folders, assets }: PublicRe
                                                         showIfEmpty={true}
                                                         assets={recursiveAssets}
                                                         onAssetClick={(a, s) => {
-                                                            // Stop propagation to prevent folder navigation?
-                                                            // Actually workspace doesn't stop prop, but clicking ASSET opens dialog.
-                                                            // Clicking Header (in section) opens folder? No, RepositoryFolderSection header is clickable?
-                                                            // Let's check RepositoryFolderSection. It renders a header.
-                                                            // In Workspace, the wrapper div has onClick.
-                                                            // So clicking anywhere in the section background navigates.
                                                             handleAssetClick(a, s)
                                                         }}
                                                     />
@@ -228,14 +265,14 @@ export function PublicRepositoryViewer({ repository, folders, assets }: PublicRe
              </div>
 
              {selectedAsset && (
-                 <PublicAssetDetailDialog
-                     isOpen={!!selectedAsset}
-                     onClose={() => setSelectedAsset(null)}
-                     asset={selectedAsset}
-                     assets={viewerAssets}
-                     onAssetChange={setSelectedAsset}
-                     canDownload
-                 />
+                  <PublicAssetDetailDialog
+                      isOpen={!!selectedAsset}
+                      onClose={() => setSelectedAsset(null)}
+                      asset={selectedAsset}
+                      assets={viewerAssets}
+                      onAssetChange={setSelectedAsset}
+                      canDownload
+                  />
              )}
         </div>
     )

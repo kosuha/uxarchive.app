@@ -50,7 +50,7 @@ export default async function SharedRepositoryPage({ params }: PageProps) {
 
         const [folders, assets] = await Promise.all([
             listRepositoryFolders(supabase as any, { repositoryId }),
-            listAssets(supabase as any, { repositoryId })
+            listAssets(supabase as any, { repositoryId, mode: "recursive" })
         ])
 
         return (
