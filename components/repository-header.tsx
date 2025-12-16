@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { RepositoryRecord } from "@/lib/repositories/repositories"
 import { RepositoryFolderRecord } from "@/lib/repositories/repository-folders"
 import { Badge } from "@/components/ui/badge"
-import { Lock, Globe, Calendar, Eye, GitFork, ChevronDown, Folder, Heart, Copy } from "lucide-react"
+import { Lock, Globe, Calendar, Eye, GitFork, ChevronDown, Folder, Heart, Copy, Check } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { updateRepositoryAction } from "@/app/actions/repositories"
 import { updateRepositoryFolderAction } from "@/app/actions/repository-folders"
@@ -30,6 +30,8 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
     
     // Local state for description editing
     const [description, setDescription] = React.useState(initialDescription)
+    // Copy feedback state
+    const [isCopied, setIsCopied] = React.useState(false)
 
     // Sync local state when prop updates (e.g. navigation or re-fetch)
     React.useEffect(() => {
@@ -87,6 +89,14 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
         }
     }
 
+    const handleCopyLink = () => {
+        const url = `${window.location.origin}/share/r/${repository.id}`
+        navigator.clipboard.writeText(url)
+        toast.success("Link copied to clipboard")
+        setIsCopied(true)
+        setTimeout(() => setIsCopied(false), 2000)
+    }
+
     const title = folder ? folder.name : repository.name
     const creationDate = folder ? folder.createdAt : repository.createdAt
 
@@ -129,16 +139,18 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
 
                             {repository.isPublic && (
                                 <button
-                                    onClick={() => {
-                                        const url = `${window.location.origin}/share/r/${repository.id}`
-                                        navigator.clipboard.writeText(url)
-                                        toast.success("Link copied to clipboard")
-                                    }}
-                                    className="flex items-center gap-1.5 h-6 px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/80 rounded-full transition-colors"
+                                    onClick={handleCopyLink}
+                                    className={cn(
+                                        "flex items-center gap-1.5 h-6 px-2.5 text-xs font-medium rounded-full transition-all duration-200",
+                                        isCopied 
+                                            ? "text-green-600 bg-green-500/10 cursor-default" 
+                                            : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+                                    )}
                                     title="Copy public link"
+                                    disabled={isCopied}
                                 >
-                                    <Copy className="w-3 h-3" />
-                                    Copy Link
+                                    {isCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                    {isCopied ? "Copied" : "Copy Link"}
                                 </button>
                             )}
                         </div>
