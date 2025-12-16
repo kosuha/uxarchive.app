@@ -195,7 +195,7 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
 
         setUploading(false)
         if (fileInputRef.current) fileInputRef.current.value = ""
-        queryClient.invalidateQueries({ queryKey: ["assets", selectedRepositoryId] })
+        await refresh()
     }
 
 

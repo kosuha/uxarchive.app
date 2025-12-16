@@ -1,8 +1,14 @@
 "use client"
 
 import * as React from "react"
+import { ChevronRight } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import {
   Command,
   CommandInput,
@@ -146,50 +152,77 @@ export function SearchView({
 
     return (
       <ScrollArea className="h-full">
-        <div className="space-y-6 pb-4">
+        <div className="space-y-4 pb-4">
             {filteredRepositories.length > 0 && (
-                <div className="space-y-2">
-                    <h3 className="text-xs font-semibold text-muted-foreground px-1">Repositories</h3>
-                    <div className="space-y-2">
-                        {filteredRepositories.map((repo) => (
-                            <RepositoryResultCard
-                                key={repo.id}
-                                repository={repo}
-                                onSelect={handleRepositorySelect}
-                            />
-                        ))}
+                <Collapsible defaultOpen className="group/collapsible space-y-2">
+                    <div className="flex items-center justify-between px-1">
+                        <h3 className="text-xs font-semibold text-muted-foreground">Repositories</h3>
+                        <CollapsibleTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-5 w-5 p-0 hover:bg-transparent">
+                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                            </Button>
+                        </CollapsibleTrigger>
                     </div>
-                </div>
+                    <CollapsibleContent>
+                        <div className="space-y-2">
+                            {filteredRepositories.map((repo) => (
+                                <RepositoryResultCard
+                                    key={repo.id}
+                                    repository={repo}
+                                    onSelect={handleRepositorySelect}
+                                />
+                            ))}
+                        </div>
+                    </CollapsibleContent>
+                </Collapsible>
             )}
 
             {filteredFolders.length > 0 && (
-                <div className="space-y-2">
-                    <h3 className="text-xs font-semibold text-muted-foreground px-1">Folders</h3>
-                    <div className="space-y-2">
-                        {filteredFolders.map((folder) => (
-                            <FolderResultCard
-                                key={folder.id}
-                                folder={folder}
-                                onSelect={handleFolderSelect}
-                            />
-                        ))}
+                <Collapsible defaultOpen className="group/collapsible space-y-2">
+                    <div className="flex items-center justify-between px-1">
+                        <h3 className="text-xs font-semibold text-muted-foreground">Folders</h3>
+                        <CollapsibleTrigger asChild>
+                             <Button variant="ghost" size="icon" className="h-5 w-5 p-0 hover:bg-transparent">
+                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                            </Button>
+                        </CollapsibleTrigger>
                     </div>
-                </div>
+                    <CollapsibleContent>
+                        <div className="space-y-2">
+                            {filteredFolders.map((folder) => (
+                                <FolderResultCard
+                                    key={folder.id}
+                                    folder={folder}
+                                    onSelect={handleFolderSelect}
+                                />
+                            ))}
+                        </div>
+                    </CollapsibleContent>
+                </Collapsible>
             )}
 
             {filteredAssets.length > 0 && (
-                <div className="space-y-2">
-                    <h3 className="text-xs font-semibold text-muted-foreground px-1">Assets</h3>
-                    <div className="space-y-2">
-                        {filteredAssets.map((asset) => (
-                            <AssetResultCard
-                                key={asset.id}
-                                asset={asset}
-                                onSelect={handleAssetSelect}
-                            />
-                        ))}
+                <Collapsible defaultOpen className="group/collapsible space-y-2">
+                     <div className="flex items-center justify-between px-1">
+                        <h3 className="text-xs font-semibold text-muted-foreground">Assets</h3>
+                        <CollapsibleTrigger asChild>
+                             <Button variant="ghost" size="icon" className="h-5 w-5 p-0 hover:bg-transparent">
+                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                            </Button>
+                        </CollapsibleTrigger>
                     </div>
-                </div>
+                    <CollapsibleContent>
+                        <div className="space-y-2">
+                            {filteredAssets.map((asset) => (
+                                <AssetResultCard
+                                    key={asset.id}
+                                    asset={asset}
+                                    onSelect={handleAssetSelect}
+                                />
+                            ))}
+                        </div>
+                    </CollapsibleContent>
+                </Collapsible>
             )}
         </div>
       </ScrollArea>
