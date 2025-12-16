@@ -7,7 +7,7 @@ import { CreateRepositoryDialog } from "@/components/create-repository-dialog"
 import { SnapshotsDialog } from "@/components/snapshots-dialog"
 import { deleteRepositoryAction, forkRepositoryAction, moveRepositoryToRepositoryAction, updateRepositoryAction } from "@/app/actions/repositories"
 import { deleteRepositoryFolderAction, updateRepositoryFolderAction, moveRepositoryFolderAction, copyRepositoryFolderAction } from "@/app/actions/repository-folders"
-import { duplicateAssetAction } from "@/app/actions/copy-paste"
+import { duplicateAssetAction, copyRepositoryAsFolderAction } from "@/app/actions/copy-paste"
 import { toast } from "sonner"
 import { moveRepositoryAssetAction, deleteRepositoryAssetAction, updateRepositoryAssetAction } from "@/app/actions/repository-assets"
 import {
@@ -222,6 +222,22 @@ export function RepositoryExploreView() {
                     success: "Folder pasted",
                     error: "Failed to paste folder"
                 })
+            } else if (clipboard.type === 'repository') {
+                 const toastId = toast.loading("Pasting repository as folder...")
+                 try {
+                    await copyRepositoryAsFolderAction({
+                        sourceRepositoryId: clipboard.id,
+                        targetRepositoryId: repositoryId,
+                        targetParentId: folderId
+                    })
+                    toast.dismiss(toastId)
+                    toast.success("Repository pasted as folder")
+                 } catch (e: any) {
+                     toast.dismiss(toastId)
+                     console.error("Paste failed", e)
+                     alert("Paste Error: " + (e.message || e))
+                     toast.error("Failed to paste repository")
+                 }
             }
             await refresh()
         } catch (e) {
@@ -236,22 +252,30 @@ export function RepositoryExploreView() {
     }
 
     const handlePasteToRepository = async (targetRepoId: string) => {
+        console.log("handlePasteToRepository called", { targetRepoId, clipboard })
+        alert(`Target Repo ID Check: ${targetRepoId}`)
+        // alert(`Clipboard State: ${JSON.stringify(clipboard)}`)
+        
         if (!clipboard) return
 
         try {
             if (clipboard.type === 'repository') {
-                // Duplicate Repository
-                // We find the source repository to get its details
-                const sourceRepo = repositories.find(r => r.id === clipboard.id)
-                if (!sourceRepo) return
-
-                await forkRepositoryAction({
-                    sourceRepositoryId: clipboard.id,
-                    workspaceId: sourceRepo.workspaceId,
-                    name: `${sourceRepo.name} (Copy)`,
-                    description: sourceRepo.description
-                })
-                toast.success("Repository duplicated")
+                // Paste Repository -> Converts to Folder in Target Repository
+                const toastId = toast.loading("Pasting repository...")
+                try {
+                    await copyRepositoryAsFolderAction({
+                        sourceRepositoryId: clipboard.id,
+                        targetRepositoryId: targetRepoId,
+                        targetParentId: null // Root of target repo
+                    })
+                    toast.dismiss(toastId)
+                    toast.success("Repository pasted as folder")
+                } catch (e: any) {
+                    toast.dismiss(toastId)
+                    console.error("Paste Error", e)
+                    alert("Paste Error: " + (e.message || e))
+                    toast.error("Failed to paste repository: " + (e.message || "Unknown error"))
+                }
             } else if (clipboard.type === 'asset') {
                 // Paste Asset into Repository Root
                  toast.promise(duplicateAssetAction({

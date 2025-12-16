@@ -535,7 +535,10 @@ function RepositoryItem({ repo, isOpen, toggleRepo, folderTree, selectedReposito
                             onDelete={() => handlers.onDeleteRepository?.(repo.id)}
                             onRename={() => setIsRenaming(true)}
                             onCopy={() => handlers.onCopyRepository?.(repo.id)}
-                            onPaste={() => handlers.onPasteToRepository?.(repo.id)}
+                            onPaste={() => {
+                                console.log("RepositoryItem: onPaste triggered")
+                                handlers.onPasteToRepository?.(repo.id)
+                            }}
                             disablePaste={isClipboardEmpty}
                         >
                             <SidebarMenuButton

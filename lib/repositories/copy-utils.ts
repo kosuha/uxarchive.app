@@ -1,6 +1,9 @@
-import { SupabaseRepositoryClient } from "./types"
-import { listRepositoryFolders, createRepositoryFolder } from "./repository-folders"
-import { listAssets, createAsset } from "./assets"
+import { SupabaseRepositoryClient } from "./types";
+import {
+    createRepositoryFolder,
+    listRepositoryFolders,
+} from "./repository-folders";
+import { createAsset, listAssets } from "./assets";
 
 /**
  * Copies a folder structure (files and subfolders) from one location to another.
@@ -11,60 +14,86 @@ import { listAssets, createAsset } from "./assets"
 export async function copyFoldersRecursively(
     client: SupabaseRepositoryClient,
     input: {
-        sourceRepositoryId: string
-        targetRepositoryId: string
-        targetParentId: string | null
-        sourceFolderIds: string[] // List of folder IDs to start copying from
-    }
+        sourceRepositoryId: string;
+        targetRepositoryId: string;
+        targetParentId: string | null;
+        sourceFolderIds: string[]; // List of folder IDs to start copying from
+    },
 ) {
     // Optimization: Fetch all source folders once to build the tree
     // Note: If sourceRepository is huge, this might be heavy. But for MVP it's optimal vs N+1 queries.
-    const allSourceFolders = await listRepositoryFolders(client, { repositoryId: input.sourceRepositoryId })
-    const folderMap = new Map<string, typeof allSourceFolders>() // parentId -> folders
+    const allSourceFolders = await listRepositoryFolders(client, {
+        repositoryId: input.sourceRepositoryId,
+    });
+    const folderMap = new Map<string, typeof allSourceFolders>(); // parentId -> folders
 
     for (const folder of allSourceFolders) {
-        const pid = folder.parentId ?? "root"
-        const existing = folderMap.get(pid) ?? []
-        existing.push(folder)
-        folderMap.set(pid, existing)
+        const pid = folder.parentId ?? "root";
+        const existing = folderMap.get(pid) ?? [];
+        existing.push(folder);
+        folderMap.set(pid, existing);
     }
 
     // Helper to copy a single folder node and its children
-    const copyNode = async (sourceId: string, currentTargetParentId: string | null) => {
-        const sourceFolder = allSourceFolders.find(f => f.id === sourceId)
-        if (!sourceFolder) return
+    const copyNode = async (
+        sourceId: string,
+        currentTargetParentId: string | null,
+    ) => {
+        const sourceFolder = allSourceFolders.find((f) => f.id === sourceId);
+        if (!sourceFolder) return;
 
         // 1. Create target folder
         const newFolder = await createRepositoryFolder(client, {
             repositoryId: input.targetRepositoryId,
-            name: sourceFolder.name + (input.sourceRepositoryId === input.targetRepositoryId && !currentTargetParentId ? " (Copy)" : ""),
+            name: sourceFolder.name +
+                (input.sourceRepositoryId === input.targetRepositoryId &&
+                        !currentTargetParentId
+                    ? " (Copy)"
+                    : ""),
             parentId: currentTargetParentId,
-            order: sourceFolder.order
-        })
+            order: sourceFolder.order,
+        });
 
-        // 2. Copy Assets (Still per-folder fetch, can be optimized later if needed)
-        const assets = await listAssets(client, { folderId: sourceId })
+        // 2. Copy Assets (Deep Copy with Storage)
+        const assets = await listAssets(client, { folderId: sourceId });
         for (const asset of assets) {
+            const extension = asset.storagePath.split(".").pop();
+            const newStoragePath = `assets/${crypto.randomUUID()}.${extension}`;
+
+            const { error: copyError } = await client.storage
+                .from("ux-archive-captures")
+                .copy(asset.storagePath, newStoragePath);
+
+            if (copyError) {
+                console.error(
+                    `Failed to copy storage file for asset ${asset.id}`,
+                    copyError,
+                );
+                continue; // Skip this asset if storage copy fails
+            }
+
             await createAsset(client, {
                 repositoryId: input.targetRepositoryId,
                 folderId: newFolder.id,
-                storagePath: asset.storagePath,
+                storagePath: newStoragePath,
                 width: asset.width,
                 height: asset.height,
-                meta: asset.meta,
-                order: asset.order
-            })
+                meta: asset.meta.image
+                    ? { ...asset.meta, image: undefined }
+                    : asset.meta, // Cleanup meta if needed, though usually meta is fine.
+                order: asset.order,
+            });
         }
 
         // 3. Recurse for children
-        const children = folderMap.get(sourceId) ?? []
+        const children = folderMap.get(sourceId) ?? [];
         for (const child of children) {
-            await copyNode(child.id, newFolder.id)
+            await copyNode(child.id, newFolder.id);
         }
-    }
+    };
 
     // Run parallel or detailed? Parallel might hit rate limits. Sequential for safety.
     for (const rootId of input.sourceFolderIds) {
-        await copyNode(rootId, input.targetParentId)
+        await copyNode(rootId, input.targetParentId);
     }
 }

@@ -55,10 +55,14 @@ export function ItemContextMenu({ children, onRename, onDelete, onFork, onSnapsh
                 {onPaste && (
                     <ContextMenuItem 
                         onSelect={(e) => {
-                            console.log("ContextMenu: Paste selected")
-                            onPaste()
+                            // console.log("ContextMenu: Paste selected")
+                            // toast.info("Debug: Paste Clicked")
+                            // alert("Context Menu Clicked")
+                            setTimeout(() => {
+                                onPaste()
+                            }, 100)
                         }}
-                        disabled={disablePaste}
+                         disabled={disablePaste}
                     >
                         <ClipboardPaste className="mr-2 h-4 w-4" />
                         Paste
