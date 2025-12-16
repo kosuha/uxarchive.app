@@ -168,9 +168,6 @@ export function RepositoryTree({
                 >
                     <SidebarMenuItem>
                         <CollapsibleTrigger asChild>
-                            {/* Use SidebarMenuButton wrapped in ItemContextMenu logic */}
-                            {/* Wait, ItemContextMenu wraps children and provides trigger. */}
-                            {/* SidebarMenuButton should be the trigger. */}
                             <ItemContextMenu
                                 type="repository"
                                 onFork={() => onForkRepository?.(repo)}
@@ -183,7 +180,20 @@ export function RepositoryTree({
                                 >
                                     <Archive className="mr-2 h-4 w-4" />
                                     <span>{repo.name}</span>
-                                    <ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                                    <div
+                                        role="button"
+                                        className="ml-auto p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"
+                                        onClick={(e) => {
+                                            e.stopPropagation()
+                                            setOpenRepoIds(prev =>
+                                                prev.includes(repo.id)
+                                                    ? prev.filter(id => id !== repo.id)
+                                                    : [...prev, repo.id]
+                                            )
+                                        }}
+                                    >
+                                        <ChevronRight className="h-3 w-3 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                                    </div>
                                 </SidebarMenuButton>
                             </ItemContextMenu>
                         </CollapsibleTrigger>
@@ -210,18 +220,30 @@ interface FolderListData {
     rootAssets: AssetRecord[]
 }
 
+// Helper to manage folder open states
 function FolderList({ data, selectedFolderId, onSelectFolder, onDeleteFolder }: {
     data: FolderListData,
     selectedFolderId: string | null,
     onSelectFolder: (id: string) => void,
     onDeleteFolder?: (id: string) => void
 }) {
+    const [openFolders, setOpenFolders] = React.useState<Record<string, boolean>>({})
+
     if (data.roots.length === 0 && data.rootAssets.length === 0) return null
+
+    const toggleFolder = (folderId: string) => {
+        setOpenFolders(prev => ({ ...prev, [folderId]: !prev[folderId] }))
+    }
 
     return (
         <>
             {data.roots.map(node => (
-                <Collapsible key={node.id} className="group/folder">
+                <Collapsible
+                    key={node.id}
+                    className="group/folder"
+                    open={openFolders[node.id]}
+                    onOpenChange={(isOpen) => setOpenFolders(prev => ({ ...prev, [node.id]: isOpen }))}
+                >
                     <SidebarMenuItem>
                         <CollapsibleTrigger asChild>
                             <ItemContextMenu
@@ -230,13 +252,40 @@ function FolderList({ data, selectedFolderId, onSelectFolder, onDeleteFolder }: 
                             >
                                 <SidebarMenuButton
                                     isActive={node.id === selectedFolderId}
-                                    onClick={() => onSelectFolder(node.id)}
-                                    className="pl-6" // Indent
+                                    onClick={(e) => {
+                                        // If clicking the folder text/icon
+                                        onSelectFolder(node.id)
+                                        // If it has children, toggle expansion
+                                        if (node.children.length + node.assets.length > 0) {
+                                            // Optional: Toggle on main click? Finder does not. 
+                                            // Finder selects on single click, expands on arrow click.
+                                            // Here we have Chevron as part of the button? 
+                                            // Actually standard CollapsibleTrigger toggles on click.
+                                            // We want Selection AND Toggle? Or Selection only?
+                                            // Let's separate Selection (main click) and Toggle (chevron).
+                                            // BUT CollapsibleTrigger wraps the whole button.
+
+                                            // Allow default collapsible behavior (toggle) + our selection logic
+                                        }
+                                    }}
+                                    className="pl-6 group/item"
                                 >
                                     <FolderIcon className="mr-2 h-4 w-4" />
                                     <span>{node.name}</span>
                                     {node.children.length + node.assets.length > 0 && (
-                                        <ChevronRight className="ml-auto h-3 w-3 transition-transform group-data-[state=open]/folder:rotate-90" />
+                                        <div
+                                            role="button"
+                                            className="ml-auto p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                toggleFolder(node.id)
+                                            }}
+                                        >
+                                            <ChevronRight className={cn(
+                                                "h-3 w-3 transition-transform",
+                                                openFolders[node.id] ? "rotate-90" : ""
+                                            )} />
+                                        </div>
                                     )}
                                 </SidebarMenuButton>
                             </ItemContextMenu>
