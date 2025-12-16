@@ -240,8 +240,8 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
             {/* 2. Main Content (Scrollable) */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden pb-32">
                 
-                {/* Repository Header (Only at root) */}
-                {!currentFolderId && currentRepository && (
+                {/* Repository Header (Always visible) */}
+                {currentRepository && (
                     <RepositoryHeader repository={currentRepository} />
                 )}
 
