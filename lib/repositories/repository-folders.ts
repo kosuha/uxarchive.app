@@ -15,6 +15,7 @@ export type RepositoryFolderRecord = {
   repositoryId: string;
   parentId: string | null;
   name: string;
+  description: string | null;
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -27,6 +28,7 @@ const mapRepositoryFolder = (
   repositoryId: row.repository_id,
   parentId: row.parent_id,
   name: row.name,
+  description: row.description,
   order: row.order,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
@@ -36,6 +38,7 @@ export type CreateRepositoryFolderInput = {
   repositoryId: string;
   name: string;
   parentId?: string | null;
+  description?: string | null;
   order?: number;
 };
 
@@ -47,6 +50,7 @@ export const createRepositoryFolder = async (
     repository_id: input.repositoryId,
     name: input.name,
     parent_id: input.parentId ?? null,
+    description: input.description,
     order: input.order ?? 0,
   };
 
@@ -64,6 +68,7 @@ export type UpdateRepositoryFolderInput = {
   id: string;
   repositoryId: string; // For security/scoping
   name?: string;
+  description?: string | null;
   parentId?: string | null;
   order?: number;
 };
@@ -76,6 +81,7 @@ export const updateRepositoryFolder = async (
     updated_at: new Date().toISOString(),
   };
   if (input.name !== undefined) updates.name = input.name;
+  if (input.description !== undefined) updates.description = input.description;
   if (input.parentId !== undefined) updates.parent_id = input.parentId;
   if (input.order !== undefined) updates.order = input.order;
 

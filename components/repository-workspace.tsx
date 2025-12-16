@@ -242,7 +242,10 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                 
                 {/* Repository Header (Always visible) */}
                 {currentRepository && (
-                    <RepositoryHeader repository={currentRepository} />
+                    <RepositoryHeader 
+                        repository={currentRepository} 
+                        folder={currentFolder}
+                    />
                 )}
 
                 {/* 1. Current Screens */}
