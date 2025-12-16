@@ -73,24 +73,24 @@ export const RepositoryDataProvider = ({ children }: { children: React.ReactNode
         }
     }, [repositories, selectedRepositoryId])
 
-    // 3. Load Folders for Selected Repository
+    // 3. Load All Folders for Workspace
     const { data: folders = [], isLoading: foldersLoading } = useQuery({
-        queryKey: ["repository-folders", selectedRepositoryId],
+        queryKey: ["repository-folders", "workspace", workspaceId],
         queryFn: async () => {
-            if (!selectedRepositoryId) return []
-            return listRepositoryFoldersAction(selectedRepositoryId)
+            if (!workspaceId) return []
+            return listRepositoryFoldersAction({ workspaceId })
         },
-        enabled: !!selectedRepositoryId
+        enabled: !!workspaceId
     })
 
-    // 4. Load All Assets for Sidebar Tree (Recursive)
+    // 4. Load All Assets for Workspace (Recursive)
     const { data: assets = [], isLoading: assetsLoading } = useQuery({
-        queryKey: ["assets", selectedRepositoryId, "recursive"],
+        queryKey: ["assets", "workspace", workspaceId],
         queryFn: async () => {
-            if (!selectedRepositoryId) return []
-            return listAssetsAction({ repositoryId: selectedRepositoryId, mode: 'recursive' })
+            if (!workspaceId) return []
+            return listAssetsAction({ workspaceId })
         },
-        enabled: !!selectedRepositoryId
+        enabled: !!workspaceId
     })
 
     const loading = sessionLoading || reposLoading || foldersLoading || assetsLoading
