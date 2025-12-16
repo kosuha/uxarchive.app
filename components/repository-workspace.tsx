@@ -158,17 +158,20 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
         <div className={cn("flex flex-col rounded-lg h-full bg-[#FAFAFA] dark:bg-[#09090b]", className)}>
 
             {/* 1. Global Navigation Bar (Breadcrumbs + Actions) */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 text-sm bg-background/50 backdrop-blur-sm sticky top-0 z-20">
-                <div className="flex items-center gap-2">
-                    <SidebarTrigger className="-ml-1" />
-                    <div className="w-px h-4 bg-border/60 mx-1" />
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                        <span>Workspace</span>
-                        <ChevronRight className="w-4 h-4 opacity-50" />
+            <div className="flex items-center gap-4 px-4 py-3 border-b border-border/40 text-sm bg-background/50 backdrop-blur-sm sticky top-0 z-20">
+                <div className="flex flex-1 items-center gap-2 min-w-0">
+                    <SidebarTrigger className="-ml-1 shrink-0" />
+                    <div className="w-px h-4 bg-border/60 mx-1 shrink-0" />
+                    <div
+                        className="flex items-center gap-1 text-muted-foreground overflow-x-auto scrollbar-hide min-w-0"
+                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    >
+                        <span className="shrink-0">Workspace</span>
+                        <ChevronRight className="w-4 h-4 opacity-50 shrink-0" />
                         <button
                             onClick={() => setCurrentFolderId(null)}
                             className={cn(
-                                "hover:text-foreground transition-colors",
+                                "hover:text-foreground transition-colors shrink-0",
                                 !currentFolderId && "text-foreground font-medium"
                             )}
                         >
@@ -176,7 +179,7 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                         </button>
                         {breadcrumbs.map((folder, idx) => (
                             <React.Fragment key={folder.id}>
-                                <ChevronRight className="w-4 h-4 opacity-50" />
+                                <ChevronRight className="w-4 h-4 opacity-50 shrink-0" />
                                 <button
                                     onClick={() => setCurrentFolderId(folder.id)}
                                     className={cn(
@@ -191,7 +194,7 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                     <CreateFolderDialog
                         repositoryId={selectedRepositoryId}
                         parentId={currentFolderId || null}
