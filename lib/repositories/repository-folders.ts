@@ -1,0 +1,148 @@
+import type { SupabaseRepositoryClient } from "./types"
+import { RepositoryError } from "./types"
+import { ensureData } from "./utils"
+import type { Database } from "../database.types"
+
+type RepositoryFolderRow = Database["public"]["Tables"]["repository_folders"]["Row"]
+type RepositoryFolderInsert = Database["public"]["Tables"]["repository_folders"]["Insert"]
+type RepositoryFolderUpdate = Database["public"]["Tables"]["repository_folders"]["Update"]
+
+export type RepositoryFolderRecord = {
+  id: string
+  repositoryId: string
+  parentId: string | null
+  name: string
+  order: number
+  createdAt: string
+  updatedAt: string
+}
+
+const mapRepositoryFolder = (row: RepositoryFolderRow): RepositoryFolderRecord => ({
+  id: row.id,
+  repositoryId: row.repository_id,
+  parentId: row.parent_id,
+  name: row.name,
+  order: row.order,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+})
+
+export type CreateRepositoryFolderInput = {
+  repositoryId: string
+  name: string
+  parentId?: string | null
+  order?: number
+}
+
+export const createRepositoryFolder = async (
+  client: SupabaseRepositoryClient,
+  input: CreateRepositoryFolderInput,
+): Promise<RepositoryFolderRecord> => {
+  const payload: RepositoryFolderInsert = {
+    repository_id: input.repositoryId,
+    name: input.name,
+    parent_id: input.parentId ?? null,
+    order: input.order ?? 0,
+  }
+
+  const { data, error } = await client
+    .from("repository_folders")
+    .insert(payload)
+    .select()
+    .single()
+
+  const row = ensureData(data, error, "Failed to create folder.")
+  return mapRepositoryFolder(row)
+}
+
+export type UpdateRepositoryFolderInput = {
+  id: string
+  repositoryId: string // For security/scoping
+  name?: string
+  parentId?: string | null
+  order?: number
+}
+
+export const updateRepositoryFolder = async (
+  client: SupabaseRepositoryClient,
+  input: UpdateRepositoryFolderInput,
+): Promise<RepositoryFolderRecord> => {
+  const updates: RepositoryFolderUpdate = {
+    updated_at: new Date().toISOString(),
+  }
+  if (input.name !== undefined) updates.name = input.name
+  if (input.parentId !== undefined) updates.parent_id = input.parentId
+  if (input.order !== undefined) updates.order = input.order
+
+  const { data, error } = await client
+    .from("repository_folders")
+    .update(updates)
+    .eq("id", input.id)
+    .eq("repository_id", input.repositoryId)
+    .select()
+    .single()
+
+  const row = ensureData(data, error, "Failed to update folder.")
+  return mapRepositoryFolder(row)
+}
+
+export type DeleteRepositoryFolderInput = {
+  id: string
+  repositoryId: string
+}
+
+export const deleteRepositoryFolder = async (
+  client: SupabaseRepositoryClient,
+  input: DeleteRepositoryFolderInput,
+): Promise<void> => {
+  const { error } = await client
+    .from("repository_folders")
+    .delete()
+    .eq("id", input.id)
+    .eq("repository_id", input.repositoryId)
+
+  if (error) {
+    throw new RepositoryError(`Failed to delete folder: ${error.message}`, {
+      cause: error,
+      code: error.code,
+    })
+  }
+}
+
+export type GetRepositoryFolderParams = {
+  id: string
+  repositoryId: string
+}
+
+export const getRepositoryFolderById = async (
+  client: SupabaseRepositoryClient,
+  params: GetRepositoryFolderParams,
+): Promise<RepositoryFolderRecord> => {
+  const { data, error } = await client
+    .from("repository_folders")
+    .select()
+    .eq("id", params.id)
+    .eq("repository_id", params.repositoryId)
+    .single()
+
+  const row = ensureData(data, error, "Folder not found.")
+  return mapRepositoryFolder(row)
+}
+
+export type ListRepositoryFoldersParams = {
+  repositoryId: string
+}
+
+export const listRepositoryFolders = async (
+  client: SupabaseRepositoryClient,
+  params: ListRepositoryFoldersParams,
+): Promise<RepositoryFolderRecord[]> => {
+  const { data, error } = await client
+    .from("repository_folders")
+    .select()
+    .eq("repository_id", params.repositoryId)
+    .order("order", { ascending: true })
+
+  ensureData(data, error, "Failed to list folders.")
+  return (data as RepositoryFolderRow[]).map(mapRepositoryFolder)
+}
