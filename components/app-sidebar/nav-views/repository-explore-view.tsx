@@ -10,7 +10,7 @@ import { deleteRepositoryAction, forkRepositoryAction } from "@/app/actions/repo
 
 // Wrapper to bridge data and logic
 export function RepositoryExploreView() {
-    const { repositories, folders, selectedRepositoryId, setSelectedRepositoryId, currentFolderId, setCurrentFolderId, refresh } = useRepositoryData()
+    const { repositories, folders, assets, selectedRepositoryId, setSelectedRepositoryId, currentFolderId, setCurrentFolderId, refresh } = useRepositoryData()
 
     // State for Context Menus and Dialogs
     const [snapshotRepoId, setSnapshotRepoId] = React.useState<string | null>(null)
@@ -54,6 +54,7 @@ export function RepositoryExploreView() {
             <RepositoryTree
                 repositories={repositories}
                 folders={folders}
+                assets={assets}
                 selectedRepositoryId={selectedRepositoryId}
                 selectedFolderId={currentFolderId}
                 onSelectRepository={(id: string) => {

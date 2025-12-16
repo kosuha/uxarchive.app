@@ -2,16 +2,16 @@
 
 import * as React from "react"
 import { useRepositoryData } from "@/components/repository-data-context"
-import { FolderIcon, FileImage, Upload as UploadIcon, Loader2, FolderPlus } from "lucide-react"
+import { Upload as UploadIcon, Loader2, FolderPlus, ChevronRight, PanelLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { CreateFolderDialog } from "./create-folder-dialog"
-// import { AssetCard } from "./asset-card" // Need to create or reuse
-import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { listAssetsAction, createAssetAction } from "@/app/actions/assets"
-import { ItemContextMenu } from "./item-context-menu"
+import { useQueryClient, useQuery } from "@tanstack/react-query"
+import { createAssetAction, listAssetsAction } from "@/app/actions/assets"
 import { Button } from "@/components/ui/button"
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser-client"
 import { toast } from "sonner"
+import { CreateFolderDialog } from "./create-folder-dialog"
+import { RepositoryFolderSection } from "./repository-folder-section"
+import { SidebarTrigger } from "@/components/ui/sidebar"
 
 export function RepositoryWorkspace({ className }: { className?: string }) {
     const {
@@ -20,30 +20,33 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
         setCurrentFolderId,
         folders,
         repositories,
-        refresh
     } = useRepositoryData()
     const queryClient = useQueryClient()
 
     const currentRepository = repositories.find(r => r.id === selectedRepositoryId)
+    const currentFolder = folders.find(f => f.id === currentFolderId)
 
-    // Derived state: current folders (children of currentFolderId)
-    const currentFolders = folders.filter(f => {
+    // Derived state: child folders of current view
+    const childFolders = folders.filter(f => {
         if (!currentFolderId) return !f.parentId // Root folders
         return f.parentId === currentFolderId
     }).sort((a, b) => a.order - b.order)
 
-    // Load assets for current view (folder or root)
-    const { data: assets = [], isLoading: assetsLoading } = useQuery({
-        queryKey: ["assets", selectedRepositoryId, currentFolderId],
-        queryFn: async () => {
-            if (!selectedRepositoryId) return []
-            return listAssetsAction({
-                repositoryId: selectedRepositoryId,
-                folderId: currentFolderId
-            })
-        },
-        enabled: !!selectedRepositoryId
-    })
+    // Breadcrumb Navigation construction
+    const breadcrumbs = React.useMemo(() => {
+        if (!currentFolderId) return []
+        const path = []
+        let curr = folders.find(f => f.id === currentFolderId)
+        while (curr) {
+            path.unshift(curr)
+            curr = curr.parentId ? folders.find(f => f.id === curr?.parentId) : undefined
+        }
+        return path
+    }, [currentFolderId, folders])
+
+    // Load assets for current view (folder or root) to check if empty
+    // Actually RepositoryFolderSection does the loading, but for Top Level empty check we might need it.
+    // Optimization: Let's trust RepositoryFolderSection to handle loading.
 
     // Upload Logic
     const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -70,14 +73,12 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                 })
 
                 // 2. Upload to Supabase Storage
-                // Path strategy: assets/{uuid}/{filename}
                 const assetId = crypto.randomUUID()
-                // Sanitize filename
                 const ext = file.name.split('.').pop()
                 const storagePath = `assets/${assetId}.${ext}`
 
                 const { error: uploadError } = await supabase.storage
-                    .from("ux-archive-captures") // Using legacy bucket as planned
+                    .from("ux-archive-captures")
                     .upload(storagePath, file)
 
                 if (uploadError) throw uploadError
@@ -91,7 +92,6 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                     height: dimensions.height,
                     meta: { name: file.name }
                 })
-
                 return { status: 'fulfilled', name: file.name }
             } catch (error) {
                 console.error("Upload failed for", file.name, error)
@@ -109,38 +109,67 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
         }
 
         setUploading(false)
-        if (fileInputRef.current) fileInputRef.current.value = "" // Reset
-
-        // Refresh assets
-        queryClient.invalidateQueries({ queryKey: ["assets", selectedRepositoryId, currentFolderId] })
+        if (fileInputRef.current) fileInputRef.current.value = ""
+        queryClient.invalidateQueries({ queryKey: ["assets", selectedRepositoryId] })
     }
+
 
     if (!selectedRepositoryId) {
         return <div className="flex-1 flex items-center justify-center text-muted-foreground">Select a repository</div>
     }
 
+    // Title to display in the main header
+    const pageTitle = currentFolder ? currentFolder.name : currentRepository?.name
+
     return (
-        <div className={cn("flex flex-col h-full", className)}>
-            <div className="border-b p-4 flex items-center justify-between gap-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10 sticky top-0">
+        <div className={cn("flex flex-col rounded-lg h-full bg-[#FAFAFA] dark:bg-[#09090b]", className)}>
+
+            {/* 1. Global Navigation Bar (Breadcrumbs + Actions) */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 text-sm bg-background/50 backdrop-blur-sm sticky top-0 z-20">
                 <div className="flex items-center gap-2">
-                    <span className="font-semibold text-lg">{currentRepository?.name}</span>
-                    <span className="text-muted-foreground">/</span>
-                    <span className="text-sm text-muted-foreground">{currentFolderId ? "..." : "Root"}</span>
+                    <SidebarTrigger className="-ml-1" />
+                    <div className="w-px h-4 bg-border/60 mx-1" />
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                        <span>Workspace</span>
+                        <ChevronRight className="w-4 h-4 opacity-50" />
+                        <button
+                            onClick={() => setCurrentFolderId(null)}
+                            className={cn(
+                                "hover:text-foreground transition-colors",
+                                !currentFolderId && "text-foreground font-medium"
+                            )}
+                        >
+                            {currentRepository?.name}
+                        </button>
+                        {breadcrumbs.map((folder, idx) => (
+                            <React.Fragment key={folder.id}>
+                                <ChevronRight className="w-4 h-4 opacity-50" />
+                                <button
+                                    onClick={() => setCurrentFolderId(folder.id)}
+                                    className={cn(
+                                        "hover:text-foreground transition-colors truncate max-w-[150px]",
+                                        idx === breadcrumbs.length - 1 ? "text-foreground font-medium" : ""
+                                    )}
+                                >
+                                    {folder.name}
+                                </button>
+                            </React.Fragment>
+                        ))}
+                    </div>
                 </div>
 
-                {/* Actions - Always enabled if repository selected */}
                 <div className="flex items-center gap-2">
                     <CreateFolderDialog
                         repositoryId={selectedRepositoryId}
                         parentId={currentFolderId || null}
                         trigger={
-                            <Button variant="outline" size="sm" className="gap-2">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                                 <FolderPlus className="w-4 h-4" />
-                                New Folder
                             </Button>
                         }
                     />
-                    <div className="w-px h-6 bg-border mx-1" /> {/* Divider */}
+
+                    <div className="w-px h-4 bg-border/60 mx-1" />
 
                     <input
                         type="file"
@@ -151,137 +180,44 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                         onChange={handleFileChange}
                     />
                     <Button
-                        variant="default"
-                        size="sm"
                         onClick={handleUploadClick}
                         disabled={uploading}
-                        className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                        className="bg-[#4ADE80] hover:bg-[#22c55e] text-black font-medium gap-2 rounded-full px-4 h-8 text-xs shadow-none"
                     >
-                        {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadIcon className="w-4 h-4" />}
-                        {uploading ? "Uploading..." : "Upload Screens"}
+                        {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <UploadIcon className="w-3 h-3" />}
+                        {uploading ? "Uploading" : "Upload"}
                     </Button>
                 </div>
             </div>
 
-            <div className="flex-1 overflow-hidden flex flex-col relative bg-[#F5F5F5] dark:bg-zinc-900/50">
-                {/* Folders Grid (Root View) */}
-                {!currentFolderId && (
-                    <div className="p-8 overflow-y-auto h-full space-y-8">
-                        {currentFolders.length > 0 && (
-                            <div>
-                                <h3 className="text-sm font-medium mb-4 text-muted-foreground">Flows (Folders)</h3>
-                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                                    {currentFolders.map(folder => (
-                                        <ItemContextMenu key={folder.id} type="folder" onRename={() => { }} onDelete={() => { }}>
-                                            <div
-                                                className="group cursor-pointer flex flex-col gap-2"
-                                                onClick={() => setCurrentFolderId(folder.id)}
-                                            >
-                                                <div className="aspect-[4/3] bg-white dark:bg-card border rounded-xl shadow-sm group-hover:shadow-md transition-all flex items-center justify-center">
-                                                    <FolderIcon className="w-10 h-10 text-blue-500/80 fill-blue-500/10" />
-                                                </div>
-                                                <div className="space-y-0.5">
-                                                    <span className="text-sm font-medium block truncate pl-1">{folder.name}</span>
-                                                    <span className="text-xs text-muted-foreground block pl-1">0 screens</span>
-                                                </div>
-                                            </div>
-                                        </ItemContextMenu>
-                                    ))}
+            {/* 2. Main Content (Scrollable) */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden pb-32">
+
+                {/* 1. Current Screens */}
+                <div className="mt-2">
+                    <RepositoryFolderSection
+                        repositoryId={selectedRepositoryId}
+                        folderId={currentFolderId}
+                        title="Screens"
+                        showIfEmpty={childFolders.length === 0}
+                    />
+                </div>
+
+                {/* 2. Subfolders */}
+                {childFolders.length > 0 && (
+                    <div className="mt-2 border-t border-border/40 pt-6">
+                        <div className="space-y-2">
+                            {childFolders.map(folder => (
+                                <div key={folder.id} onClick={() => setCurrentFolderId(folder.id)} className="cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                                    <RepositoryFolderSection
+                                        repositoryId={selectedRepositoryId}
+                                        folderId={folder.id}
+                                        title={folder.name}
+                                        showIfEmpty={true}
+                                    />
                                 </div>
-                            </div>
-                        )}
-
-                        {/* Root Assets (if any) */}
-                        {assets.length > 0 && (
-                            <div>
-                                <h3 className="text-sm font-medium mb-4 text-muted-foreground">Screens (Root)</h3>
-                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                                    {assets.map(asset => (
-                                        <ItemContextMenu key={asset.id} type="asset" onRename={() => { }} onDelete={() => { }}>
-                                            <div className="group flex flex-col gap-2">
-                                                <div className="aspect-[9/16] bg-white dark:bg-card border rounded-xl shadow-sm group-hover:shadow-md transition-all overflow-hidden relative">
-                                                    <img
-                                                        src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ux-archive-captures/${asset.storagePath}`}
-                                                        alt="Screen"
-                                                        className="w-full h-full object-cover"
-                                                        loading="lazy"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </ItemContextMenu>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {currentFolders.length === 0 && assets.length === 0 && (
-                            <div className="flex flex-col items-center justify-center h-full text-muted-foreground min-h-[50vh]">
-                                <FolderIcon className="w-12 h-12 mb-4 opacity-20" />
-                                <p>This repository is empty</p>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* Mobbin-style Horizontal Scroll (Flow View) */}
-                {currentFolderId && (
-                    <div className="absolute inset-0 overflow-x-auto overflow-y-hidden flex items-center px-[20vw] py-8 snap-x snap-mandatory">
-                        {assetsLoading && !uploading ? (
-                            <div className="mx-auto">Loading screens...</div>
-                        ) : assets.length === 0 && !uploading ? (
-                            <div className="mx-auto text-muted-foreground border border-dashed p-8 rounded-lg">
-                                No screens in this flow. <br /> Click "Upload Screens" to add.
-                            </div>
-                        ) : (
-                            <div className="flex gap-8 lg:gap-12 h-full max-h-[80vh] items-center">
-                                {assets.map((asset, index) => (
-                                    <ItemContextMenu key={asset.id} type="asset" onRename={() => { }} onDelete={() => { }}>
-                                        <div className="relative snap-center shrink-0 h-full flex flex-col gap-3 group">
-                                            {/* Screen Card */}
-                                            <div className="h-full rounded-[2rem] overflow-hidden border-[6px] border-white dark:border-zinc-800 shadow-xl bg-white dark:bg-zinc-800 relative select-none">
-                                                {/* Image Display */}
-                                                <div className="w-full h-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center relative">
-                                                    {/* We need public URL! */}
-                                                    {/* Since usage is storagePath, we usually need Signed URL or Public URL. */}
-                                                    {/* Assuming Public Bucket for 'ux-archive-captures' or we use a transform to get view URL. */}
-                                                    {/* For now, I'll use a placeholder logic to construct URL: */}
-                                                    {/* process.env.NEXT_PUBLIC_SUPABASE_URL + /storage/v1/object/public/ux-archive-captures/ + storagePath */}
-                                                    <img
-                                                        src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ux-archive-captures/${asset.storagePath}`}
-                                                        alt="Screen"
-                                                        className="w-full h-full object-contain"
-                                                        loading="lazy"
-                                                        onError={(e) => {
-                                                            // Fallback
-                                                            e.currentTarget.style.display = 'none';
-                                                            e.currentTarget.parentElement?.querySelector('.fallback-icon')?.classList.remove('hidden')
-                                                        }}
-                                                    />
-                                                    <div className="fallback-icon hidden absolute inset-0 flex items-center justify-center">
-                                                        <FileImage className="w-12 h-12 text-zinc-300" />
-                                                        <span className="absolute bottom-4 text-xs text-zinc-400 font-mono">
-                                                            {asset.storagePath.split('/').pop()}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Screen Number / Metadata */}
-                                            <div className="text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <span className="text-xs font-medium text-muted-foreground bg-background/80 px-2 py-1 rounded-full border">
-                                                    {index + 1}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </ItemContextMenu>
-                                ))}
-                                {uploading && (
-                                    <div className="relative snap-center shrink-0 h-full flex items-center justify-center w-[200px]">
-                                        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>

@@ -83,27 +83,22 @@ export const RepositoryDataProvider = ({ children }: { children: React.ReactNode
         enabled: !!selectedRepositoryId
     })
 
-    // 4. Load Assets (This is tricky: usually we load assets per folder. 
-    // Do we load ALL assets for the repo? Or only for current view?
-    // 'Finder' style usually loads per folder.
-    // Making this context provide ALL assets might be too heavy.
-    // For now, let's keep assets empty in global context and let specific views fetch assets,
-    // OR fetch all if the scale permits. The plan implies "Main Content" shows current folder.
-    // Let's NOT load assets globally here to match 'Finder' behavior (on demand).
-    // actually, for Drag & Drop we might need some awareness, but usually on-demand is better.
-    // I will expose a way to fetch assets or just let the view handling it.
-    // For simplicity of migration plan which says "Main Content... grid/list view", 
-    // let's assume the view component fetches assets for the *current folder*.
-    // But wait, the `RepositoryDataContext` is useful for global state.
-    // Let's leave `assets` as empty here or remove it if not used globally.
-    // I'll leave it out for now to avoid over-fetching.
-    // Wait, the interface has `assets`. I'll keep it empty [] for now or remove from type.
+    // 4. Load All Assets for Sidebar Tree (Recursive)
+    const { data: assets = [], isLoading: assetsLoading } = useQuery({
+        queryKey: ["assets", selectedRepositoryId, "recursive"],
+        queryFn: async () => {
+            if (!selectedRepositoryId) return []
+            return listAssetsAction({ repositoryId: selectedRepositoryId, mode: 'recursive' })
+        },
+        enabled: !!selectedRepositoryId
+    })
 
-    const loading = sessionLoading || reposLoading || foldersLoading
+    const loading = sessionLoading || reposLoading || foldersLoading || assetsLoading
 
     const refresh = async () => {
         await queryClient.invalidateQueries({ queryKey: ["repositories"] })
         await queryClient.invalidateQueries({ queryKey: ["repository-folders"] })
+        await queryClient.invalidateQueries({ queryKey: ["assets"] })
     }
 
     const value: RepositoryDataContextValue = {
@@ -114,7 +109,7 @@ export const RepositoryDataProvider = ({ children }: { children: React.ReactNode
         currentFolderId,
         setCurrentFolderId,
         folders,
-        assets: [], // See note above
+        assets,
         loading,
         refresh
     }

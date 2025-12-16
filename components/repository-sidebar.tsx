@@ -7,35 +7,25 @@ import {
     SidebarContent,
     SidebarGroup,
     SidebarGroupContent,
-    SidebarGroupLabel,
     SidebarHeader,
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
     SidebarRail,
 } from "@/components/ui/sidebar"
-import { Archive, Plus, ChevronRight } from "lucide-react"
+import { Archive, Plus, ChevronRight, Folder as FolderIcon, File as FileIcon } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { CreateRepositoryDialog } from "./create-repository-dialog"
 import { ItemContextMenu } from "./item-context-menu"
 import { SnapshotsDialog } from "./snapshots-dialog"
 import { deleteRepositoryAction, forkRepositoryAction } from "@/app/actions/repositories"
+import { listAssetsAction } from "@/app/actions/assets"
+import { useQuery } from "@tanstack/react-query"
 
 export function RepositorySidebar({ className }: { className?: string }) {
     const { repositories, selectedRepositoryId, setSelectedRepositoryId, folders, refresh } = useRepositoryData()
     const [snapshotRepoId, setSnapshotRepoId] = React.useState<string | null>(null) // State to control which repo's snapshots to show
-    // Wait, useRepositoryData context doesn't expose 'user' or 'workspaceId'.
-    // deleteRepositoryAction requires { id, workspaceId }.
-    // I need workspaceId in the context to call deleteAction properly.
-    // I updated context to fetch membership but didn't expose workspaceId in 'value'.
-    // Let's assume I fix context first or fetch it again (inefficient).
 
     // Actually, I should update context to expose workspaceId.
     // Let's skip delete implementation in this 'replace' call and update context first if needed.
@@ -70,28 +60,17 @@ export function RepositorySidebar({ className }: { className?: string }) {
         }
     }
 
-
-    // Group folders by parentId for tree view? 
-    // For the sidebar, do we show the folder tree or just the repo list?
-    // Plan says: "Left sidebar is repository list. Here you can see folder structure per repository."
-    // So yes, we should render the folder tree for the *selected* repository maybe?
-    // Or list all repos and their trees? standard is usually:
-    // - Repo A
-    //   - Folder 1
-    // - Repo B
-
-    // Let's implement a simple tree for the selected repository.
-
     return (
         <Sidebar className={className}>
             <SidebarHeader>
                 <div className="flex items-center justify-between px-2 py-2">
                     <span className="font-semibold text-sm">Repositories</span>
                     {/* Add Create Repository Button here if needed */}
-                    <CreateRepositoryDialog>
+                    <CreateRepositoryDialog trigger={
                         <Button variant="ghost" size="icon" className="h-6 w-6">
                             <Plus className="h-4 w-4" />
                         </Button>
+                    }>
                     </CreateRepositoryDialog>
                 </div>
             </SidebarHeader>
@@ -128,7 +107,7 @@ export function RepositorySidebar({ className }: { className?: string }) {
                                             <SidebarMenuSub>
                                                 {repo.id === selectedRepositoryId
                                                     ? <FolderTree repositoryId={repo.id} folders={folders} />
-                                                    : null // Or fetch folders for other repos if we had them
+                                                    : null
                                                 }
                                             </SidebarMenuSub>
                                         </CollapsibleContent>
@@ -156,37 +135,78 @@ export function RepositorySidebar({ className }: { className?: string }) {
 
 // Recursive Folder Tree Component
 function FolderTree({ repositoryId, folders }: { repositoryId: string, folders: any[] }) {
-    // Filter folders for this repo (though context basically gives us selected repo's folders mostly)
-    // context gives `folders` which are loaded for selectedRepositoryId.
-    // So if this repo != selected, we might not have folders. Confirmed in provider logic.
-
-    // Build tree
     const rootFolders = folders.filter(f => !f.parentId).sort((a, b) => a.order - b.order)
 
-    // Helper to get children
-    const getChildren = (parentId: string) => folders.filter(f => f.parentId === parentId).sort((a, b) => a.order - b.order)
+    return (
+        <div className="flex flex-col gap-1 py-1">
+            <RootAssets repositoryId={repositoryId} />
+            {rootFolders.map(folder => (
+                <SidebarFolderItem
+                    key={folder.id}
+                    folder={folder}
+                    repositoryId={repositoryId}
+                    allFolders={folders}
+                />
+            ))}
+        </div>
+    )
+}
 
-    const renderFolder = (folder: any) => {
-        const children = getChildren(folder.id)
-        if (children.length === 0) {
-            return (
-                <SidebarMenuButton key={folder.id} className="pl-6">
-                    <span>{folder.name}</span>
+function RootAssets({ repositoryId }: { repositoryId: string }) {
+    const { data: assets = [] } = useQuery({
+        queryKey: ["assets", repositoryId, "root"],
+        queryFn: async () => listAssetsAction({ repositoryId, folderId: null }),
+        enabled: !!repositoryId
+    })
+
+    if (assets.length === 0) return null
+
+    return (
+        <>
+            {assets.map(asset => (
+                <SidebarMenuButton key={asset.id} className="pl-6 h-8 text-muted-foreground">
+                    <FileIcon className="mr-2 h-3.5 w-3.5" />
+                    <span className="truncate">{(asset.meta as any)?.name || "Untitled"}</span>
                 </SidebarMenuButton>
-            )
-        }
+            ))}
+        </>
+    )
+}
 
+function SidebarFolderItem({
+    folder,
+    repositoryId,
+    allFolders
+}: {
+    folder: any,
+    repositoryId: string,
+    allFolders: any[]
+}) {
+    const [isOpen, setIsOpen] = React.useState(false)
+    const children = allFolders.filter(f => f.parentId === folder.id).sort((a, b) => a.order - b.order)
+
+    // Load assets when folder is open
+    const { data: assets = [] } = useQuery({
+        queryKey: ["assets", repositoryId, folder.id],
+        queryFn: async () => listAssetsAction({ repositoryId, folderId: folder.id }),
+        enabled: isOpen && !!repositoryId
+    })
+
+    const hasChildren = children.length > 0 || assets.length > 0
+
+    if (!hasChildren) {
         return (
-            <Collapsible key={folder.id} className="group/folder">
+            <Collapsible open={isOpen} onOpenChange={setIsOpen} className="group/folder">
                 <CollapsibleTrigger asChild>
-                    <SidebarMenuButton className="pl-6">
+                    <SidebarMenuButton className="pl-6 h-8">
+                        <FolderIcon className="mr-2 h-3.5 w-3.5 text-blue-500/80 fill-blue-500/10" />
                         <span>{folder.name}</span>
                         <ChevronRight className="ml-auto h-3 w-3 transition-transform group-data-[state=open]/folder:rotate-90" />
                     </SidebarMenuButton>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                    <div className="border-l border-border ml-6 pl-2">
-                        {children.map(renderFolder)}
+                    <div className="border-l border-border/50 ml-6 pl-2 py-1 space-y-1">
+                        <span className="text-xs text-muted-foreground pl-2 py-1 block">Empty</span>
                     </div>
                 </CollapsibleContent>
             </Collapsible>
@@ -194,9 +214,36 @@ function FolderTree({ repositoryId, folders }: { repositoryId: string, folders: 
     }
 
     return (
-        <div className="flex flex-col gap-1 py-1">
-            {rootFolders.map(renderFolder)}
-        </div>
+        <Collapsible open={isOpen} onOpenChange={setIsOpen} className="group/folder">
+            <CollapsibleTrigger asChild>
+                <SidebarMenuButton className="pl-6 h-8">
+                    <FolderIcon className="mr-2 h-3.5 w-3.5 text-blue-500/80 fill-blue-500/10" />
+                    <span>{folder.name}</span>
+                    <ChevronRight className="ml-auto h-3 w-3 transition-transform group-data-[state=open]/folder:rotate-90" />
+                </SidebarMenuButton>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+                <div className="border-l border-border/50 ml-6 pl-2 py-1 flex flex-col gap-1">
+                    {children.map(child => (
+                        <SidebarFolderItem
+                            key={child.id}
+                            folder={child}
+                            repositoryId={repositoryId}
+                            allFolders={allFolders}
+                        />
+                    ))}
+                    {assets.map(asset => (
+                        <SidebarMenuButton key={asset.id} className="pl-6 h-8 text-muted-foreground">
+                            <FileIcon className="mr-2 h-3.5 w-3.5" />
+                            <span className="truncate">{(asset.meta as any)?.name || "Untitled"}</span>
+                        </SidebarMenuButton>
+                    ))}
+                    {assets.length === 0 && children.length === 0 && (
+                        <span className="text-xs text-muted-foreground pl-2">Empty</span>
+                    )}
+                </div>
+            </CollapsibleContent>
+        </Collapsible>
     )
 }
 

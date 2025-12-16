@@ -123,6 +123,7 @@ export const deleteAsset = async (
 export type ListAssetsParams = {
   repositoryId?: string
   folderId?: string | null
+  mode?: 'recursive'
 }
 
 export const listAssets = async (
@@ -131,7 +132,9 @@ export const listAssets = async (
 ): Promise<AssetRecord[]> => {
   let query = client.from("assets").select()
   
-  if (params.folderId) {
+  if (params.mode === 'recursive' && params.repositoryId) {
+      query = query.eq("repository_id", params.repositoryId)
+  } else if (params.folderId) {
     query = query.eq("folder_id", params.folderId)
   } else if (params.repositoryId) {
      // If repositoryId is provided but folderId is not (or null), we fetch root assets?

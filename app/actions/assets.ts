@@ -11,7 +11,7 @@ import {
 import { revalidatePath } from "next/cache"
 import { createActionSupabaseClient, requireAuthenticatedUser } from "./_workspace-guards"
 
-export async function listAssetsAction(params: { repositoryId?: string, folderId?: string | null }) {
+export async function listAssetsAction(params: { repositoryId?: string, folderId?: string | null, mode?: 'recursive' }) {
   const supabase = await createActionSupabaseClient()
   await requireAuthenticatedUser(supabase)
 

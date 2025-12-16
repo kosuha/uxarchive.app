@@ -6,7 +6,8 @@ import {
     Folder as FolderIcon,
     Archive,
     MoreHorizontal,
-    Plus
+    Plus,
+    FileImage
 } from "lucide-react"
 import {
     Collapsible,
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/sidebar"
 import { ItemContextMenu } from "@/components/item-context-menu"
 import { cn } from "@/lib/utils"
+import type { AssetRecord } from "@/lib/repositories/assets"
 
 // Types adapted for V2.1
 type RepositoryNode = {
@@ -35,11 +37,13 @@ type FolderNode = {
     name: string
     type: "folder"
     children: FolderNode[]
+    assets: AssetRecord[]
 }
 
 interface RepositoryTreeProps {
     repositories: { id: string, name: string }[]
     folders: { id: string, name: string, parentId: string | null, repositoryId: string }[]
+    assets?: AssetRecord[]
     selectedRepositoryId: string | null
     selectedFolderId: string | null
     onSelectRepository: (id: string) => void
@@ -55,6 +59,7 @@ interface RepositoryTreeProps {
 export function RepositoryTree({
     repositories,
     folders,
+    assets = [],
     selectedRepositoryId,
     selectedFolderId,
     onSelectRepository,
@@ -73,7 +78,7 @@ export function RepositoryTree({
 
         // Init nodes
         repoFolders.forEach(f => {
-            nodeMap.set(f.id, { id: f.id, name: f.name, type: "folder", children: [] })
+            nodeMap.set(f.id, { id: f.id, name: f.name, type: "folder", children: [], assets: [] })
         })
 
         const roots: FolderNode[] = []
@@ -94,15 +99,53 @@ export function RepositoryTree({
             }
         })
 
+        // Distribute assets
+        const repoAssets = assets.filter(a => a.repositoryId === repoId)
+        repoAssets.forEach(asset => {
+            if (asset.folderId) {
+                const folderNode = nodeMap.get(asset.folderId)
+                if (folderNode) {
+                    folderNode.assets.push(asset)
+                }
+            } else {
+                // Root assets? 
+                // Currently FolderList renders `nodes` (FolderNode[]).
+                // We need a way to pass Root Assets to FolderList or handle them.
+                // NOTE: The current structure expects only Folders at the top level of `FolderList`.
+                // But we can create a "pseudo-node" or modify FolderList to accept assets.
+                // However, `FolderList` recurses.
+                // Let's modify logic: `buildFolderTree` returns `FolderNode[]` but we also need `rootAssets`.
+                // Or we can return a structure { folders: FolderNode[], assets: AssetRecord[] }.
+            }
+        })
+
         // Sort
         const sortNodes = (nodes: FolderNode[]) => {
             nodes.sort((a, b) => a.name.localeCompare(b.name))
-            nodes.forEach(n => sortNodes(n.children))
+            nodes.forEach(n => {
+                sortNodes(n.children)
+                n.assets.sort((a, b) => (a.order - b.order))
+            })
         }
         sortNodes(roots)
 
-        return roots
+        const rootAssets = repoAssets.filter(a => !a.folderId).sort((a, b) => a.order - b.order)
+
+        return { roots, rootAssets }
     }
+
+    // Manage open state for collapsibles
+    const [openRepoIds, setOpenRepoIds] = React.useState<string[]>([])
+
+    // Auto-expand selected repository
+    React.useEffect(() => {
+        if (selectedRepositoryId) {
+            setOpenRepoIds(prev => {
+                if (prev.includes(selectedRepositoryId)) return prev
+                return [...prev, selectedRepositoryId]
+            })
+        }
+    }, [selectedRepositoryId])
 
     return (
         <SidebarMenu>
@@ -115,7 +158,14 @@ export function RepositoryTree({
             </div>
 
             {repositories.map(repo => (
-                <Collapsible key={repo.id} defaultOpen={repo.id === selectedRepositoryId} className="group/collapsible">
+                <Collapsible
+                    key={repo.id}
+                    open={openRepoIds.includes(repo.id)}
+                    onOpenChange={(isOpen) => {
+                        setOpenRepoIds(prev => isOpen ? [...prev, repo.id] : prev.filter(id => id !== repo.id))
+                    }}
+                    className="group/collapsible"
+                >
                     <SidebarMenuItem>
                         <CollapsibleTrigger asChild>
                             {/* Use SidebarMenuButton wrapped in ItemContextMenu logic */}
@@ -141,7 +191,7 @@ export function RepositoryTree({
                         <CollapsibleContent>
                             <SidebarMenuSub>
                                 <FolderList
-                                    nodes={buildFolderTree(repo.id)}
+                                    data={buildFolderTree(repo.id)}
                                     selectedFolderId={selectedFolderId}
                                     onSelectFolder={onSelectFolder}
                                     onDeleteFolder={onDeleteFolder}
@@ -155,17 +205,22 @@ export function RepositoryTree({
     )
 }
 
-function FolderList({ nodes, selectedFolderId, onSelectFolder, onDeleteFolder }: {
-    nodes: FolderNode[],
+interface FolderListData {
+    roots: FolderNode[]
+    rootAssets: AssetRecord[]
+}
+
+function FolderList({ data, selectedFolderId, onSelectFolder, onDeleteFolder }: {
+    data: FolderListData,
     selectedFolderId: string | null,
     onSelectFolder: (id: string) => void,
     onDeleteFolder?: (id: string) => void
 }) {
-    if (nodes.length === 0) return null
+    if (data.roots.length === 0 && data.rootAssets.length === 0) return null
 
     return (
         <>
-            {nodes.map(node => (
+            {data.roots.map(node => (
                 <Collapsible key={node.id} className="group/folder">
                     <SidebarMenuItem>
                         <CollapsibleTrigger asChild>
@@ -180,7 +235,7 @@ function FolderList({ nodes, selectedFolderId, onSelectFolder, onDeleteFolder }:
                                 >
                                     <FolderIcon className="mr-2 h-4 w-4" />
                                     <span>{node.name}</span>
-                                    {node.children.length > 0 && (
+                                    {node.children.length + node.assets.length > 0 && (
                                         <ChevronRight className="ml-auto h-3 w-3 transition-transform group-data-[state=open]/folder:rotate-90" />
                                     )}
                                 </SidebarMenuButton>
@@ -188,22 +243,32 @@ function FolderList({ nodes, selectedFolderId, onSelectFolder, onDeleteFolder }:
                         </CollapsibleTrigger>
 
                         <CollapsibleContent>
-                            <div className="border-l border-border ml-6 pl-2">
+                            <ul className="border-l border-border ml-6 pl-2">
                                 <FolderList
-                                    nodes={node.children}
+                                    data={{ roots: node.children, rootAssets: node.assets }}
                                     selectedFolderId={selectedFolderId}
                                     onSelectFolder={onSelectFolder}
                                     onDeleteFolder={onDeleteFolder}
                                 />
-                            </div>
+                            </ul>
                         </CollapsibleContent>
                     </SidebarMenuItem>
                 </Collapsible>
+            ))}
+            {data.rootAssets.map(asset => (
+                <SidebarMenuItem key={asset.id}>
+                    <SidebarMenuButton
+                        className="pl-6 text-muted-foreground hover:text-foreground"
+                    >
+                        <FileImage className="mr-2 h-4 w-4" />
+                        <span className="truncate">{(asset.meta as any)?.name || "Asset"}</span>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
             ))}
         </>
     )
 }
 
 function SidebarMenuSub({ children }: { children: React.ReactNode }) {
-    return <div className="flex flex-col gap-1 px-2 py-1">{children}</div>
+    return <ul className="flex flex-col gap-1 px-2 py-1">{children}</ul>
 }
