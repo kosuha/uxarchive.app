@@ -15,6 +15,7 @@ export type RepositoryRecord = {
   isPublic: boolean
   viewCount: number
   forkCount: number
+  forkOriginId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -27,6 +28,7 @@ const mapRepository = (row: RepositoryRow): RepositoryRecord => ({
   isPublic: row.is_public,
   viewCount: row.view_count,
   forkCount: row.fork_count,
+  forkOriginId: row.fork_origin_id ?? null, // handle missing column if types not generated yet (but we added migration)
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 })
@@ -36,6 +38,7 @@ export type CreateRepositoryInput = {
   name: string
   description?: string | null
   isPublic?: boolean
+  forkOriginId?: string | null
 }
 
 export const createRepository = async (
@@ -47,6 +50,7 @@ export const createRepository = async (
     name: input.name,
     description: input.description,
     is_public: input.isPublic,
+    fork_origin_id: input.forkOriginId,
   }
 
   const { data, error } = await client

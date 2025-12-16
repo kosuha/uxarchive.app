@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { useRepositoryData } from "@/components/repository-data-context"
 import {
     Sidebar,
@@ -24,12 +25,12 @@ import {
 import { Button } from "@/components/ui/button"
 import { CreateRepositoryDialog } from "./create-repository-dialog"
 import { ItemContextMenu } from "./item-context-menu"
-import { deleteRepositoryAction } from "@/app/actions/repositories"
-import { useRepositoryData } from "@/components/repository-data-context"
+import { SnapshotsDialog } from "./snapshots-dialog"
+import { deleteRepositoryAction, forkRepositoryAction } from "@/app/actions/repositories"
 
 export function RepositorySidebar({ className }: { className?: string }) {
     const { repositories, selectedRepositoryId, setSelectedRepositoryId, folders, refresh } = useRepositoryData()
-    const { user } = useRepositoryData() as any // context mostly correct, but 'user' access might be missing if I didn't verify context shape. 
+    const [snapshotRepoId, setSnapshotRepoId] = React.useState<string | null>(null) // State to control which repo's snapshots to show
     // Wait, useRepositoryData context doesn't expose 'user' or 'workspaceId'.
     // deleteRepositoryAction requires { id, workspaceId }.
     // I need workspaceId in the context to call deleteAction properly.
@@ -47,6 +48,25 @@ export function RepositorySidebar({ className }: { className?: string }) {
         if (confirm("Are you sure you want to delete this repository?")) {
             await deleteRepositoryAction({ id, workspaceId });
             await refresh();
+        }
+    }
+
+    const handleForkRepository = async (repo: any) => {
+        if (!workspaceId) return;
+        const newName = prompt("Enter name for forked repository:", `${repo.name} (Fork)`)
+        if (!newName) return
+
+        try {
+            await forkRepositoryAction({
+                sourceRepositoryId: repo.id,
+                workspaceId,
+                name: newName,
+                description: repo.description
+            })
+            await refresh()
+        } catch (e) {
+            console.error("Fork failed", e)
+            alert("Failed to fork repository")
         }
     }
 
@@ -91,6 +111,8 @@ export function RepositorySidebar({ className }: { className?: string }) {
                                                 type="repository"
                                                 onDelete={() => handleDeleteRepository(repo.id)}
                                                 onRename={() => alert("Rename not implemented yet")}
+                                                onFork={() => handleForkRepository(repo)}
+                                                onSnapshots={() => setSnapshotRepoId(repo.id)}
                                             >
                                                 <SidebarMenuButton
                                                     isActive={repo.id === selectedRepositoryId}
@@ -118,6 +140,16 @@ export function RepositorySidebar({ className }: { className?: string }) {
                 </SidebarGroup>
             </SidebarContent>
             <SidebarRail />
+
+            {snapshotRepoId && (
+                <SnapshotsDialog
+                    repositoryId={snapshotRepoId}
+                    open={!!snapshotRepoId}
+                    onOpenChange={(open) => {
+                        if (!open) setSnapshotRepoId(null)
+                    }}
+                />
+            )}
         </Sidebar>
     )
 }

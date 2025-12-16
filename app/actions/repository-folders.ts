@@ -9,7 +9,7 @@ import {
   getRepositoryFolderById,
   listRepositoryFolders,
 } from "@/lib/repositories/repository-folders"
-import { createAsset, listAssets } from "@/lib/repositories/assets"
+import { copyFoldersRecursively } from "@/lib/repositories/copy-utils"
 import { revalidatePath } from "next/cache"
 import { createActionSupabaseClient, requireAuthenticatedUser } from "./_workspace-guards"
 import type { SupabaseRepositoryClient } from "@/lib/repositories/types"
@@ -77,53 +77,12 @@ export async function copyRepositoryFolderAction(input: {
     const supabase = await createActionSupabaseClient()
     await requireAuthenticatedUser(supabase)
 
-    // Optimization: Fetch all source folders once to build the tree
-    const allSourceFolders = await listRepositoryFolders(supabase, { repositoryId: input.sourceRepositoryId })
-    const folderMap = new Map<string, typeof allSourceFolders>() // parentId -> folders
-    
-    for (const folder of allSourceFolders) {
-        // We track children by parentId
-        const pid = folder.parentId ?? "root"
-        const existing = folderMap.get(pid) ?? []
-        existing.push(folder)
-        folderMap.set(pid, existing)
-    }
-
-    // Recursive helper that uses the pre-fetched map
-    async function copyStep(currentSourceId: string, currentTargetParentId: string | null) {
-        // Find the current source folder object from the list
-        const sourceFolder = allSourceFolders.find(f => f.id === currentSourceId)
-        if (!sourceFolder) return // Should not happen if ID is valid
-
-        // 1. Create target folder
-        const newFolder = await createRepositoryFolder(supabase, {
-            repositoryId: input.targetRepositoryId,
-            name: sourceFolder.name + (input.sourceRepositoryId === input.targetRepositoryId && !currentTargetParentId ? " (Copy)" : ""),
-            parentId: currentTargetParentId,
-            order: sourceFolder.order
-        })
-
-        // 2. Copy Assets (Still per-folder fetch, can be optimized later)
-        const assets = await listAssets(supabase, { folderId: currentSourceId })
-        for (const asset of assets) {
-            await createAsset(supabase, {
-                folderId: newFolder.id,
-                storagePath: asset.storagePath,
-                width: asset.width,
-                height: asset.height,
-                meta: asset.meta,
-                order: asset.order
-            })
-        }
-
-        // 3. Recurse for children
-        const children = folderMap.get(currentSourceId) ?? []
-        for (const child of children) {
-            await copyStep(child.id, newFolder.id)
-        }
-    }
-
-    await copyStep(input.sourceFolderId, input.targetParentId)
+    await copyFoldersRecursively(supabase, {
+        sourceRepositoryId: input.sourceRepositoryId,
+        targetRepositoryId: input.targetRepositoryId,
+        targetParentId: input.targetParentId,
+        sourceFolderIds: [input.sourceFolderId]
+    })
 
     revalidatePath("/", "layout")
 }

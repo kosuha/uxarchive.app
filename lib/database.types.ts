@@ -18,6 +18,7 @@ export interface Database {
           is_public: boolean
           view_count: number
           fork_count: number
+          fork_origin_id: string | null
           created_at: string
           updated_at: string
         }
@@ -29,6 +30,7 @@ export interface Database {
           is_public?: boolean
           view_count?: number
           fork_count?: number
+          fork_origin_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -40,6 +42,7 @@ export interface Database {
           is_public?: boolean
           view_count?: number
           fork_count?: number
+          fork_origin_id?: string | null
           created_at?: string
           updated_at?: string
         }
