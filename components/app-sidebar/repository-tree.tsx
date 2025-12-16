@@ -107,15 +107,6 @@ export function RepositoryTree({
                 if (folderNode) {
                     folderNode.assets.push(asset)
                 }
-            } else {
-                // Root assets? 
-                // Currently FolderList renders `nodes` (FolderNode[]).
-                // We need a way to pass Root Assets to FolderList or handle them.
-                // NOTE: The current structure expects only Folders at the top level of `FolderList`.
-                // But we can create a "pseudo-node" or modify FolderList to accept assets.
-                // However, `FolderList` recurses.
-                // Let's modify logic: `buildFolderTree` returns `FolderNode[]` but we also need `rootAssets`.
-                // Or we can return a structure { folders: FolderNode[], assets: AssetRecord[] }.
             }
         })
 
@@ -147,10 +138,14 @@ export function RepositoryTree({
         }
     }, [selectedRepositoryId])
 
+    const toggleRepo = (repoId: string) => {
+        setOpenRepoIds(prev => prev.includes(repoId) ? prev.filter(id => id !== repoId) : [...prev, repoId])
+    }
+
     return (
         <SidebarMenu>
             {/* Header / Title similar to old ExploreView */}
-            <div className="flex items-center justify-between px-2 py-2 text-sidebar-foreground/70">
+            <div className="flex items-center justify-between px-2 py-2 text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
                 <span className="text-xs font-medium">Repositories</span>
                 <button onClick={onCreateRepository} className="hover:bg-sidebar-accent rounded p-1">
                     <Plus className="h-4 w-4" />
@@ -162,12 +157,25 @@ export function RepositoryTree({
                     key={repo.id}
                     open={openRepoIds.includes(repo.id)}
                     onOpenChange={(isOpen) => {
-                        setOpenRepoIds(prev => isOpen ? [...prev, repo.id] : prev.filter(id => id !== repo.id))
+                        if (isOpen && !openRepoIds.includes(repo.id)) toggleRepo(repo.id)
+                        else if (!isOpen && openRepoIds.includes(repo.id)) toggleRepo(repo.id)
                     }}
                     className="group/collapsible"
                 >
                     <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
+                        <div className="flex items-center w-full gap-0.5 pr-2">
+                            {/* Chevron Button (Left) */}
+                            <button
+                                onClick={(e) => { e.stopPropagation(); toggleRepo(repo.id) }}
+                                className="p-1 min-w-[24px] h-6 flex items-center justify-center hover:bg-sidebar-accent rounded-sm text-muted-foreground hover:text-foreground focus:outline-none"
+                            >
+                                <ChevronRight className={cn(
+                                    "h-3 w-3 transition-transform duration-200",
+                                    openRepoIds.includes(repo.id) ? "rotate-90" : ""
+                                )} />
+                            </button>
+
+                            {/* Content Button (Right) */}
                             <ItemContextMenu
                                 type="repository"
                                 onFork={() => onForkRepository?.(repo)}
@@ -177,36 +185,24 @@ export function RepositoryTree({
                                 <SidebarMenuButton
                                     isActive={repo.id === selectedRepositoryId && !selectedFolderId}
                                     onClick={() => onSelectRepository(repo.id)}
+                                    className="h-7 px-2"
                                 >
-                                    <Archive className="mr-2 h-4 w-4" />
-                                    <span>{repo.name}</span>
-                                    <div
-                                        role="button"
-                                        className="ml-auto p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            setOpenRepoIds(prev =>
-                                                prev.includes(repo.id)
-                                                    ? prev.filter(id => id !== repo.id)
-                                                    : [...prev, repo.id]
-                                            )
-                                        }}
-                                    >
-                                        <ChevronRight className="h-3 w-3 transition-transform group-data-[state=open]/collapsible:rotate-90" />
-                                    </div>
+                                    <Archive className="mr-2 h-4 w-4 shrink-0" />
+                                    <span className="truncate">{repo.name}</span>
                                 </SidebarMenuButton>
                             </ItemContextMenu>
-                        </CollapsibleTrigger>
+                        </div>
 
                         <CollapsibleContent>
-                            <SidebarMenuSub>
+                            {/* Indentation handled by padding in generic UL if needed, or recursive margin */}
+                            <div className="flex flex-col gap-0.5 pl-4 relative border-l border-border/40 ml-2.5 my-1">
                                 <FolderList
                                     data={buildFolderTree(repo.id)}
                                     selectedFolderId={selectedFolderId}
                                     onSelectFolder={onSelectFolder}
                                     onDeleteFolder={onDeleteFolder}
                                 />
-                            </SidebarMenuSub>
+                            </div>
                         </CollapsibleContent>
                     </SidebarMenuItem>
                 </Collapsible>
@@ -237,87 +233,79 @@ function FolderList({ data, selectedFolderId, onSelectFolder, onDeleteFolder }: 
 
     return (
         <>
-            {data.roots.map(node => (
-                <Collapsible
-                    key={node.id}
-                    className="group/folder"
-                    open={openFolders[node.id]}
-                    onOpenChange={(isOpen) => setOpenFolders(prev => ({ ...prev, [node.id]: isOpen }))}
-                >
-                    <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
+            {data.roots.map(node => {
+                const hasChildren = node.children.length + node.assets.length > 0;
+                const isOpen = openFolders[node.id];
+
+                return (
+                    <Collapsible
+                        key={node.id}
+                        className="group/folder"
+                        open={isOpen}
+                        onOpenChange={(open) => setOpenFolders(prev => ({ ...prev, [node.id]: open }))}
+                    >
+                        <div className="flex items-center w-full gap-0.5">
+                            {/* Chevron: Only if has children */}
+                            {hasChildren ? (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); toggleFolder(node.id) }}
+                                    className="p-1 min-w-[24px] h-6 flex items-center justify-center hover:bg-sidebar-accent rounded-sm text-muted-foreground hover:text-foreground focus:outline-none"
+                                >
+                                    <ChevronRight className={cn(
+                                        "h-3 w-3 transition-transform duration-200",
+                                        isOpen ? "rotate-90" : ""
+                                    )} />
+                                </button>
+                            ) : (
+                                // Spacer to align with items that have chevrons
+                                <div className="w-[24px] h-6 shrink-0" />
+                            )}
+
                             <ItemContextMenu
                                 type="folder"
                                 onDelete={() => onDeleteFolder?.(node.id)}
                             >
                                 <SidebarMenuButton
                                     isActive={node.id === selectedFolderId}
-                                    onClick={(e) => {
-                                        // If clicking the folder text/icon
-                                        onSelectFolder(node.id)
-                                        // If it has children, toggle expansion
-                                        if (node.children.length + node.assets.length > 0) {
-                                            // Optional: Toggle on main click? Finder does not. 
-                                            // Finder selects on single click, expands on arrow click.
-                                            // Here we have Chevron as part of the button? 
-                                            // Actually standard CollapsibleTrigger toggles on click.
-                                            // We want Selection AND Toggle? Or Selection only?
-                                            // Let's separate Selection (main click) and Toggle (chevron).
-                                            // BUT CollapsibleTrigger wraps the whole button.
-
-                                            // Allow default collapsible behavior (toggle) + our selection logic
-                                        }
+                                    onClick={() => {
+                                        onSelectFolder(node.id);
+                                        // Optional: Toggle on main click too? User asked for chevron control mostly, but standard is click=select/expand.
+                                        // Let's stick to click=select. Chevron=toggle.
                                     }}
-                                    className="pl-6 group/item"
+                                    className="h-7 px-2 flex-1 min-w-0"
                                 >
-                                    <FolderIcon className="mr-2 h-4 w-4" />
-                                    <span>{node.name}</span>
-                                    {node.children.length + node.assets.length > 0 && (
-                                        <div
-                                            role="button"
-                                            className="ml-auto p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors"
-                                            onClick={(e) => {
-                                                e.stopPropagation()
-                                                toggleFolder(node.id)
-                                            }}
-                                        >
-                                            <ChevronRight className={cn(
-                                                "h-3 w-3 transition-transform",
-                                                openFolders[node.id] ? "rotate-90" : ""
-                                            )} />
-                                        </div>
-                                    )}
+                                    <FolderIcon className="mr-2 h-4 w-4 shrink-0" />
+                                    <span className="truncate">{node.name}</span>
                                 </SidebarMenuButton>
                             </ItemContextMenu>
-                        </CollapsibleTrigger>
+                        </div>
 
                         <CollapsibleContent>
-                            <ul className="border-l border-border ml-6 pl-2">
+                            <div className="flex flex-col gap-0.5 pl-4 relative border-l border-border/40 ml-2.5 my-1">
                                 <FolderList
                                     data={{ roots: node.children, rootAssets: node.assets }}
                                     selectedFolderId={selectedFolderId}
                                     onSelectFolder={onSelectFolder}
                                     onDeleteFolder={onDeleteFolder}
                                 />
-                            </ul>
+                            </div>
                         </CollapsibleContent>
-                    </SidebarMenuItem>
-                </Collapsible>
-            ))}
+                    </Collapsible>
+                )
+            })}
+
             {data.rootAssets.map(asset => (
-                <SidebarMenuItem key={asset.id}>
+                <div key={asset.id} className="flex items-center w-full gap-0.5">
+                    {/* Spacer for no-chevron items */}
+                    <div className="w-[24px] h-6 shrink-0" />
                     <SidebarMenuButton
-                        className="pl-6 text-muted-foreground hover:text-foreground"
+                        className="h-7 px-2 flex-1 min-w-0 text-muted-foreground hover:text-foreground"
                     >
-                        <FileImage className="mr-2 h-4 w-4" />
+                        <FileImage className="mr-2 h-4 w-4 shrink-0" />
                         <span className="truncate">{(asset.meta as any)?.name || "Asset"}</span>
                     </SidebarMenuButton>
-                </SidebarMenuItem>
+                </div>
             ))}
         </>
     )
-}
-
-function SidebarMenuSub({ children }: { children: React.ReactNode }) {
-    return <ul className="flex flex-col gap-1 px-2 py-1">{children}</ul>
 }
