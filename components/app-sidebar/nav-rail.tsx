@@ -37,9 +37,9 @@ export function SidebarNavRail({ items, activeNavId, onNavItemSelect }: SidebarN
       <div className="px-1 pb-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <Link href="/patterns">
+            <Link href="/share/r">
               <div className="flex w-full h-full text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg hover:bg-sidebar-accent transition-colors cursor-pointer" title="Discovery">
-                <Image src="/favicon.svg" alt="Workspace logo" width={20} height={20} className="size-8" />
+                <Image src="/logo.svg" alt="Workspace logo" width={20} height={20} className="size-8" />
               </div>
             </Link>
           </SidebarMenuItem>

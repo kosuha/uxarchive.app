@@ -25,19 +25,19 @@ import { NAVIGATE_NAV_EVENT, type NavigateNavDetail } from "@/lib/navigation-eve
 const PRIMARY_NAV_ITEMS: NavItem[] = [
   {
     id: "explore",
-    title: "EXPLORE",
+    title: "My Repositories",
     description: "",
     icon: File,
   },
   {
     id: "search",
-    title: "SEARCH",
+    title: "Search",
     description: "",
     icon: Search,
   },
   {
     id: "favorites",
-    title: "FAVORITES",
+    title: "Favorites",
     description: "",
     icon: Star,
   },
