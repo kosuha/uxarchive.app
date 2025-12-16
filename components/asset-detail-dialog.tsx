@@ -1,0 +1,169 @@
+"use client"
+
+import * as React from "react"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { MoreHorizontal, Pencil, Trash2, X, Download, FileImage, Info } from "lucide-react"
+import { toast } from "sonner"
+import type { AssetRecord } from "@/lib/repositories/assets"
+import { updateAssetAction, deleteAssetAction } from "@/app/actions/assets"
+import { cn } from "@/lib/utils"
+
+interface AssetDetailDialogProps {
+    isOpen: boolean
+    onClose: () => void
+    asset: AssetRecord
+    repositoryId: string
+}
+
+export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId }: AssetDetailDialogProps) {
+    const [isRenaming, setIsRenaming] = React.useState(false)
+    const [name, setName] = React.useState((asset.meta as any)?.name || "Untitled")
+    const [isDeleting, setIsDeleting] = React.useState(false)
+
+    // Reset state when asset changes
+    React.useEffect(() => {
+        setName((asset.meta as any)?.name || "Untitled")
+        setIsRenaming(false)
+        setIsDeleting(false)
+    }, [asset])
+
+    const handleRename = async () => {
+        if (!name.trim()) return
+        
+        try {
+            await updateAssetAction({
+                id: asset.id,
+                meta: { ...(asset.meta as object), name: name.trim() }
+            })
+            toast.success("Asset renamed")
+            setIsRenaming(false)
+        } catch (error) {
+            toast.error("Failed to rename asset")
+        }
+    }
+
+    const handleDelete = async () => {
+        try {
+            setIsDeleting(true)
+            await deleteAssetAction({ id: asset.id })
+            toast.success("Asset deleted")
+            onClose() // Close dialog on success
+        } catch (error) {
+            toast.error("Failed to delete asset")
+            setIsDeleting(false)
+        }
+    }
+
+    const handleDownload = async () => {
+        try {
+           const response = await fetch(
+                `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ux-archive-captures/${asset.storagePath}`
+            );
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = name || `asset-${asset.id}.png`; 
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (e) {
+            toast.error("Failed to download asset")
+        }
+    }
+
+    const imageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ux-archive-captures/${asset.storagePath}`
+
+    return (
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent showCloseButton={false} className="w-[95vw] h-[90vh] max-w-none sm:max-w-none p-0 gap-0 bg-[#1C1C1C] border-none shadow-2xl overflow-hidden flex flex-col focus:outline-none rounded-[28px]" onPointerDownOutside={(e) => e.preventDefault()}>
+                <DialogTitle className="sr-only">{name}</DialogTitle>
+                
+                {/* Header */}
+                <div className="flex items-center justify-between px-8 py-6 z-10 shrink-0">
+                    <div className="flex items-center gap-3 flex-1 min-w-0 text-white">
+                        {isRenaming ? (
+                            <div className="flex items-center gap-2 flex-1 max-w-md">
+                                <Input
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    className="h-8 text-sm bg-transparent border-white/20 text-white focus-visible:ring-offset-0 focus-visible:ring-white/20"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") handleRename()
+                                        if (e.key === "Escape") setIsRenaming(false)
+                                    }}
+                                />
+                                <Button size="sm" onClick={handleRename} className="h-8 px-3 bg-white text-black hover:bg-white/90">Save</Button>
+                                <Button size="sm" variant="ghost" onClick={() => setIsRenaming(false)} className="h-8 px-3 text-white/70 hover:text-white hover:bg-white/10">Cancel</Button>
+                            </div>
+                        ) : (
+                            <h2 
+                                className="font-medium text-lg truncate cursor-pointer hover:opacity-80 transition-opacity" 
+                                onDoubleClick={() => setIsRenaming(true)}
+                            >
+                                {name}
+                            </h2>
+                        )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10 rounded-full" onClick={handleDownload}>
+                            <Download className="w-5 h-5" />
+                        </Button>
+                        
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10 rounded-full">
+                                    <MoreHorizontal className="w-5 h-5" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem onClick={() => setIsRenaming(true)}>
+                                    <Pencil className="w-4 h-4 mr-2" />
+                                    Rename
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={handleDelete} className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20">
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete Asset
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <div className="w-px h-6 bg-white/10 mx-2" />
+
+                        <Button variant="ghost" size="icon" className="h-10 w-10 text-white/70 hover:text-white hover:bg-white/10 rounded-full" onClick={onClose}>
+                            <X className="w-6 h-6" />
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Main Content - Image Preview */}
+                <div className="flex-1 relative flex items-center justify-center p-4 overflow-hidden min-h-[200px]">
+                    <div className="relative flex items-center justify-center">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                            src={imageUrl}
+                            alt={name}
+                            className="max-w-[calc(90vw-2rem)] max-h-[calc(80vh-4rem)] w-auto h-auto object-contain rounded-lg shadow-2xl"
+                        />
+                    </div>
+                </div>
+
+                {/* Optional Footer or Info Panel could go here */}
+
+            </DialogContent>
+        </Dialog>
+    )
+}

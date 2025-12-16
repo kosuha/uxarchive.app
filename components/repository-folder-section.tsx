@@ -7,6 +7,8 @@ import { useDraggableScroll } from "@/hooks/use-draggable-scroll"
 import { cn } from "@/lib/utils"
 import { ItemContextMenu } from "./item-context-menu"
 import { FileImage, Loader2 } from "lucide-react"
+import { AssetDetailDialog } from "@/components/asset-detail-dialog"
+
 
 import type { AssetRecord } from "@/lib/repositories/assets"
 
@@ -34,6 +36,8 @@ export function RepositoryFolderSection({
     const assets = propsAssets || fetchedAssets
 
     const { ref, events, isDragging } = useDraggableScroll()
+    const [selectedAsset, setSelectedAsset] = React.useState<AssetRecord | null>(null)
+
 
     if (isLoading && !propsAssets) {
         return (
@@ -95,7 +99,14 @@ export function RepositoryFolderSection({
 
                                     {/* Overlay Gradient */}
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    
+                                    {/* Click Handler Overlay */}
+                                    <div 
+                                        className="absolute inset-0 cursor-pointer"
+                                        onClick={() => setSelectedAsset(asset)}
+                                    />
                                 </div>
+
 
                                 <div className="flex flex-col px-1">
                                     <span className="text-xs text-muted-foreground font-medium truncate w-[280px]">
@@ -113,6 +124,17 @@ export function RepositoryFolderSection({
                     ))
                 )}
             </div>
+
+
+            {selectedAsset && (
+                <AssetDetailDialog
+                    isOpen={!!selectedAsset}
+                    onClose={() => setSelectedAsset(null)}
+                    asset={selectedAsset}
+                    repositoryId={repositoryId}
+                />
+            )}
         </div>
+
     )
 }
