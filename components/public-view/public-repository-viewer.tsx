@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { incrementRepositoryViewCountAction } from "@/app/actions/interactions"
 import { RepositoryRecord } from "@/lib/repositories/repositories"
 import { RepositoryFolderRecord } from "@/lib/repositories/repository-folders"
 import { AssetRecord } from "@/lib/repositories/assets"
@@ -28,6 +29,11 @@ export function PublicRepositoryViewer({ repository, folders, assets }: PublicRe
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(true)
     // Mobile Sidebar State
     const [isMobileOpen, setIsMobileOpen] = React.useState(false)
+
+    // Increment View Count
+    React.useEffect(() => {
+        incrementRepositoryViewCountAction(repository.id)
+    }, [repository.id])
 
     // Current context
     const currentFolder = React.useMemo(() => folders.find(f => f.id === currentFolderId), [folders, currentFolderId])

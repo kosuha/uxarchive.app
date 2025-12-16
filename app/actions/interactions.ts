@@ -15,6 +15,14 @@ export async function incrementViewCountAction(patternId: string) {
   await supabase.rpc("increment_view_count", { p_id: patternId });
 }
 
+export async function incrementRepositoryViewCountAction(repositoryId: string) {
+  if (!repositoryId) return;
+  const supabase = await createActionSupabaseClient();
+  await supabase.rpc("increment_repository_view_count", {
+    p_repository_id: repositoryId,
+  });
+}
+
 // ... existing code ...
 export async function toggleLikeAction(patternId: string) {
   if (!patternId) throw new Error("Pattern ID required");
