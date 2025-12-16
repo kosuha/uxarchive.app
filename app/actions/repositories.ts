@@ -13,6 +13,7 @@ import { revalidatePath } from "next/cache"
 import { createActionSupabaseClient, requireAuthenticatedUser } from "./_workspace-guards"
 import { copyFoldersRecursively } from "@/lib/repositories/copy-utils"
 import { listRepositoryFolders } from "@/lib/repositories/repository-folders"
+import { createAsset } from "@/lib/repositories/assets"
 
 export async function listRepositoriesAction(workspaceId: string) {
   const supabase = await createActionSupabaseClient()
@@ -76,7 +77,28 @@ export async function forkRepositoryAction(input: {
     }
 
     // 3. Copy Content
-    // Need to find all ROOT folders of source repo
+    // 3.1. Copy Root Assets
+    const { data: rootAssets } = await supabase
+        .from("assets")
+        .select()
+        .eq("repository_id", input.sourceRepositoryId)
+        .is("folder_id", null)
+    
+    if (rootAssets) {
+        for (const asset of rootAssets) {
+            await createAsset(supabase, {
+                repositoryId: newRepo.id,
+                folderId: null,
+                storagePath: asset.storage_path,
+                width: asset.width,
+                height: asset.height,
+                meta: asset.meta,
+                order: asset.order
+            })
+        }
+    }
+    
+    // 3.2. Copy Folders
     const allSourceFolders = await listRepositoryFolders(supabase, { repositoryId: input.sourceRepositoryId })
     const rootFolders = allSourceFolders.filter(f => !f.parentId)
     

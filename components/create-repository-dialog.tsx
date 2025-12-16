@@ -25,7 +25,7 @@ interface CreateRepositoryDialogProps {
 }
 
 export function CreateRepositoryDialog({ open: controlledOpen, onOpenChange: setControlledOpen, trigger }: CreateRepositoryDialogProps) {
-    const { refresh } = useRepositoryData()
+    const { refresh, workspaceId } = useRepositoryData()
     const [internalOpen, setInternalOpen] = React.useState(false)
 
     const isControlled = controlledOpen !== undefined
@@ -48,6 +48,12 @@ export function CreateRepositoryDialog({ open: controlledOpen, onOpenChange: set
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
+        if (!workspaceId) {
+            alert("No workspace found")
+            setLoading(false)
+            return
+        }
+
         try {
             await createRepositoryAction({
                 workspaceId,

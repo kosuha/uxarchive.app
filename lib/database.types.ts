@@ -97,7 +97,8 @@ export interface Database {
       assets: {
         Row: {
           id: string
-          folder_id: string
+          repository_id: string | null
+          folder_id: string | null
           storage_path: string
           width: number | null
           height: number | null
@@ -108,7 +109,8 @@ export interface Database {
         }
         Insert: {
           id?: string
-          folder_id: string
+          repository_id?: string | null
+          folder_id?: string | null
           storage_path: string
           width?: number | null
           height?: number | null
@@ -119,7 +121,8 @@ export interface Database {
         }
         Update: {
           id?: string
-          folder_id?: string
+          repository_id?: string | null
+          folder_id?: string | null
           storage_path?: string
           width?: number | null
           height?: number | null
@@ -129,6 +132,12 @@ export interface Database {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "assets_repository_id_fkey"
+            columns: ["repository_id"]
+            referencedRelation: "repositories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "assets_folder_id_fkey"
             columns: ["folder_id"]

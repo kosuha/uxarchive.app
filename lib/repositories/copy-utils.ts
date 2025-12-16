@@ -46,6 +46,7 @@ export async function copyFoldersRecursively(
         const assets = await listAssets(client, { folderId: sourceId })
         for (const asset of assets) {
             await createAsset(client, {
+                repositoryId: input.targetRepositoryId,
                 folderId: newFolder.id,
                 storagePath: asset.storagePath,
                 width: asset.width,

@@ -11,11 +11,11 @@ import {
 import { revalidatePath } from "next/cache"
 import { createActionSupabaseClient, requireAuthenticatedUser } from "./_workspace-guards"
 
-export async function listAssetsAction(folderId: string) {
+export async function listAssetsAction(params: { repositoryId?: string, folderId?: string | null }) {
   const supabase = await createActionSupabaseClient()
   await requireAuthenticatedUser(supabase)
 
-  return listAssets(supabase, { folderId })
+  return listAssets(supabase, params)
 }
 
 export async function createAssetAction(input: CreateAssetInput) {

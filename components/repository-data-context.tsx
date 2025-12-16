@@ -12,6 +12,7 @@ import { useSupabaseSession } from "@/lib/supabase/session-context"
 import { getWorkspaceMembershipAction } from "@/app/actions/workspaces"
 
 type RepositoryDataContextValue = {
+    workspaceId: string | null
     repositories: RepositoryRecord[]
     selectedRepositoryId: string | null
     setSelectedRepositoryId: (id: string | null) => void
@@ -106,6 +107,7 @@ export const RepositoryDataProvider = ({ children }: { children: React.ReactNode
     }
 
     const value: RepositoryDataContextValue = {
+        workspaceId: workspaceId ?? null,
         repositories,
         selectedRepositoryId,
         setSelectedRepositoryId,

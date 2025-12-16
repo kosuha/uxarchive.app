@@ -9,7 +9,8 @@ type AssetUpdate = Database["public"]["Tables"]["assets"]["Update"]
 
 export type AssetRecord = {
   id: string
-  folderId: string
+  repositoryId: string | null
+  folderId: string | null
   storagePath: string
   width: number | null
   height: number | null
@@ -21,6 +22,7 @@ export type AssetRecord = {
 
 const mapAsset = (row: AssetRow): AssetRecord => ({
   id: row.id,
+  repositoryId: row.repository_id,
   folderId: row.folder_id,
   storagePath: row.storage_path,
   width: row.width,
@@ -32,7 +34,8 @@ const mapAsset = (row: AssetRow): AssetRecord => ({
 })
 
 export type CreateAssetInput = {
-  folderId: string
+  repositoryId?: string | null
+  folderId?: string | null
   storagePath: string
   width?: number | null
   height?: number | null
@@ -45,6 +48,7 @@ export const createAsset = async (
   input: CreateAssetInput,
 ): Promise<AssetRecord> => {
   const payload: AssetInsert = {
+    repository_id: input.repositoryId,
     folder_id: input.folderId,
     storage_path: input.storagePath,
     width: input.width,
@@ -65,7 +69,8 @@ export const createAsset = async (
 
 export type UpdateAssetInput = {
   id: string
-  folderId?: string
+  repositoryId?: string | null
+  folderId?: string | null
   meta?: Json | null
   order?: number
   // Usually storagePath, width, height are immutable after creation unless re-uploaded
@@ -78,6 +83,7 @@ export const updateAsset = async (
   const updates: AssetUpdate = {
     updated_at: new Date().toISOString(),
   }
+  if (input.repositoryId !== undefined) updates.repository_id = input.repositoryId
   if (input.folderId !== undefined) updates.folder_id = input.folderId
   if (input.meta !== undefined) updates.meta = input.meta
   if (input.order !== undefined) updates.order = input.order
@@ -115,18 +121,26 @@ export const deleteAsset = async (
 }
 
 export type ListAssetsParams = {
-  folderId: string
+  repositoryId?: string
+  folderId?: string | null
 }
 
 export const listAssets = async (
   client: SupabaseRepositoryClient,
   params: ListAssetsParams,
 ): Promise<AssetRecord[]> => {
-  const { data, error } = await client
-    .from("assets")
-    .select()
-    .eq("folder_id", params.folderId)
-    .order("order", { ascending: true })
+  let query = client.from("assets").select()
+  
+  if (params.folderId) {
+    query = query.eq("folder_id", params.folderId)
+  } else if (params.repositoryId) {
+     // If repositoryId is provided but folderId is not (or null), we fetch root assets?
+     // Or do we fetch ALL assets?
+     // Requirement: "Root Assets". So folder_id must be null.
+     query = query.eq("repository_id", params.repositoryId).is("folder_id", null)
+  }
+
+  const { data, error } = await query.order("order", { ascending: true })
 
   ensureData(data, error, "Failed to list assets.")
   return (data as AssetRow[]).map(mapAsset)
