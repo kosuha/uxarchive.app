@@ -10,111 +10,116 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { createRepositoryAction } from "@/app/actions/repositories"
 import { useRepositoryData } from "@/components/repository-data-context"
-import { useSupabaseSession } from "@/lib/supabase/session-context"
-import { getWorkspaceMembershipAction } from "@/app/actions/workspaces"
-// Removed missing dependencies: react-hook-form, zod, @hookform/resolvers, Checkbox, Form
+import { Plus } from "lucide-react"
 
-export function CreateRepositoryDialog({ children }: { children: React.ReactNode }) {
-    const [open, setOpen] = React.useState(false)
-    const { refresh, setSelectedRepositoryId } = useRepositoryData()
-    const { user } = useSupabaseSession()
+interface CreateRepositoryDialogProps {
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+    trigger?: React.ReactNode
+}
 
-    const [workspaceId, setWorkspaceId] = React.useState<string | null>(null)
+export function CreateRepositoryDialog({ open: controlledOpen, onOpenChange: setControlledOpen, trigger }: CreateRepositoryDialogProps) {
+    const { refresh } = useRepositoryData()
+    const [internalOpen, setInternalOpen] = React.useState(false)
 
-    // Local form state
+    const isControlled = controlledOpen !== undefined
+    const open = isControlled ? controlledOpen : internalOpen
+    // const setOpen = isControlled ? setControlledOpen : setInternalOpen // Wrapper logic below
+
+    const handleOpenChange = (newOpen: boolean) => {
+        if (isControlled && setControlledOpen) {
+            setControlledOpen(newOpen)
+        } else {
+            setInternalOpen(newOpen)
+        }
+    }
+
+    const [loading, setLoading] = React.useState(false)
     const [name, setName] = React.useState("")
     const [description, setDescription] = React.useState("")
-    const [isPublic, setIsPublic] = React.useState(false)
-    const [isSubmitting, setIsSubmitting] = React.useState(false)
+    const [isPrivate, setIsPrivate] = React.useState(false)
 
-    React.useEffect(() => {
-        if (user) {
-            getWorkspaceMembershipAction().then(data => setWorkspaceId(data?.workspaceId ?? null))
-        }
-    }, [user])
-
-    async function onSubmit(e: React.FormEvent) {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!workspaceId) return
-        if (!name.trim()) return // Basic validation
-
-        setIsSubmitting(true)
+        setLoading(true)
         try {
-            const newRepo = await createRepositoryAction({
-                workspaceId,
-                name: name.trim(),
-                description: description.trim() || null,
-                isPublic
+            await createRepositoryAction({
+                name,
+                description,
+                isPrivate
             })
-
-            // Reset
+            await refresh()
+            handleOpenChange(false)
+            // Reset form
             setName("")
             setDescription("")
-            setIsPublic(false)
-
-            setOpen(false)
-            await refresh()
-            setSelectedRepositoryId(newRepo.id)
+            setIsPrivate(false)
         } catch (error) {
-            console.error(error)
-            // Show toast error
+            console.error("Failed to create repository", error)
+            alert("Failed to create repository")
         } finally {
-            setIsSubmitting(false)
+            setLoading(false)
         }
     }
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                {children}
-            </DialogTrigger>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
+            {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                     <DialogTitle>Create Repository</DialogTitle>
                     <DialogDescription>
-                        Create a new repository to organize your assets.
+                        Create a new repository to organize your design patterns and assets.
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={onSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="name">Name</Label>
-                        <Input
-                            id="name"
-                            placeholder="Repository Name"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                        />
+                <form onSubmit={handleSubmit}>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="name" className="text-right">
+                                Name
+                            </Label>
+                            <Input
+                                id="name"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                className="col-span-3"
+                                required
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="description" className="text-right">
+                                Description
+                            </Label>
+                            <Input
+                                id="description"
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                className="col-span-3"
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label className="text-right">Visibility</Label>
+                            <div className="flex items-center space-x-2 col-span-3">
+                                <input
+                                    type="checkbox"
+                                    id="private"
+                                    checked={isPrivate}
+                                    onChange={e => setIsPrivate(e.target.checked)}
+                                    className="h-4 w-4 rounded border-gray-300"
+                                />
+                                <Label htmlFor="private">Private Repository</Label>
+                            </div>
+                        </div>
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="description">Description (Optional)</Label>
-                        <Input
-                            id="description"
-                            placeholder="Description"
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                        />
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        {/* Use native checkbox if shadcn/checkbox missing or use Input type=checkbox */}
-                        <input
-                            type="checkbox"
-                            id="isPublic"
-                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                            checked={isPublic}
-                            onChange={(e) => setIsPublic(e.target.checked)}
-                        />
-                        <Label htmlFor="isPublic">Public Repository</Label>
-                    </div>
-
                     <DialogFooter>
-                        <Button type="submit" disabled={!workspaceId || isSubmitting || !name.trim()}>
-                            {isSubmitting ? "Creating..." : "Create"}
+                        <Button type="submit" disabled={loading}>
+                            {loading ? "Creating..." : "Create Repository"}
                         </Button>
                     </DialogFooter>
                 </form>
