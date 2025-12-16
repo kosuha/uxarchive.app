@@ -11,7 +11,7 @@ import { toast } from "sonner"
 import { Button } from "../ui/button"
 import { toggleRepositoryLikeAction } from "@/app/actions/interactions"
 import { forkRepositoryToDefaultAction, forkFolderToDefaultAction } from "@/app/actions/repositories"
-import { useRouter } from "next/navigation"
+
 import { Loader2 } from "lucide-react"
 
 interface PublicRepositoryHeaderProps {
@@ -36,7 +36,7 @@ export function PublicRepositoryHeader({ repository, folder }: PublicRepositoryH
         setTimeout(() => setIsCopied(false), 2000)
     }
 
-    const router = useRouter()
+
     const [isLikePending, startLikeTransition] = React.useTransition()
     const [isForkPending, startForkTransition] = React.useTransition()
     // Local state for like visualization (optimistic/result-based)
@@ -75,7 +75,7 @@ export function PublicRepositoryHeader({ repository, folder }: PublicRepositoryH
                 }
                 
                 toast.success("Forked successfully")
-                router.push(`/workspace?repositoryId=${newRepo.id}`)
+                window.open(`/workspace?repositoryId=${newRepo.id}`, "_blank")
             } catch (error) {
                 if (error instanceof Error && error.message.includes("authenticated")) {
                     toast.error("Please sign in to fork")
