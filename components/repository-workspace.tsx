@@ -14,6 +14,7 @@ import { RepositoryFolderSection } from "./repository-folder-section"
 import { AssetDetailDialog } from "@/components/asset-detail-dialog"
 import type { AssetRecord } from "@/lib/repositories/assets"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import { RepositoryHeader } from "./repository-header"
 
 export function RepositoryWorkspace({ className }: { className?: string }) {
     const {
@@ -238,6 +239,11 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
 
             {/* 2. Main Content (Scrollable) */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden pb-32">
+                
+                {/* Repository Header (Only at root) */}
+                {!currentFolderId && currentRepository && (
+                    <RepositoryHeader repository={currentRepository} />
+                )}
 
                 {/* 1. Current Screens */}
                 <div className="mt-2">

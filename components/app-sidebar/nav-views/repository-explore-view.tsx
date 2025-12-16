@@ -221,7 +221,7 @@ export function RepositoryExploreView() {
                     isOpen={!!viewingAsset}
                     onClose={() => setViewingAssetId(null)}
                     asset={viewingAsset}
-                    repositoryId={viewingAsset.repositoryId}
+                    repositoryId={viewingAsset.repositoryId || ""}
                     assets={viewingAssetSiblings}
                     onAssetChange={(asset) => setViewingAssetId(asset.id)}
                 />
