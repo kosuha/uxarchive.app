@@ -1,42 +1,42 @@
 import { motion, useInView } from "motion/react";
 import { useRef } from "react";
-import { Layers, MapPin, FolderTree, Globe, Layout, TrendingUp } from "lucide-react";
+import { Layers, GitFork, FolderTree, Globe, History, TrendingUp } from "lucide-react";
 
 const features = [
   {
     icon: Layers,
-    title: "Screenshot Collection",
-    description: "Capture and upload UI patterns instantly from web and mobile.",
+    title: "Pattern Repositories",
+    description: "Manage UI patterns in dedicated repositories to keep your projects organized.",
     gradient: "from-green-500 to-emerald-500",
   },
   {
-    icon: MapPin,
-    title: "Insight Notes",
-    description: "Pin comments on specific design details to document decisions.",
+    icon: History,
+    title: "Snapshot History",
+    description: "Save immutable versions of your collections. Track design evolution.",
     gradient: "from-emerald-500 to-teal-500",
   },
   {
     icon: FolderTree,
-    title: "Smart Organization",
-    description: "Manage patterns systematically with projects, tags.",
+    title: "Recursive Structure",
+    description: "Create unlimited nested folders to organize complex design systems.",
     gradient: "from-teal-500 to-cyan-500",
   },
   {
-    icon: Globe,
-    title: "Community Discovery",
-    description: "Explore repositories shared by the community.",
+    icon: GitFork,
+    title: "Smart Forking",
+    description: "Fork entire repositories or specific folders to your workspace.",
     gradient: "from-cyan-500 to-blue-500",
   },
   {
-    icon: Layout,
-    title: "Public Profile",
-    description: "Curate and exhibit your personal repository library to the world.",
+    icon: Globe,
+    title: "Global Discovery",
+    description: "Explore and clone high-quality UX patterns shared by the community.",
     gradient: "from-blue-500 to-indigo-500",
   },
   {
     icon: TrendingUp,
-    title: "Engagement Stats",
-    description: "Track views, likes, and forks on your shared repositories.",
+    title: "Engagement Insights",
+    description: "Track views, likes, and forks to see your impact on the community.",
     gradient: "from-indigo-500 to-violet-500",
   },
 ];
@@ -58,14 +58,14 @@ export function Features() {
           className="text-center mb-20"
         >
           <h2 className="text-5xl font-black md:text-6xl mb-6">
-            Powerful Features to
+            The GitHub for
             <br />
             <span className="bg-gradient-to-r from-primary to-green-400 bg-clip-text text-transparent">
-              Systematize Inspiration
+              UX Patterns
             </span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            A UX pattern archive tool for designers and planners
+            Structure, Version, and Fork your design inspiration.
           </p>
         </motion.div>
 
