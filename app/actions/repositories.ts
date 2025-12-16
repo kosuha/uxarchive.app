@@ -84,7 +84,7 @@ export async function forkRepositoryAction(input: {
     // Check if user is member of source workspace
     const { data: membership } = await supabase
       .from("workspace_members")
-      .select("id")
+      .select("workspace_id")
       .eq("workspace_id", sourceRepo.workspace_id)
       .eq("profile_id", user.id)
       .maybeSingle();
@@ -196,7 +196,7 @@ export async function forkFolderAction(input: {
     // Check if user is member of source workspace
     const { data: membership } = await supabase
       .from("workspace_members")
-      .select("id")
+      .select("workspace_id")
       .eq("workspace_id", sourceRepo.workspace_id)
       .eq("profile_id", user.id)
       .maybeSingle();
