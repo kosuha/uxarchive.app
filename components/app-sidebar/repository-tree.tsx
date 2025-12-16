@@ -13,6 +13,16 @@ import {
     CollapsibleContent,
 } from "@/components/ui/collapsible"
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
@@ -107,6 +117,7 @@ interface RepositoryTreeProps {
     onDeleteAsset?: (id: string, repositoryId: string) => void
     onRenameAsset?: (id: string, newName: string, repositoryId: string) => void
     onSelectAsset?: (asset: any) => void
+    onMoveRepository?: (sourceId: string, targetId: string, targetFolderId?: string | null) => void
 }
 
 export function RepositoryTree({
@@ -127,8 +138,10 @@ export function RepositoryTree({
     onMoveAsset,
     onDeleteAsset,
     onRenameAsset,
-    onSelectAsset
+    onSelectAsset,
+    onMoveRepository
 }: RepositoryTreeProps) {
+    const [moveRepoState, setMoveRepoState] = React.useState<{ sourceId: string, targetId: string, targetFolderId: string | null, sourceName: string, targetName: string } | null>(null)
 
     // Helper to build tree for a specific repo
     const buildFolderTree = React.useCallback((repoId: string) => {
@@ -231,7 +244,7 @@ export function RepositoryTree({
         // Drag ID format: "folder-{id}"
         // Drop ID format: "folder-{id}" or "repo-{id}" (for root drop)
 
-        let itemType: 'folder' | 'asset' | null = null
+        let itemType: 'folder' | 'asset' | 'repository' | null = null
         let itemId: string | null = null
 
         if (activeId.startsWith("folder-")) {
@@ -240,6 +253,9 @@ export function RepositoryTree({
         } else if (activeId.startsWith("asset-")) {
             itemType = 'asset'
             itemId = activeId.replace("asset-", "")
+        } else if (activeId.startsWith("repo-")) {
+            itemType = 'repository'
+            itemId = activeId.replace("repo-", "")
         } else {
             return
         }
@@ -328,6 +344,43 @@ export function RepositoryTree({
             if (currentFolderId === newParentId && asset.repositoryId === targetRepositoryId) return 
 
             onMoveAsset(itemId!, newParentId, targetRepositoryId)
+            onMoveAsset(itemId!, newParentId, targetRepositoryId)
+        } else if (itemType === 'repository' && onMoveRepository) {
+             // Repository Move Logic
+             // Can be dropped on a Repo (repo-ID) OR a Folder (folder-ID)
+             
+             let targetRepoId: string | null = null
+             let targetFolderId: string | null = null
+             let targetName: string = ""
+
+             if (overId.startsWith("repo-")) {
+                 targetRepoId = overId.replace("repo-", "")
+                 const r = repositories.find(repo => repo.id === targetRepoId)
+                 if (r) targetName = r.name
+             } else if (overId.startsWith("folder-")) {
+                 const fId = overId.replace("folder-", "")
+                 const f = folders.find(folder => folder.id === fId)
+                 if (f) {
+                     targetFolderId = f.id
+                     targetRepoId = f.repositoryId
+                     targetName = f.name
+                 }
+             }
+
+             if (!targetRepoId) return
+             if (itemId === targetRepoId) return // Cannot move to self
+
+             const sourceRepo = repositories.find(r => r.id === itemId)
+             
+             if (sourceRepo) {
+                 setMoveRepoState({
+                     sourceId: sourceRepo.id,
+                     targetId: targetRepoId,
+                     targetFolderId: targetFolderId,
+                     sourceName: sourceRepo.name,
+                     targetName: targetName // Repo name or Folder name
+                 })
+             }
         }
     }
 
@@ -364,17 +417,52 @@ export function RepositoryTree({
                     </div>
                 )}
             </DragOverlay>
+            
+            <AlertDialog open={!!moveRepoState} onOpenChange={(open) => !open && setMoveRepoState(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Move Repository</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will move the repository <strong>{moveRepoState?.sourceName}</strong> into <strong>{moveRepoState?.targetName}</strong> as a folder.
+                            <br /><br />
+                            The source repository will be converted into a folder and will no longer exist as a separate repository.
+                            This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => {
+                            if (moveRepoState) {
+                                onMoveRepository?.(moveRepoState.sourceId, moveRepoState.targetId, moveRepoState.targetFolderId)
+                                setMoveRepoState(null)
+                            }
+                        }}>
+                            Move & Convert
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
         </DndContext>
     )
 }
 
 function RepositoryItem({ repo, isOpen, toggleRepo, folderTree, selectedRepositoryId, selectedFolderId, onSelectRepository, onSelectFolder, handlers }: any) {
 
-    // Repository is also a droppable zone (for moving folders to root)
-    const { setNodeRef, isOver } = useDroppable({
+    const { setNodeRef: setDroppableRef, isOver } = useDroppable({
         id: `repo-${repo.id}`,
         data: { type: 'repository', id: repo.id }
     })
+    
+    const { attributes, listeners, setNodeRef: setDraggableRef, isDragging } = useDraggable({
+        id: `repo-${repo.id}`,
+        data: { type: 'repository', id: repo.id, name: repo.name }
+    })
+
+    const setNodeRef = (el: HTMLElement | null) => {
+        setDroppableRef(el)
+        setDraggableRef(el)
+    }
 
     return (
         <Collapsible
@@ -389,7 +477,8 @@ function RepositoryItem({ repo, isOpen, toggleRepo, folderTree, selectedReposito
                     ref={setNodeRef}
                     className={cn(
                         "flex items-center w-full gap-0.5 pr-2 rounded-sm transition-colors",
-                        isOver && "bg-sidebar-accent/50 ring-1 ring-primary/20"
+                        (isOver && !isDragging) && "bg-sidebar-accent/50 ring-1 ring-primary/20",
+                        isDragging && "opacity-50"
                     )}
                 >
                     <button
@@ -413,6 +502,8 @@ function RepositoryItem({ repo, isOpen, toggleRepo, folderTree, selectedReposito
                             onClick={() => onSelectRepository(repo.id)}
                             {...allowContextMenuProps}
                             data-tree-interactive="true"
+                            {...attributes}
+                            {...listeners}
                             style={{ touchAction: "none" }}
                             className="h-7 px-2"
                         >

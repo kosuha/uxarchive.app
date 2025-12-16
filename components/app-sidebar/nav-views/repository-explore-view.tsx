@@ -5,7 +5,7 @@ import { RepositoryTree } from "../repository-tree"
 import { useRepositoryData } from "@/components/repository-data-context"
 import { CreateRepositoryDialog } from "@/components/create-repository-dialog"
 import { SnapshotsDialog } from "@/components/snapshots-dialog"
-import { deleteRepositoryAction, forkRepositoryAction } from "@/app/actions/repositories"
+import { deleteRepositoryAction, forkRepositoryAction, moveRepositoryToRepositoryAction } from "@/app/actions/repositories"
 import { deleteRepositoryFolderAction, updateRepositoryFolderAction, moveRepositoryFolderAction } from "@/app/actions/repository-folders"
 import { moveRepositoryAssetAction, deleteRepositoryAssetAction, updateRepositoryAssetAction } from "@/app/actions/repository-assets"
 import {
@@ -153,6 +153,16 @@ export function RepositoryExploreView() {
         setViewingAssetId(asset.id)
     }
 
+    const handleMoveRepository = async (sourceId: string, targetId: string, targetFolderId?: string | null) => {
+        try {
+            await moveRepositoryToRepositoryAction({ sourceRepositoryId: sourceId, targetRepositoryId: targetId, targetFolderId })
+            refresh()
+        } catch (error) {
+            console.error("Failed to move repository", error)
+            alert("Failed to move repository: " + (error as Error).message)
+        }
+    }
+
     // Filter assets for navigation (siblings in same folder/repo)
     const viewingAssetSiblings = React.useMemo(() => {
         if (!viewingAsset) return []
@@ -186,6 +196,7 @@ export function RepositoryExploreView() {
                 onDeleteAsset={handleDeleteAsset}
                 onRenameAsset={handleRenameAsset}
                 onSelectAsset={handleSelectAsset}
+                onMoveRepository={handleMoveRepository}
             />
 
             {/* Dialogs */}

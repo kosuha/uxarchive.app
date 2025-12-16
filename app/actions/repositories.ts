@@ -15,7 +15,10 @@ import {
   requireAuthenticatedUser,
 } from "./_workspace-guards";
 import { copyFoldersRecursively } from "@/lib/repositories/copy-utils";
-import { listRepositoryFolders } from "@/lib/repositories/repository-folders";
+import {
+  createRepositoryFolder,
+  listRepositoryFolders,
+} from "@/lib/repositories/repository-folders";
 import { createAsset } from "@/lib/repositories/assets";
 
 export async function listRepositoriesAction(workspaceId: string) {
@@ -255,4 +258,113 @@ export async function forkFolderToDefaultAction(input: {
     name: input.name,
     description: input.description,
   });
+}
+
+export async function moveRepositoryToRepositoryAction(input: {
+  sourceRepositoryId: string;
+  targetRepositoryId: string;
+  targetFolderId?: string | null;
+}) {
+  const supabase = await createActionSupabaseClient();
+  await requireAuthenticatedUser(supabase);
+
+  const { sourceRepositoryId, targetRepositoryId, targetFolderId } = input;
+
+  if (sourceRepositoryId === targetRepositoryId) {
+    throw new Error("Cannot move a repository into itself.");
+  }
+
+  // 1. Fetch Source Repository to get name and workspaceId
+  const { data: sourceRepo, error: sourceError } = await supabase
+    .from("repositories")
+    .select("*")
+    .eq("id", sourceRepositoryId)
+    .single();
+
+  if (sourceError || !sourceRepo) {
+    throw new Error("Source repository not found.");
+  }
+
+  // 2. Create Root Folder in Target Repository
+  // We use the source repo name for the new folder
+  const newRootFolder = await createRepositoryFolder(supabase, {
+    repositoryId: targetRepositoryId,
+    name: sourceRepo.name,
+    description: sourceRepo.description,
+    parentId: targetFolderId || null,
+  });
+
+  // 3. Move Content
+
+  // 3.1 Identify Root Items in Source Repo
+  // Get all folders in source repo
+  const allFolders = await listRepositoryFolders(supabase, {
+    repositoryId: sourceRepositoryId,
+  });
+  const rootFolders = allFolders.filter((f) => f.parentId === null);
+
+  // Get all assets in source repo
+  const { data: allAssets } = await supabase
+    .from("assets")
+    .select("id, folder_id")
+    .eq("repository_id", sourceRepositoryId);
+
+  const rootAssets = allAssets?.filter((a) => a.folder_id === null) || [];
+
+  // 3.2 Update ALL items (folders and assets) to new repository_id
+  // Bulk update table 'repository_folders'
+  const { error: folderError } = await supabase
+    .from("repository_folders")
+    .update({ repository_id: targetRepositoryId })
+    .eq("repository_id", sourceRepositoryId);
+
+  if (folderError) {
+    throw new Error(`Failed to move folders: ${folderError.message}`);
+  }
+
+  // Bulk update table 'assets'
+  const { error: assetError } = await supabase
+    .from("assets")
+    .update({ repository_id: targetRepositoryId })
+    .eq("repository_id", sourceRepositoryId);
+
+  if (assetError) {
+    throw new Error(`Failed to move assets: ${assetError.message}`);
+  }
+
+  // 3.3 Re-parent the ORIGINAL root items to the new folder
+
+  if (rootFolders.length > 0) {
+    const { error: reParentFolderError } = await supabase
+      .from("repository_folders")
+      .update({ parent_id: newRootFolder.id })
+      .in("id", rootFolders.map((f) => f.id));
+
+    if (reParentFolderError) {
+      throw new Error(
+        `Failed to reparent folders: ${reParentFolderError.message}`,
+      );
+    }
+  }
+
+  if (rootAssets.length > 0) {
+    const { error: reParentAssetError } = await supabase
+      .from("assets")
+      .update({ folder_id: newRootFolder.id })
+      .in("id", rootAssets.map((a) => a.id));
+
+    if (reParentAssetError) {
+      throw new Error(
+        `Failed to reparent assets: ${reParentAssetError.message}`,
+      );
+    }
+  }
+
+  // 4. Delete Source Repository
+  await deleteRepository(supabase, {
+    id: sourceRepositoryId,
+    workspaceId: sourceRepo.workspace_id,
+  });
+
+  revalidatePath("/", "layout");
 }
