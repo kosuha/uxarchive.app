@@ -4,6 +4,8 @@ import {
   createRepository,
   type CreateRepositoryInput,
   deleteRepository,
+  type ListPublicRepositoriesParams,
+  listPublicRepositoriesWithPagination,
   listRepositories,
   type RepositoryRecord,
   updateRepository,
@@ -411,4 +413,11 @@ export async function moveRepositoryToRepositoryAction(input: {
   });
 
   revalidatePath("/", "layout");
+}
+
+export async function getPublicRepositoriesAction(
+  params: ListPublicRepositoriesParams,
+) {
+  const supabase = await createActionSupabaseClient();
+  return listPublicRepositoriesWithPagination(supabase, params);
 }

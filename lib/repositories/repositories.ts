@@ -210,6 +210,65 @@ export const listPublicRepositories = async (
   return rows.map(mapRepository);
 };
 
+export type ListPublicRepositoriesParams = {
+  page?: number;
+  perPage?: number;
+  search?: string;
+  sort?: "recent" | "popular";
+};
+
+export const listPublicRepositoriesWithPagination = async (
+  client: SupabaseRepositoryClient,
+  params: ListPublicRepositoriesParams,
+): Promise<{ repositories: RepositoryRecord[]; hasNextPage: boolean }> => {
+  const { page = 1, perPage = 24, search, sort = "recent" } = params;
+  const from = (page - 1) * perPage;
+  const to = from + perPage; // Fetch one extra to check for next page
+
+  let query = client
+    .from("repositories")
+    // @ts-ignore - Supabase type definition might not infer the nested select correctly
+    .select("*, assets(storage_path, order)", { count: "exact" })
+    .eq("is_public", true);
+
+  if (search) {
+    query = query.ilike("name", `%${search}%`);
+  }
+
+  if (sort === "popular") {
+    query = query.order("view_count", { ascending: false });
+  } else {
+    query = query.order("created_at", { ascending: false });
+  }
+
+  // Secondary sort to ensure stable pagination
+  if (sort === "popular") {
+    query = query.order("created_at", { ascending: false });
+  }
+
+  // Fetch one more than perPage to determine if there's a next page
+  const { data, error } = await query.range(from, to);
+
+  ensureData(data, error, "Failed to list public repositories.");
+
+  const rows = data as any[];
+  const hasNextPage = rows.length > perPage;
+  const paginatedRows = hasNextPage ? rows.slice(0, perPage) : rows;
+
+  // Sort assets client-side
+  const processedRows = paginatedRows.map((row) => {
+    if (row.assets && Array.isArray(row.assets)) {
+      row.assets.sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
+    }
+    return row;
+  });
+
+  return {
+    repositories: processedRows.map(mapRepository),
+    hasNextPage,
+  };
+};
+
 export const getPublicRepositoryById = async (
   client: SupabaseRepositoryClient,
   id: string,

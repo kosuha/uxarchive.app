@@ -31,9 +31,16 @@ export function SearchInput({ className, ...props }: SearchInputProps) {
         }
 
         const queryString = params.toString()
-        const targetUrl = queryString ? `/patterns?${queryString}` : '/patterns'
+        
+        // Determine target base path
+        // If current path is /share/r (repositories), stay there. 
+        // Otherwise default to /patterns (patterns/posts).
+        const isRepositoriesPage = pathname === '/share/r'
+        const basePath = isRepositoriesPage ? '/share/r' : '/patterns'
+        
+        const targetUrl = queryString ? `${basePath}?${queryString}` : basePath
 
-        if (pathname === '/patterns') {
+        if (pathname === basePath) {
             router.replace(`?${queryString}`, { scroll: false })
         } else {
             router.push(targetUrl)

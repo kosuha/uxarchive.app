@@ -77,14 +77,24 @@ export function PatternsHeader({ hideSearch = false }: PatternsHeaderProps) {
                         "flex items-center gap-2 transition-opacity duration-200",
                         isMobileSearchOpen ? "hidden" : "flex"
                     )}>
-                        {!isPatternsPage && (
+                        {isPatternsPage ? (
+                            <Button
+                                variant="ghost"
+                                asChild
+                                className="px-4 rounded-full border border-white/10 text-white/70 hover:text-white hover:bg-white/5"
+                            >
+                                <Link href="/share/r" className="gap-2">
+                                    <span>Repositories</span>
+                                </Link>
+                            </Button>
+                        ) : (
                             <Button
                                 variant="ghost"
                                 asChild
                                 className="px-4 rounded-full border border-white/10 text-white/70 hover:text-white hover:bg-white/5"
                             >
                                 <Link href="/patterns" className="gap-2">
-                                    <span>Explore Patterns</span>
+                                    <span>Patterns</span>
                                 </Link>
                             </Button>
                         )}
