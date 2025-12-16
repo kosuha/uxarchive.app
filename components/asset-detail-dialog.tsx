@@ -11,7 +11,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Pencil, Trash2, X, Download, FileImage, Info } from "lucide-react"
+import { MoreHorizontal, Pencil, Trash2, X, Download, FileImage, Info, ChevronLeft, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
 import type { AssetRecord } from "@/lib/repositories/assets"
 import { updateAssetAction, deleteAssetAction } from "@/app/actions/assets"
@@ -22,9 +22,11 @@ interface AssetDetailDialogProps {
     onClose: () => void
     asset: AssetRecord
     repositoryId: string
+    assets?: AssetRecord[]
+    onAssetChange?: (asset: AssetRecord) => void
 }
 
-export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId }: AssetDetailDialogProps) {
+export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId, assets = [], onAssetChange }: AssetDetailDialogProps) {
     const [isRenaming, setIsRenaming] = React.useState(false)
     const [name, setName] = React.useState((asset.meta as any)?.name || "Untitled")
     const [isDeleting, setIsDeleting] = React.useState(false)
@@ -35,6 +37,35 @@ export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId }: Asse
         setIsRenaming(false)
         setIsDeleting(false)
     }, [asset])
+
+    const currentIndex = React.useMemo(() => assets.findIndex(a => a.id === asset.id), [assets, asset.id])
+    const hasPrevious = currentIndex > 0
+    const hasNext = currentIndex < assets.length - 1
+
+    const handlePrevious = React.useCallback(() => {
+        if (hasPrevious && onAssetChange) {
+            onAssetChange(assets[currentIndex - 1])
+        }
+    }, [hasPrevious, onAssetChange, assets, currentIndex])
+
+    const handleNext = React.useCallback(() => {
+        if (hasNext && onAssetChange) {
+            onAssetChange(assets[currentIndex + 1])
+        }
+    }, [hasNext, onAssetChange, assets, currentIndex])
+
+    // Keyboard navigation
+    React.useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!isOpen || isRenaming) return
+            
+            if (e.key === 'ArrowLeft') handlePrevious()
+            if (e.key === 'ArrowRight') handleNext()
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [isOpen, isRenaming, handlePrevious, handleNext])
 
     const handleRename = async () => {
         if (!name.trim()) return
@@ -151,6 +182,35 @@ export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId }: Asse
 
                 {/* Main Content - Image Preview */}
                 <div className="flex-1 relative flex items-center justify-center p-4 overflow-hidden min-h-[200px]">
+                    {/* Navigation Buttons */}
+                    {hasPrevious && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute left-4 z-50 h-12 w-12 rounded-full bg-black/20 hover:bg-black/40 text-white/70 hover:text-white transition-colors border border-white/10"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                handlePrevious()
+                            }}
+                        >
+                            <ChevronLeft className="w-8 h-8" />
+                        </Button>
+                    )}
+
+                    {hasNext && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-4 z-50 h-12 w-12 rounded-full bg-black/20 hover:bg-black/40 text-white/70 hover:text-white transition-colors border border-white/10"
+                            onClick={(e) => {
+                                e.stopPropagation()
+                                handleNext()
+                            }}
+                        >
+                            <ChevronRight className="w-8 h-8" />
+                        </Button>
+                    )}
+
                     <div className="relative flex items-center justify-center">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img

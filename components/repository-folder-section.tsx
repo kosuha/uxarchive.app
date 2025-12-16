@@ -132,6 +132,8 @@ export function RepositoryFolderSection({
                     onClose={() => setSelectedAsset(null)}
                     asset={selectedAsset}
                     repositoryId={repositoryId}
+                    assets={assets}
+                    onAssetChange={setSelectedAsset}
                 />
             )}
         </div>
