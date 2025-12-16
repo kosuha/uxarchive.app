@@ -124,6 +124,7 @@ interface RepositoryTreeProps {
     onPasteToFolder?: (folderId: string, repositoryId: string) => void
     onCopyRepository?: (repositoryId: string) => void
     onPasteToRepository?: (repositoryId: string) => void
+    onForkFolder?: (folder: { id: string, name: string, repositoryId: string }) => void
     isClipboardEmpty?: boolean
 }
 
@@ -153,6 +154,7 @@ export function RepositoryTree({
     onPasteToFolder,
     onCopyRepository,
     onPasteToRepository,
+    onForkFolder,
     isClipboardEmpty
 }: RepositoryTreeProps) {
     const [moveRepoState, setMoveRepoState] = React.useState<{ sourceId: string, targetId: string, targetFolderId: string | null, sourceName: string, targetName: string } | null>(null)
@@ -424,7 +426,7 @@ export function RepositoryTree({
                             onDeleteFolder, onRenameFolder, onMoveFolder, onMoveAsset, 
                             onDeleteAsset, onRenameAsset, onSelectAsset,
                             onCopyAsset, onCopyFolder, onPasteToFolder,
-                            onCopyRepository, onPasteToRepository
+                            onCopyRepository, onPasteToRepository, onForkFolder
                         }}
                         isClipboardEmpty={isClipboardEmpty}
                     />
@@ -749,6 +751,7 @@ function FolderItem({ node, isOpen, toggleOpen, selectedFolderId, onSelectFolder
                         }}
                         onCopy={() => handlers.onCopyFolder?.(node.id, node.repositoryId)}
                         onPaste={() => handlers.onPasteToFolder?.(node.id, node.repositoryId)}
+                        onFork={() => handlers.onForkFolder?.({ id: node.id, name: node.name, repositoryId: node.repositoryId })}
                         disablePaste={isClipboardEmpty}
                     >
                         <SidebarMenuButton

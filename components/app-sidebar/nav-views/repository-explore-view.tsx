@@ -5,7 +5,7 @@ import { RepositoryTree } from "../repository-tree"
 import { useRepositoryData } from "@/components/repository-data-context"
 import { CreateRepositoryDialog } from "@/components/create-repository-dialog"
 import { SnapshotsDialog } from "@/components/snapshots-dialog"
-import { deleteRepositoryAction, forkRepositoryAction, moveRepositoryToRepositoryAction, updateRepositoryAction } from "@/app/actions/repositories"
+import { deleteRepositoryAction, forkRepositoryAction, moveRepositoryToRepositoryAction, updateRepositoryAction, forkFolderAction } from "@/app/actions/repositories"
 import { deleteRepositoryFolderAction, updateRepositoryFolderAction, moveRepositoryFolderAction, copyRepositoryFolderAction } from "@/app/actions/repository-folders"
 import { duplicateAssetAction, copyRepositoryAsFolderAction } from "@/app/actions/copy-paste"
 import { toast } from "sonner"
@@ -80,6 +80,32 @@ export function RepositoryExploreView() {
                 description: repo.description
             })
             refresh()
+        }
+    }
+
+    const handleForkFolder = async (folder: { id: string, name: string, repositoryId: string }) => {
+        const repo = repositories.find(r => r.id === folder.repositoryId)
+        if (!repo) return
+
+        const newName = prompt("Fork Folder as Repository", `${folder.name} (Fork)`)
+        if (newName) {
+             const toastId = toast.loading("Forking folder...")
+             try {
+                await forkFolderAction({
+                    sourceFolderId: folder.id,
+                    sourceRepositoryId: folder.repositoryId,
+                    workspaceId: repo.workspaceId,
+                    name: newName,
+                    description: `Forked from folder '${folder.name}' in '${repo.name}'`
+                })
+                toast.dismiss(toastId)
+                toast.success("Folder forked successfully")
+                refresh()
+            } catch (e: any) {
+                toast.dismiss(toastId)
+                console.error("Fork folder failed", e)
+                toast.error(`Fork failed: ${e.message}`)
+            }
         }
     }
 
@@ -316,6 +342,7 @@ export function RepositoryExploreView() {
                 onSelectFolder={(id: string) => setCurrentFolderId(id)}
                 onCreateRepository={() => setCreateDialogOpen(true)}
                 onForkRepository={handleForkRepository}
+                onForkFolder={handleForkFolder}
                 onSnapshotRepository={setSnapshotRepoId}
                 onDeleteRepository={handleDeleteRepository}
                 onRenameRepository={handleRenameRepository}
