@@ -25,7 +25,7 @@ interface CreateRepositoryDialogProps {
 }
 
 export function CreateRepositoryDialog({ open: controlledOpen, onOpenChange: setControlledOpen, trigger }: CreateRepositoryDialogProps) {
-    const { refresh, workspaceId } = useRepositoryData()
+    const { refresh, workspaceId, planData } = useRepositoryData()
     const [internalOpen, setInternalOpen] = React.useState(false)
 
     const isControlled = controlledOpen !== undefined
@@ -44,6 +44,10 @@ export function CreateRepositoryDialog({ open: controlledOpen, onOpenChange: set
     const [name, setName] = React.useState("")
     const [description, setDescription] = React.useState("")
     const [isPrivate, setIsPrivate] = React.useState(false)
+
+    const limit = planData?.plan.limits.maxPrivateRepositories ?? Infinity
+    const usage = planData?.usage.privateRepositories ?? 0
+    const canCreatePrivate = usage < limit
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -112,17 +116,29 @@ export function CreateRepositoryDialog({ open: controlledOpen, onOpenChange: set
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
                             <Label className="text-right">Visibility</Label>
-                            <div className="flex items-center space-x-2 col-span-3">
-                                <div className="flex items-center h-5">
-                                    <input
-                                        type="checkbox"
-                                        id="isPrivate"
-                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                        checked={isPrivate}
-                                        onChange={(e) => setIsPrivate(e.target.checked)}
-                                    />
+                            <div className="col-span-3">
+                                <div className="flex items-center space-x-2">
+                                    <div className="flex items-center h-5">
+                                        <input
+                                            type="checkbox"
+                                            id="isPrivate"
+                                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary disabled:opacity-50"
+                                            checked={isPrivate}
+                                            onChange={(e) => setIsPrivate(e.target.checked)}
+                                            disabled={!canCreatePrivate}
+                                        />
+                                    </div>
+                                    <Label htmlFor="isPrivate" className={!canCreatePrivate ? "text-muted-foreground" : ""}>
+                                        Private Repository
+                                    </Label>
                                 </div>
-                                <Label htmlFor="isPrivate">Private Repository</Label>
+                                {!canCreatePrivate && (
+                                    <p className="text-[0.8rem] text-muted-foreground mt-1.5">
+                                        You have reached the limit of {limit} private repositories on the Free plan.
+                                        <br />
+                                        Please make your repository public or upgrade your plan.
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>

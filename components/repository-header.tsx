@@ -11,6 +11,7 @@ import { updateRepositoryAction } from "@/app/actions/repositories"
 import { updateRepositoryFolderAction } from "@/app/actions/repository-folders"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
+import { useRepositoryData } from "@/components/repository-data-context"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -26,6 +27,7 @@ interface RepositoryHeaderProps {
 }
 
 export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) {
+    const { planData } = useRepositoryData()
     // Determine initial description based on context (folder vs repo)
     const initialDescription = folder ? (folder.description || "") : (repository.description || "")
     const initialTitle = folder ? folder.name : repository.name
@@ -79,6 +81,15 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
         // Folder visibility is inherited for now, so this is only for repo
         if (folder) return 
 
+        const limit = planData?.plan.limits.maxPrivateRepositories ?? Infinity
+        const usage = planData?.usage.privateRepositories ?? 0
+        const canCreatePrivate = usage < limit
+
+        if (!isPublic && !canCreatePrivate) {
+            toast.error(`You have reached the limit of ${limit} private repositories.`)
+            return
+        }
+
         if (isPublic === repository.isPublic) return
 
         try {
@@ -88,6 +99,7 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
                 isPublic: isPublic
             })
             queryClient.invalidateQueries({ queryKey: ["repositories"] })
+            queryClient.invalidateQueries({ queryKey: ["plan-limits"] })
             toast.success(`Repository is now ${isPublic ? 'Public' : 'Private'}`)
         } catch (error) {
             toast.error("Failed to update visibility")
@@ -135,6 +147,10 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
     const title = folder ? folder.name : repository.name
     const creationDate = folder ? folder.createdAt : repository.createdAt
 
+    const limit = planData?.plan.limits.maxPrivateRepositories ?? Infinity
+    const usage = planData?.usage.privateRepositories ?? 0
+    const canCreatePrivate = usage < limit
+
     return (
         <div className="px-6 py-8 border-b border-border/40 space-y-4">
             <div className="space-y-2">
@@ -170,10 +186,21 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
                                         <Globe className="w-4 h-4 mr-2" />
                                         Public
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleVisibilityChange(false)}>
+                                    <DropdownMenuItem 
+                                        onClick={() => handleVisibilityChange(false)}
+                                        disabled={!canCreatePrivate && repository.isPublic}
+                                    >
                                         <Lock className="w-4 h-4 mr-2" />
                                         Private
+                                        {!canCreatePrivate && repository.isPublic && (
+                                            <span className="ml-2 text-[10px] text-muted-foreground">(Limit Reached)</span>
+                                        )}
                                     </DropdownMenuItem>
+                                    {!canCreatePrivate && repository.isPublic && (
+                                        <div className="px-2 py-1.5 text-xs text-muted-foreground w-64">
+                                            Free plan is limited to {planData?.plan.limits.maxPrivateRepositories ?? 3} private repositories.
+                                        </div>
+                                    )}
                                 </DropdownMenuContent>
                             </DropdownMenu>
 

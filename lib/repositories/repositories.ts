@@ -66,7 +66,8 @@ export const createRepository = async (
     workspace_id: input.workspaceId,
     name: input.name,
     description: input.description,
-    is_public: input.isPublic,
+    is_public: input.isPublic ??
+      (input.isPrivate !== undefined ? !input.isPrivate : true),
     fork_origin_id: input.forkOriginId,
   };
 

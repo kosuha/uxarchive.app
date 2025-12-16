@@ -39,9 +39,15 @@ export async function createRepositoryAction(input: CreateRepositoryInput) {
   const supabase = await createActionSupabaseClient();
   const user = await requireAuthenticatedUser(supabase);
 
+  // Determine effective visibility (defaults to PUBLIC if not specified)
+  const effectiveIsPublic = input.isPublic ??
+    (input.isPrivate !== undefined ? !input.isPrivate : true);
+
   // Check limits
   await ensureRepositoryCreationAllowed(supabase, user.id, input.workspaceId);
-  if (!input.isPublic) {
+
+  // Only check private limit if it is effectively private
+  if (!effectiveIsPublic) {
     await ensurePrivateRepositoryAllowed(supabase, user.id, input.workspaceId);
   }
 
@@ -52,7 +58,24 @@ export async function createRepositoryAction(input: CreateRepositoryInput) {
 
 export async function updateRepositoryAction(input: UpdateRepositoryInput) {
   const supabase = await createActionSupabaseClient();
-  await requireAuthenticatedUser(supabase);
+  const user = await requireAuthenticatedUser(supabase);
+
+  // Check limits if switching to private
+  if (input.isPublic === false) {
+    // If we are currently public, this will increment the private count
+    // If we are already private, this is a no-op regarding limit
+    // We fetch current state to be sure
+    const { data: current } = await supabase.from("repositories").select(
+      "is_public",
+    ).eq("id", input.id).single();
+    if (current && current.is_public === true) {
+      await ensurePrivateRepositoryAllowed(
+        supabase,
+        user.id,
+        input.workspaceId,
+      );
+    }
+  }
 
   const record = await updateRepository(supabase, input);
   revalidatePath("/", "layout");

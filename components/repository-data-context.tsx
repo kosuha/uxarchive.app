@@ -10,6 +10,8 @@ import type { RepositoryFolderRecord } from "@/lib/repositories/repository-folde
 import type { AssetRecord } from "@/lib/repositories/assets"
 import { useSupabaseSession } from "@/lib/supabase/session-context"
 import { getWorkspaceMembershipAction } from "@/app/actions/workspaces"
+import { getPlanLimitsAction, type PlanLimitsResponse } from "@/app/actions/plans"
+
 
 type RepositoryDataContextValue = {
     workspaceId: string | null
@@ -24,7 +26,9 @@ type RepositoryDataContextValue = {
     refresh: () => Promise<void>
     clipboard: { type: 'asset' | 'folder' | 'repository', id: string, repositoryId: string } | null
     setClipboard: (cb: { type: 'asset' | 'folder' | 'repository', id: string, repositoryId: string } | null) => void
+    planData: PlanLimitsResponse | null
 }
+
 
 export const RepositoryDataContext = React.createContext<RepositoryDataContextValue | null>(null)
 
@@ -93,6 +97,16 @@ export const RepositoryDataProvider = ({ children }: { children: React.ReactNode
         enabled: !!workspaceId
     })
 
+    // 5. Load Plan Limits
+    const { data: planData = null } = useQuery({
+        queryKey: ["plan-limits", workspaceId],
+        queryFn: async () => {
+            if (!workspaceId) return null
+            return getPlanLimitsAction(workspaceId)
+        },
+        enabled: !!workspaceId
+    })
+
     // Custom setter for folder that also switches repository if needed
     // NOTE: We removed separate useEffect that resets currentFolderId on selectedRepositoryId change
     // to avoid race conditions.
@@ -115,6 +129,7 @@ export const RepositoryDataProvider = ({ children }: { children: React.ReactNode
         await queryClient.invalidateQueries({ queryKey: ["repositories"] })
         await queryClient.invalidateQueries({ queryKey: ["repository-folders"] })
         await queryClient.invalidateQueries({ queryKey: ["assets"] })
+        await queryClient.invalidateQueries({ queryKey: ["plan-limits"] })
     }
 
     const value: RepositoryDataContextValue = {
@@ -129,7 +144,8 @@ export const RepositoryDataProvider = ({ children }: { children: React.ReactNode
         loading,
         refresh,
         clipboard,
-        setClipboard
+        setClipboard,
+        planData
     }
 
     return (
