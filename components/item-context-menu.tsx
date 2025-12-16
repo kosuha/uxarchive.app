@@ -8,7 +8,7 @@ import {
     ContextMenuSeparator,
     ContextMenuTrigger,
 } from "@/components/ui/context-menu"
-import { Pencil, Trash2, FolderInput } from "lucide-react"
+import { Pencil, Trash2, FolderInput, GitBranch, GitFork } from "lucide-react"
 
 interface ItemContextMenuProps {
     children: React.ReactNode
@@ -30,7 +30,7 @@ export function ItemContextMenu({ children, onRename, onDelete, onFork, onSnapsh
                 {onFork && (
                     <ContextMenuItem onSelect={onFork}>
                         {/* Use an appropriate icon like GitFork or Copy */}
-                        <span className="mr-2">🍴</span>
+                        <GitFork className="mr-2 h-4 w-4" />
                         Fork
                     </ContextMenuItem>
                 )}

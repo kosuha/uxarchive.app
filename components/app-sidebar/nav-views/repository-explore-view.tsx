@@ -5,7 +5,7 @@ import { RepositoryTree } from "../repository-tree"
 import { useRepositoryData } from "@/components/repository-data-context"
 import { CreateRepositoryDialog } from "@/components/create-repository-dialog"
 import { SnapshotsDialog } from "@/components/snapshots-dialog"
-import { deleteRepositoryAction, forkRepositoryAction, moveRepositoryToRepositoryAction } from "@/app/actions/repositories"
+import { deleteRepositoryAction, forkRepositoryAction, moveRepositoryToRepositoryAction, updateRepositoryAction } from "@/app/actions/repositories"
 import { deleteRepositoryFolderAction, updateRepositoryFolderAction, moveRepositoryFolderAction } from "@/app/actions/repository-folders"
 import { moveRepositoryAssetAction, deleteRepositoryAssetAction, updateRepositoryAssetAction } from "@/app/actions/repository-assets"
 import {
@@ -79,6 +79,18 @@ export function RepositoryExploreView() {
             })
             refresh()
         }
+    }
+
+    const handleRenameRepository = async (id: string, newName: string) => {
+        const repo = repositories.find(r => r.id === id)
+        if (!repo) return
+        
+        await updateRepositoryAction({ 
+            id, 
+            workspaceId: repo.workspaceId, 
+            name: newName 
+        })
+        refresh()
     }
 
     const handleDeleteFolder = async (id: string, repositoryId: string) => {
@@ -189,6 +201,7 @@ export function RepositoryExploreView() {
                 onForkRepository={handleForkRepository}
                 onSnapshotRepository={setSnapshotRepoId}
                 onDeleteRepository={handleDeleteRepository}
+                onRenameRepository={handleRenameRepository}
                 onDeleteFolder={handleDeleteFolder}
                 onRenameFolder={handleRenameFolder}
                 onMoveFolder={handleMoveFolder}

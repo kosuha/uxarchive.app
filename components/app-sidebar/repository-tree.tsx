@@ -110,6 +110,7 @@ interface RepositoryTreeProps {
     onForkRepository?: (repo: { id: string, name: string, description?: string }) => void
     onSnapshotRepository?: (id: string) => void
     onDeleteRepository?: (id: string) => void
+    onRenameRepository?: (id: string, newName: string) => void
     onDeleteFolder?: (id: string, repositoryId: string) => void
     onRenameFolder?: (id: string, newName: string, repositoryId: string) => void
     onMoveFolder?: (id: string, newParentId: string | null, repositoryId: string) => void // newParentId null means root of repo
@@ -132,6 +133,7 @@ export function RepositoryTree({
     onForkRepository,
     onSnapshotRepository,
     onDeleteRepository,
+    onRenameRepository,
     onDeleteFolder,
     onRenameFolder,
     onMoveFolder,
@@ -405,7 +407,7 @@ export function RepositoryTree({
                         selectedFolderId={selectedFolderId}
                         onSelectRepository={onSelectRepository}
                         onSelectFolder={onSelectFolder}
-                        handlers={{ onForkRepository, onSnapshotRepository, onDeleteRepository, onDeleteFolder, onRenameFolder, onMoveFolder, onMoveAsset, onDeleteAsset, onRenameAsset, onSelectAsset }}
+                        handlers={{ onForkRepository, onSnapshotRepository, onDeleteRepository, onRenameRepository, onDeleteFolder, onRenameFolder, onMoveFolder, onMoveAsset, onDeleteAsset, onRenameAsset, onSelectAsset }}
                     />
                 ))}
             </SidebarMenu>
@@ -458,6 +460,14 @@ function RepositoryItem({ repo, isOpen, toggleRepo, folderTree, selectedReposito
         id: `repo-${repo.id}`,
         data: { type: 'repository', id: repo.id, name: repo.name }
     })
+    const [isRenaming, setIsRenaming] = React.useState(false)
+
+    const handleRenameSubmit = (newName: string) => {
+        if (newName && newName.trim() !== "" && newName !== repo.name) {
+            handlers.onRenameRepository?.(repo.id, newName)
+        }
+        setIsRenaming(false)
+    }
 
     const setNodeRef = (el: HTMLElement | null) => {
         setDroppableRef(el)
@@ -491,26 +501,36 @@ function RepositoryItem({ repo, isOpen, toggleRepo, folderTree, selectedReposito
                         )} />
                     </button>
 
-                    <ItemContextMenu
-                        type="repository"
-                        onFork={() => handlers.onForkRepository?.(repo)}
-                        onSnapshots={() => handlers.onSnapshotRepository?.(repo.id)}
-                        onDelete={() => handlers.onDeleteRepository?.(repo.id)}
-                    >
-                        <SidebarMenuButton
-                            isActive={repo.id === selectedRepositoryId && !selectedFolderId}
-                            onClick={() => onSelectRepository(repo.id)}
-                            {...allowContextMenuProps}
-                            data-tree-interactive="true"
-                            {...attributes}
-                            {...listeners}
-                            style={{ touchAction: "none" }}
-                            className="h-7 px-2"
+                    {isRenaming ? (
+                        <div className="flex-1 px-2">
+                            <InlineInput
+                                value={repo.name}
+                                onSubmit={handleRenameSubmit}
+                                onCancel={() => setIsRenaming(false)}
+                            />
+                        </div>
+                    ) : (
+                        <ItemContextMenu
+                            type="repository"
+                            onFork={() => handlers.onForkRepository?.(repo)}
+                            onDelete={() => handlers.onDeleteRepository?.(repo.id)}
+                            onRename={() => setIsRenaming(true)}
                         >
-                            <Archive className="mr-2 h-4 w-4 shrink-0" />
-                            <span className="truncate">{repo.name}</span>
-                        </SidebarMenuButton>
-                    </ItemContextMenu>
+                            <SidebarMenuButton
+                                isActive={repo.id === selectedRepositoryId && !selectedFolderId}
+                                onClick={() => onSelectRepository(repo.id)}
+                                {...allowContextMenuProps}
+                                data-tree-interactive="true"
+                                {...attributes}
+                                {...listeners}
+                                style={{ touchAction: "none" }}
+                                className="h-7 px-2"
+                            >
+                                <Archive className="mr-2 h-4 w-4 shrink-0" />
+                                <span className="truncate">{repo.name}</span>
+                            </SidebarMenuButton>
+                        </ItemContextMenu>
+                    )}
                 </div>
 
                 <CollapsibleContent>
