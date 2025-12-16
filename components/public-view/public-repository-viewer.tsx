@@ -100,7 +100,7 @@ export function PublicRepositoryViewer({ repository, folders, assets }: PublicRe
                 <div 
                     className={cn(
                         "w-[260px] border border-border bg-card rounded-2xl flex flex-col transition-all duration-300 ease-in-out shrink-0",
-                        !isSidebarOpen && "-ml-[260px] opacity-0 w-0 border-r-0 overflow-hidden"
+                        !isSidebarOpen && "w-0 -ml-4 border-0 opacity-0 overflow-hidden p-0"
                     )}
                 >
                     <div className="flex-1 overflow-y-auto p-2">
