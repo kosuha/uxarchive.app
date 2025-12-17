@@ -11,6 +11,17 @@ import type { AssetRecord } from "@/lib/repositories/assets"
 import { useSupabaseSession } from "@/lib/supabase/session-context"
 import { getWorkspaceMembershipAction } from "@/app/actions/workspaces"
 import { getPlanLimitsAction, type PlanLimitsResponse } from "@/app/actions/plans"
+import { listWorkspaceTagsAction, createTagAction, updateTagAction, deleteTagAction } from "@/app/actions/workspaces"
+import { 
+    listAllRepositoryTagsInWorkspaceAction, 
+    listAllFolderTagsInWorkspaceAction,
+    addTagToRepositoryAction,
+    removeTagFromRepositoryAction,
+    addTagToFolderAction,
+    removeTagFromFolderAction
+} from "@/app/actions/item-tags"
+import type { Tag, TagType } from "@/lib/types"
+import { TagRecord } from "@/lib/repositories/tags"
 
 
 type RepositoryDataContextValue = {
@@ -27,6 +38,18 @@ type RepositoryDataContextValue = {
     clipboard: { type: 'asset' | 'folder' | 'repository', id: string, repositoryId: string } | null
     setClipboard: (cb: { type: 'asset' | 'folder' | 'repository', id: string, repositoryId: string } | null) => void
     planData: PlanLimitsResponse | null
+    tags: Tag[]
+    repositoryTags: Record<string, string[]> // repositoryId -> tagIds
+    folderTags: Record<string, string[]> // folderId -> tagIds
+    mutations: {
+        createTag: (input: { label?: string, type?: TagType, color?: string | null }) => Promise<Tag>
+        updateTag: (tagId: string, updates: Partial<Pick<Tag, "label" | "type" | "color">>) => Promise<void>
+        deleteTag: (tagId: string) => Promise<void>
+        addTagToRepository: (repositoryId: string, tagId: string) => Promise<void>
+        removeTagFromRepository: (repositoryId: string, tagId: string) => Promise<void>
+        addTagToFolder: (folderId: string, tagId: string) => Promise<void>
+        removeTagFromFolder: (folderId: string, tagId: string) => Promise<void>
+    }
 }
 
 
@@ -123,14 +146,114 @@ export const RepositoryDataProvider = ({ children }: { children: React.ReactNode
         }
     }, [folders, selectedRepositoryId])
 
-    const loading = sessionLoading || reposLoading || foldersLoading || assetsLoading
+    // 6. Load Tags
+    const { data: tags = [], isLoading: tagsLoading } = useQuery({
+        queryKey: ["tags", "workspace", workspaceId],
+        queryFn: async () => {
+             if (!workspaceId) return []
+             const records = await listWorkspaceTagsAction(workspaceId, { onlyActive: false })
+             return records.map(r => ({
+                 id: r.id,
+                 label: r.label,
+                 type: r.type as TagType,
+                 color: r.color ?? undefined,
+                 createdAt: r.createdAt
+             }))
+        },
+        enabled: !!workspaceId
+    })
+
+    // 7. Load Item Tags (Bulk)
+    const { data: repositoryTags = {}, isLoading: repoTagsLoading } = useQuery({
+        queryKey: ["repository-tags", "workspace", workspaceId],
+        queryFn: async () => {
+            if (!workspaceId) return {}
+            const records = await listAllRepositoryTagsInWorkspaceAction(workspaceId)
+            const map: Record<string, string[]> = {}
+            records.forEach(r => {
+                if (!map[r.repositoryId]) map[r.repositoryId] = []
+                map[r.repositoryId].push(r.tagId)
+            })
+            return map
+        },
+        enabled: !!workspaceId
+    })
+
+    const { data: folderTags = {}, isLoading: folderTagsLoading } = useQuery({
+        queryKey: ["folder-tags", "workspace", workspaceId],
+        queryFn: async () => {
+            if (!workspaceId) return {}
+            const records = await listAllFolderTagsInWorkspaceAction(workspaceId)
+            const map: Record<string, string[]> = {}
+            records.forEach(r => {
+                if (!map[r.folderId]) map[r.folderId] = []
+                map[r.folderId].push(r.tagId)
+            })
+            return map
+        },
+        enabled: !!workspaceId
+    })
+
+    const loading = sessionLoading || reposLoading || foldersLoading || assetsLoading || tagsLoading || repoTagsLoading || folderTagsLoading
 
     const refresh = async () => {
         await queryClient.invalidateQueries({ queryKey: ["repositories"] })
         await queryClient.invalidateQueries({ queryKey: ["repository-folders"] })
         await queryClient.invalidateQueries({ queryKey: ["assets"] })
         await queryClient.invalidateQueries({ queryKey: ["plan-limits"] })
+        await queryClient.invalidateQueries({ queryKey: ["tags"] })
+        await queryClient.invalidateQueries({ queryKey: ["repository-tags"] })
+        await queryClient.invalidateQueries({ queryKey: ["folder-tags"] })
     }
+
+    const mutations = React.useMemo(() => ({
+        createTag: async (input: { label?: string, type?: TagType, color?: string | null }) => {
+            if (!workspaceId) throw new Error("No workspace")
+            const record = await createTagAction({
+                workspaceId,
+                label: input.label ?? "New tag",
+                type: input.type ?? "custom",
+                color: input.color ?? null
+            })
+            const tag: Tag = {
+                id: record.id,
+                label: record.label,
+                type: record.type as TagType,
+                color: record.color ?? undefined,
+                createdAt: record.createdAt
+            }
+            await queryClient.invalidateQueries({ queryKey: ["tags"] })
+            return tag
+        },
+        updateTag: async (tagId: string, updates: Partial<Pick<Tag, "label" | "type" | "color">>) => {
+            if (!workspaceId) throw new Error("No workspace")
+            await updateTagAction({ workspaceId, tagId, ...updates })
+            await queryClient.invalidateQueries({ queryKey: ["tags"] })
+        },
+        deleteTag: async (tagId: string) => {
+            if (!workspaceId) throw new Error("No workspace")
+            await deleteTagAction({ workspaceId, tagId })
+            await queryClient.invalidateQueries({ queryKey: ["tags"] })
+            await queryClient.invalidateQueries({ queryKey: ["repository-tags"] })
+            await queryClient.invalidateQueries({ queryKey: ["folder-tags"] })
+        },
+        addTagToRepository: async (repositoryId: string, tagId: string) => {
+             await addTagToRepositoryAction(repositoryId, tagId)
+             await queryClient.invalidateQueries({ queryKey: ["repository-tags"] })
+        },
+        removeTagFromRepository: async (repositoryId: string, tagId: string) => {
+             await removeTagFromRepositoryAction(repositoryId, tagId)
+             await queryClient.invalidateQueries({ queryKey: ["repository-tags"] })
+        },
+        addTagToFolder: async (folderId: string, tagId: string) => {
+             await addTagToFolderAction(folderId, tagId)
+             await queryClient.invalidateQueries({ queryKey: ["folder-tags"] })
+        },
+        removeTagFromFolder: async (folderId: string, tagId: string) => {
+             await removeTagFromFolderAction(folderId, tagId)
+             await queryClient.invalidateQueries({ queryKey: ["folder-tags"] })
+        }
+    }), [workspaceId, queryClient])
 
     const value: RepositoryDataContextValue = {
         workspaceId: workspaceId ?? null,
@@ -145,7 +268,11 @@ export const RepositoryDataProvider = ({ children }: { children: React.ReactNode
         refresh,
         clipboard,
         setClipboard,
-        planData
+        planData,
+        tags,
+        repositoryTags,
+        folderTags,
+        mutations
     }
 
     return (
@@ -154,3 +281,4 @@ export const RepositoryDataProvider = ({ children }: { children: React.ReactNode
         </RepositoryDataContext.Provider>
     )
 }
+

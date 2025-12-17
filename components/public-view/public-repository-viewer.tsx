@@ -14,15 +14,19 @@ import { PublicRepositoryHeader } from "./public-repository-header"
 import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet"
 
+import { Tag } from "@/lib/types"
+
 interface PublicRepositoryViewerProps {
     repository: RepositoryRecord
     folders: RepositoryFolderRecord[]
     assets: AssetRecord[]
     versions?: { id: string; name: string; createdAt: string }[]
     currentVersionId?: string | null
+    tags?: Tag[]
+    folderTags?: Record<string, Tag[]>
 }
 
-export function PublicRepositoryViewer({ repository, folders, assets, versions, currentVersionId }: PublicRepositoryViewerProps) {
+export function PublicRepositoryViewer({ repository, folders, assets, versions, currentVersionId, tags = [], folderTags = {} }: PublicRepositoryViewerProps) {
     const [currentFolderId, setCurrentFolderId] = React.useState<string | null>(null)
     const [selectedAsset, setSelectedAsset] = React.useState<AssetRecord | null>(null)
     const [viewerAssets, setViewerAssets] = React.useState<AssetRecord[]>([])
@@ -218,12 +222,14 @@ export function PublicRepositoryViewer({ repository, folders, assets, versions, 
                     {/* Scrollable Content Area */}
                     <div className="flex-1 overflow-y-auto p-0">
                          {/* Repository/Folder Header - Public Version */}
-                         <PublicRepositoryHeader 
-                             repository={repository} 
-                             folder={currentFolder} 
-                             versions={versions}
-                             currentVersionId={currentVersionId}
-                         />
+            {/* Header */}
+            <PublicRepositoryHeader 
+                repository={repository} 
+                folder={currentFolder}
+                versions={versions}
+                currentVersionId={currentVersionId}
+                tags={currentFolder ? folderTags[currentFolder.id] : tags}
+            />
 
                          <div className="pb-32">
                              {/* 1. Screens (Direct assets of current view) */}

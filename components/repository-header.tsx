@@ -22,6 +22,8 @@ import { cn } from "@/lib/utils"
 // import { toast } from "sonner" // Removed sonner
 import { useToast } from "@/components/ui/use-toast"
 import { SnapshotsDialog } from "@/components/snapshots-dialog"
+import { TagSelector } from "@/components/tags/tag-selector"
+import { Tag } from "@/lib/types"
 
 interface RepositoryHeaderProps {
     repository: RepositoryRecord
@@ -29,7 +31,7 @@ interface RepositoryHeaderProps {
 }
 
 export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) {
-    const { planData } = useRepositoryData()
+    const { planData, tags, repositoryTags, folderTags, mutations } = useRepositoryData()
     const limit = planData?.plan.limits.maxPrivateRepositories ?? Infinity
     const usage = planData?.usage.privateRepositories ?? 0
     const canCreatePrivate = usage < limit
@@ -54,6 +56,49 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
 
     // Use QueryClient to invalidate cache after mutations
     const queryClient = useQueryClient()
+
+    // Tag Logic
+    const associatedTagIds = folder 
+        ? (folderTags[folder.id] ?? [])
+        : (repositoryTags[repository.id] ?? [])
+
+    const selectedTags = React.useMemo(() => {
+        return associatedTagIds.map(id => tags.find(t => t.id === id)).filter((t): t is Tag => !!t)
+    }, [associatedTagIds, tags])
+
+    const handleSelectTag = async (tagId: string) => {
+        try {
+            if (folder) {
+                await mutations.addTagToFolder(folder.id, tagId)
+            } else {
+                await mutations.addTagToRepository(repository.id, tagId)
+            }
+        } catch (error) {
+            toast({ description: "Failed to add tag", variant: "destructive" })
+        }
+    }
+
+    const handleRemoveTag = async (tagId: string) => {
+        try {
+            if (folder) {
+                await mutations.removeTagFromFolder(folder.id, tagId)
+            } else {
+                await mutations.removeTagFromRepository(repository.id, tagId)
+            }
+        } catch (error) {
+            toast({ description: "Failed to remove tag", variant: "destructive" })
+        }
+    }
+
+    const handleCreateTag = async (label: string) => {
+        try {
+            const newTag = await mutations.createTag({ label, type: "custom" })
+            await handleSelectTag(newTag.id)
+            toast({ description: "Tag created and added" })
+        } catch (error) {
+            toast({ description: "Failed to create tag", variant: "destructive" })
+        }
+    }
 
     const handleDescriptionBlur = async () => {
         const currentDescription = folder ? (folder.description || "") : (repository.description || "")
@@ -253,6 +298,16 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
                                 target.style.height = "auto";
                                 target.style.height = `${target.scrollHeight}px`;
                             }}
+                        />
+                    </div>
+
+                    <div className="pt-2">
+                        <TagSelector
+                            availableTags={tags}
+                            selectedTags={selectedTags}
+                            onSelectTag={handleSelectTag}
+                            onRemoveTag={handleRemoveTag}
+                            onCreateTag={handleCreateTag}
                         />
                     </div>
                 </div>

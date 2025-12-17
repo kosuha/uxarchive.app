@@ -220,6 +220,62 @@ export interface Database {
           },
         ];
       };
+      repository_tags: {
+        Row: {
+          repository_id: string;
+          tag_id: string;
+        };
+        Insert: {
+          repository_id: string;
+          tag_id: string;
+        };
+        Update: {
+          repository_id?: string;
+          tag_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "repository_tags_repository_id_fkey";
+            columns: ["repository_id"];
+            referencedRelation: "repositories";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "repository_tags_tag_id_fkey";
+            columns: ["tag_id"];
+            referencedRelation: "tags";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      folder_tags: {
+        Row: {
+          folder_id: string;
+          tag_id: string;
+        };
+        Insert: {
+          folder_id: string;
+          tag_id: string;
+        };
+        Update: {
+          folder_id?: string;
+          tag_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "folder_tags_folder_id_fkey";
+            columns: ["folder_id"];
+            referencedRelation: "repository_folders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "folder_tags_tag_id_fkey";
+            columns: ["tag_id"];
+            referencedRelation: "tags";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       // Legacy tables placeholders (optional, can add if needed for mixed usage)
       patterns: {
         Row: {
