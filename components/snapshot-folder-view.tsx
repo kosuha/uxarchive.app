@@ -8,18 +8,29 @@ import { useDraggableScroll } from "@/hooks/use-draggable-scroll"
 
 interface SnapshotFolderViewProps {
     title: string
+    description?: string | null
     items: SnapshotItemRecord[] // Children of the current folder (or roots)
     onNavigate: (folder: SnapshotItemRecord) => void
     onAssetClick: (asset: SnapshotItemRecord) => void
 }
 
-export function SnapshotFolderView({ title, items, onNavigate, onAssetClick }: SnapshotFolderViewProps) {
+export function SnapshotFolderView({ title, description, items, onNavigate, onAssetClick }: SnapshotFolderViewProps) {
     const assets = items.filter(i => i.itemType === 'asset')
     const folders = items.filter(i => i.itemType === 'folder').sort((a, b) => (a.itemData.order || 0) - (b.itemData.order || 0))
 
     return (
         <div className="w-full h-full flex flex-col bg-background">
             <div className="flex-1 overflow-y-auto overflow-x-hidden pb-32 pt-4">
+                {/* Header Section */}
+                <div className="px-8 pb-6 pt-2 space-y-2">
+                    <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+                    {description && (
+                        <p className="text-muted-foreground text-sm leading-relaxed max-w-3xl whitespace-pre-wrap">
+                            {description}
+                        </p>
+                    )}
+                </div>
+
                 {/* 1. Screens (Direct Assets) */}
                 <div className="mt-2">
                     <SnapshotSection

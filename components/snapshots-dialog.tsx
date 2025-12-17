@@ -321,6 +321,7 @@ export function SnapshotsDialog({ repositoryId, repositoryName, open, onOpenChan
                                  ) : (
                                      <SnapshotFolderView
                                         title={viewingItem.itemData?.name || "Untitled Folder"}
+                                        description={viewingItem.itemData?.description}
                                         items={viewingItem.children || []}
                                         onNavigate={(folder) => setViewingItem(folder)}
                                         onAssetClick={(asset) => setViewingItem(asset)}
@@ -331,6 +332,7 @@ export function SnapshotsDialog({ repositoryId, repositoryName, open, onOpenChan
                                  selectedSnapshot ? (
                                     <SnapshotFolderView
                                         title={repositoryName || "Repository"}
+                                        description={selectedSnapshot.repositoryDescription}
                                         items={snapshotTree}
                                         onNavigate={(folder) => setViewingItem(folder)}
                                         onAssetClick={(asset) => setViewingItem(asset)}
