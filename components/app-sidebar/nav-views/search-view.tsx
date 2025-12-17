@@ -29,7 +29,17 @@ export function SearchView({
   query,
   setQuery,
 }: SearchViewProps) {
-  const { repositories, folders, assets, loading, setSelectedRepositoryId, setCurrentFolderId } = useRepositoryData()
+  const { 
+    repositories, 
+    folders, 
+    assets, 
+    loading, 
+    setSelectedRepositoryId, 
+    setCurrentFolderId,
+    tags,
+    repositoryTags,
+    folderTags
+  } = useRepositoryData()
   const [isInputFocused, setIsInputFocused] = React.useState(false)
   const blurTimeoutRef = React.useRef<number | null>(null)
 
@@ -65,25 +75,34 @@ export function SearchView({
     if (!hasKeyword) return []
 
     return repositories.filter((repo) => {
+      const repoTagIds = repositoryTags[repo.id] || []
+      const repoTags = tags.filter(t => repoTagIds.includes(t.id))
+      const hasMatchingTag = repoTags.some(t => t.label.toLowerCase().includes(normalizedQuery))
+
       return (
         repo.name.toLowerCase().includes(normalizedQuery) ||
-        (repo.description && repo.description.toLowerCase().includes(normalizedQuery))
+        (repo.description && repo.description.toLowerCase().includes(normalizedQuery)) ||
+        hasMatchingTag
       )
     })
-  }, [hasKeyword, normalizedQuery, repositories])
+  }, [hasKeyword, normalizedQuery, repositories, repositoryTags, tags])
 
   const filteredFolders = React.useMemo(() => {
     if (!hasKeyword) return []
 
     return folders.filter((folder) => {
       const desc = folder.description
+      const folderTagIds = folderTags[folder.id] || []
+      const folderItemTags = tags.filter(t => folderTagIds.includes(t.id))
+      const hasMatchingTag = folderItemTags.some(t => t.label.toLowerCase().includes(normalizedQuery))
       
       return (
         folder.name.toLowerCase().includes(normalizedQuery) ||
-        (desc && desc.toLowerCase().includes(normalizedQuery))
+        (desc && desc.toLowerCase().includes(normalizedQuery)) ||
+        hasMatchingTag
       )
     })
-  }, [hasKeyword, normalizedQuery, folders])
+  }, [hasKeyword, normalizedQuery, folders, folderTags, tags])
 
   const filteredAssets = React.useMemo(() => {
     if (!hasKeyword) return []
