@@ -23,7 +23,7 @@ import { useRouter } from "next/navigation"
 
 import { Loader2 } from "lucide-react"
 
-import { TagSelector } from "@/components/tags/tag-selector"
+import { TagBadge } from "@/components/tag-badge"
 import { Tag } from "@/lib/types"
 
 interface PublicRepositoryHeaderProps {
@@ -168,14 +168,10 @@ export function PublicRepositoryHeader({ repository, folder, versions = [], curr
                 </div>
 
                 {tags.length > 0 && (
-                    <div className="pt-2">
-                        <TagSelector
-                            availableTags={[]}
-                            selectedTags={tags}
-                            onSelectTag={() => {}}
-                            onRemoveTag={() => {}}
-                            readonly
-                        />
+                    <div className="pt-2 flex flex-wrap gap-2">
+                        {tags.map(tag => (
+                            <TagBadge key={tag.id} tag={tag} />
+                        ))}
                     </div>
                 )}
             </div>
