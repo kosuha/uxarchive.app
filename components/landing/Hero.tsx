@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function Hero() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [userCount, setUserCount] = useState<number | null>(null);
-  const [patternCount, setPatternCount] = useState<number | null>(null);
+  const [repositoryCount, setRepositoryCount] = useState<number | null>(null);
   const [isLoadingCount, setIsLoadingCount] = useState(true);
   const [hasStatsError, setHasStatsError] = useState(false);
 
@@ -34,10 +34,10 @@ export function Hero() {
         if (!response.ok) {
           throw new Error("Failed to load stats");
         }
-        const data = (await response.json()) as { userCount?: number; patternCount?: number };
+        const data = (await response.json()) as { userCount?: number; repositoryCount?: number };
         if (!isMounted) return;
         setUserCount(typeof data.userCount === "number" ? data.userCount : 0);
-        setPatternCount(typeof data.patternCount === "number" ? data.patternCount : 0);
+        setRepositoryCount(typeof data.repositoryCount === "number" ? data.repositoryCount : 0);
       } catch (error) {
         if ((error as Error)?.name === "AbortError") return;
         if (isMounted) setHasStatsError(true);
@@ -63,14 +63,14 @@ export function Hero() {
     return `${formatter.format(userCount)}+`;
   }, [userCount]);
 
-  const formattedPatternCount = useMemo(() => {
-    if (patternCount === null) return null;
+  const formattedRepositoryCount = useMemo(() => {
+    if (repositoryCount === null) return null;
     const formatter = new Intl.NumberFormat("en-US", {
       notation: "compact",
       maximumFractionDigits: 1,
     });
-    return `${formatter.format(patternCount)}+`;
-  }, [patternCount]);
+    return `${formatter.format(repositoryCount)}+`;
+  }, [repositoryCount]);
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -177,7 +177,7 @@ export function Hero() {
                     <Skeleton className="h-6 w-12 rounded-md" />
                   ) : (
                     <span className="text-xl font-black leading-none tracking-tight">
-                      {formattedPatternCount}
+                      {formattedRepositoryCount}
                     </span>
                   )}
                   <span className="text-xs font-bold">Shared repositories</span>
