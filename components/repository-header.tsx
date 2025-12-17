@@ -282,6 +282,7 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
             
             <SnapshotsDialog 
                 repositoryId={repository.id}
+                repositoryName={repository.name}
                 open={showHistory}
                 onOpenChange={setShowHistory}
             />

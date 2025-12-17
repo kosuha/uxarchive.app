@@ -19,19 +19,30 @@ export async function createSnapshotAction(input: {
   versionName: string;
   description?: string;
 }) {
-  const supabase = await createActionSupabaseClient();
-  await requireAuthenticatedUser(supabase);
-
-  const record = await createSnapshot(supabase, input);
-  revalidatePath("/", "layout");
-  return record;
+  console.log("[Action] createSnapshotAction started", input);
+  try {
+    const client = await createActionSupabaseClient();
+    await requireAuthenticatedUser(client); // Keep authentication
+    const result = await createSnapshot(client, input);
+    console.log("[Action] createSnapshotAction success", result);
+    revalidatePath(`/repositories/${input.repositoryId}`);
+    return result;
+  } catch (e) {
+    console.error("[Action] createSnapshotAction failed", e);
+    throw e;
+  }
 }
 
 export async function listSnapshotsAction(repositoryId: string) {
-  const supabase = await createActionSupabaseClient();
-  await requireAuthenticatedUser(supabase);
-
-  return listSnapshots(supabase, repositoryId);
+  try {
+    const client = await createActionSupabaseClient();
+    await requireAuthenticatedUser(client); // Keep authentication
+    const result = await listSnapshots(client, repositoryId);
+    return result;
+  } catch (e) {
+    console.error("[Action] listSnapshotsAction failed", e);
+    throw e;
+  }
 }
 
 export async function deleteSnapshotAction(snapshotId: string) {
