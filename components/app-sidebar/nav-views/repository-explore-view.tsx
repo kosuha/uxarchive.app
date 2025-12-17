@@ -8,7 +8,7 @@ import { SnapshotsDialog } from "@/components/snapshots-dialog"
 import { deleteRepositoryAction, forkRepositoryAction, moveRepositoryToRepositoryAction, updateRepositoryAction, forkFolderAction } from "@/app/actions/repositories"
 import { deleteRepositoryFolderAction, updateRepositoryFolderAction, moveRepositoryFolderAction, copyRepositoryFolderAction } from "@/app/actions/repository-folders"
 import { duplicateAssetAction, copyRepositoryAsFolderAction } from "@/app/actions/copy-paste"
-import { toast } from "sonner"
+import { useToast } from "@/components/ui/use-toast"
 import { moveRepositoryAssetAction, deleteRepositoryAssetAction, updateRepositoryAssetAction } from "@/app/actions/repository-assets"
 import {
     AlertDialog,
@@ -26,6 +26,7 @@ import { AssetDetailDialog } from "@/components/asset-detail-dialog"
 // Wrapper to bridge data and logic
 export function RepositoryExploreView() {
     const { repositories, folders, assets, selectedRepositoryId, setSelectedRepositoryId, currentFolderId, setCurrentFolderId, refresh, setClipboard, clipboard } = useRepositoryData()
+    const { toast } = useToast()
 
     // State for Context Menus and Dialogs
     const [snapshotRepoId, setSnapshotRepoId] = React.useState<string | null>(null)
@@ -73,13 +74,17 @@ export function RepositoryExploreView() {
         // Re-use logic or extract to hook
         const newName = prompt("Fork Name", `${repo.name} (Fork)`)
         if (newName) {
-            await forkRepositoryAction({
+            const result = await forkRepositoryAction({
                 sourceRepositoryId: repo.id,
                 workspaceId: repo.workspaceId,
                 name: newName,
                 description: repo.description
             })
-            refresh()
+            if (result.error) {
+                alert(`Failed to fork: ${result.error}`)
+            } else {
+                refresh()
+            }
         }
     }
 
@@ -89,22 +94,25 @@ export function RepositoryExploreView() {
 
         const newName = prompt("Fork Folder as Repository", `${folder.name} (Fork)`)
         if (newName) {
-             const toastId = toast.loading("Forking folder...")
+             toast({ description: "Forking folder..." })
              try {
-                await forkFolderAction({
+                const result = await forkFolderAction({
                     sourceFolderId: folder.id,
                     sourceRepositoryId: folder.repositoryId,
                     workspaceId: repo.workspaceId,
                     name: newName,
                     description: `Forked from folder '${folder.name}' in '${repo.name}'`
                 })
-                toast.dismiss(toastId)
-                toast.success("Folder forked successfully")
-                refresh()
+                
+                if (result.error) {
+                    toast({ description: `Fork failed: ${result.error}`, variant: "destructive" })
+                } else {
+                    toast({ description: "Folder forked successfully" })
+                    refresh()
+                }
             } catch (e: any) {
-                toast.dismiss(toastId)
                 console.error("Fork folder failed", e)
-                toast.error(`Fork failed: ${e.message}`)
+                toast({ description: `Fork failed: ${e.message}`, variant: "destructive" })
             }
         }
     }
@@ -215,12 +223,12 @@ export function RepositoryExploreView() {
 
     const handleCopyAsset = (assetId: string, repositoryId: string) => {
         setClipboard({ type: 'asset', id: assetId, repositoryId })
-        toast.success("Copied asset")
+        toast({ description: "Copied asset" })
     }
 
     const handleCopyFolder = (folderId: string, repositoryId: string) => {
         setClipboard({ type: 'folder', id: folderId, repositoryId })
-        toast.success("Copied folder")
+        toast({ description: "Copied folder" })
     }
 
     const handlePasteToFolder = async (folderId: string, repositoryId: string) => {
@@ -228,52 +236,46 @@ export function RepositoryExploreView() {
 
         try {
              if (clipboard.type === 'asset') {
-                toast.promise(duplicateAssetAction({
+                toast({ description: "Pasting asset..." })
+                await duplicateAssetAction({
                     assetId: clipboard.id,
                     targetRepositoryId: repositoryId,
                     targetFolderId: folderId
-                }), {
-                    loading: "Pasting asset...",
-                    success: "Asset pasted",
-                    error: "Failed to paste asset"
                 })
+                toast({ description: "Asset pasted" })
             } else if (clipboard.type === 'folder') {
-                toast.promise(copyRepositoryFolderAction({
+                toast({ description: "Pasting folder..." })
+                await copyRepositoryFolderAction({
                     sourceFolderId: clipboard.id,
                     sourceRepositoryId: clipboard.repositoryId,
                     targetRepositoryId: repositoryId,
                     targetParentId: folderId
-                }), {
-                    loading: "Pasting folder...",
-                    success: "Folder pasted",
-                    error: "Failed to paste folder"
                 })
+                toast({ description: "Folder pasted" })
             } else if (clipboard.type === 'repository') {
-                 const toastId = toast.loading("Pasting repository as folder...")
+                 toast({ description: "Pasting repository as folder..." })
                  try {
                     await copyRepositoryAsFolderAction({
                         sourceRepositoryId: clipboard.id,
                         targetRepositoryId: repositoryId,
                         targetParentId: folderId
                     })
-                    toast.dismiss(toastId)
-                    toast.success("Repository pasted as folder")
+                    toast({ description: "Repository pasted as folder" })
                  } catch (e: any) {
-                     toast.dismiss(toastId)
                      console.error("Paste failed", e)
-                     toast.error(`Paste failed: ${e.message || "Unknown error"}`)
+                     toast({ description: `Paste failed: ${e.message || "Unknown error"}`, variant: "destructive" })
                  }
             }
             await refresh()
         } catch (e) {
             console.error("Paste failed", e)
-            toast.error("Failed to paste")
+            toast({ description: "Failed to paste", variant: "destructive" })
         }
     }
 
     const handleCopyRepository = (repositoryId: string) => {
         setClipboard({ type: 'repository', id: repositoryId, repositoryId: repositoryId })
-        toast.success("Copied repository")
+        toast({ description: "Copied repository" })
     }
 
     const handlePasteToRepository = async (targetRepoId: string) => {
@@ -282,48 +284,42 @@ export function RepositoryExploreView() {
         try {
             if (clipboard.type === 'repository') {
                 // Paste Repository -> Converts to Folder in Target Repository
-                const toastId = toast.loading("Pasting repository...")
+                toast({ description: "Pasting repository..." })
                 try {
                     await copyRepositoryAsFolderAction({
                         sourceRepositoryId: clipboard.id,
                         targetRepositoryId: targetRepoId,
                         targetParentId: null // Root of target repo
                     })
-                    toast.dismiss(toastId)
-                    toast.success("Repository pasted as folder")
+                    toast({ description: "Repository pasted as folder" })
                 } catch (e: any) {
-                    toast.dismiss(toastId)
                     console.error("Paste failed", e)
-                    toast.error(`Paste failed: ${e.message || "Unknown error"}`)
+                    toast({ description: `Paste failed: ${e.message || "Unknown error"}`, variant: "destructive" })
                 }
             } else if (clipboard.type === 'asset') {
                 // Paste Asset into Repository Root
-                 toast.promise(duplicateAssetAction({
+                 toast({ description: "Pasting asset..." })
+                 await duplicateAssetAction({
                     assetId: clipboard.id,
                     targetRepositoryId: targetRepoId,
                     targetFolderId: null // Root
-                }), {
-                    loading: "Pasting asset...",
-                    success: "Asset pasted",
-                    error: "Failed to paste asset"
                 })
+                toast({ description: "Asset pasted" })
             } else if (clipboard.type === 'folder') {
                 // Paste Folder into Repository Root
-                 toast.promise(copyRepositoryFolderAction({
+                 toast({ description: "Pasting folder..." })
+                 await copyRepositoryFolderAction({
                     sourceFolderId: clipboard.id,
                     sourceRepositoryId: clipboard.repositoryId,
                     targetRepositoryId: targetRepoId,
                     targetParentId: null // Root
-                }), {
-                    loading: "Pasting folder...",
-                    success: "Folder pasted",
-                    error: "Failed to paste folder"
                 })
+                toast({ description: "Folder pasted" })
             }
             await refresh()
         } catch (e) {
             console.error("Paste failed", e)
-            toast.error("Failed to paste")
+            toast({ description: "Failed to paste", variant: "destructive" })
         }
     }
 

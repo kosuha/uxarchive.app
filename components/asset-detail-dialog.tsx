@@ -23,7 +23,8 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { MoreHorizontal, Pencil, Trash2, X, Download, FileImage, Info, ChevronLeft, ChevronRight } from "lucide-react"
-import { toast } from "sonner"
+import { Badge } from "@/components/ui/badge"
+import { useToast } from "@/components/ui/use-toast"
 import type { AssetRecord } from "@/lib/repositories/assets"
 import { updateAssetAction, deleteAssetAction } from "@/app/actions/assets"
 import { cn } from "@/lib/utils"
@@ -39,6 +40,7 @@ interface AssetDetailDialogProps {
 
 export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId, assets = [], onAssetChange }: AssetDetailDialogProps) {
     const queryClient = useQueryClient()
+    const { toast } = useToast()
     const [isRenaming, setIsRenaming] = React.useState(false)
     const [name, setName] = React.useState((asset.meta as any)?.name || "Untitled")
     const [isDeleting, setIsDeleting] = React.useState(false)
@@ -91,10 +93,11 @@ export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId, assets
             })
             // Invalidate queries to refresh the list and derived state in parents
             await queryClient.invalidateQueries({ queryKey: ["assets"] })
-            toast.success("Asset renamed")
+            toast({ description: "Asset updated" })
             setIsRenaming(false)
         } catch (error) {
-            toast.error("Failed to rename asset")
+            console.error(error)
+            toast({ description: "Failed to update asset", variant: "destructive" })
         }
     }
 
@@ -103,10 +106,10 @@ export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId, assets
             setIsDeleting(true) // Set loading state for the delete action
             await deleteAssetAction({ id: asset.id })
             await queryClient.invalidateQueries({ queryKey: ["assets"] })
-            toast.success("Asset deleted")
+            toast({ description: "Asset deleted" })
             onClose() // Close dialog on success
         } catch (error) {
-            toast.error("Failed to delete asset")
+            toast({ description: "Failed to delete asset", variant: "destructive" })
         } finally {
             setIsDeleting(false) // Reset loading state
             setShowDeleteAlert(false) // Close the alert dialog
@@ -126,7 +129,7 @@ export function AssetDetailDialog({ isOpen, onClose, asset, repositoryId, assets
             link.click();
             window.URL.revokeObjectURL(url);
         } catch (e) {
-            toast.error("Failed to download asset")
+            toast({ description: "Failed to download asset", variant: "destructive" })
         }
     }
 

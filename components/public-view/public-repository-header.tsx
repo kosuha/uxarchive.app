@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Lock, Globe, Calendar, Eye, GitFork, Folder, Heart, Copy, Check } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
-import { toast } from "sonner"
+// import { toast } from "sonner" // Removed sonner
+import { useToast } from "@/components/ui/use-toast"
 import { Button } from "../ui/button"
 import { toggleRepositoryLikeAction } from "@/app/actions/interactions"
 import { forkRepositoryToDefaultAction, forkFolderToDefaultAction } from "@/app/actions/repositories"
@@ -31,6 +32,7 @@ interface PublicRepositoryHeaderProps {
 
 export function PublicRepositoryHeader({ repository, folder, versions = [], currentVersionId }: PublicRepositoryHeaderProps) {
     const router = useRouter()
+    const { toast } = useToast()
     // Context: Folder vs Repo
     const description = folder ? (folder.description || "") : (repository.description || "")
     const title = folder ? folder.name : repository.name
@@ -44,7 +46,7 @@ export function PublicRepositoryHeader({ repository, folder, versions = [], curr
     const handleCopyLink = () => {
         const url = `${window.location.origin}/share/r/${repository.id}`
         navigator.clipboard.writeText(url)
-        toast.success("Link copied to clipboard")
+        toast({ description: "Link copied to clipboard" })
         setIsCopied(true)
         setTimeout(() => setIsCopied(false), 2000)
     }
@@ -60,9 +62,9 @@ export function PublicRepositoryHeader({ repository, folder, versions = [], curr
             try {
                 const result = await toggleRepositoryLikeAction(repository.id)
                 setHasLiked(!!result)
-                toast.success(result ? "Repository liked" : "Repository unliked")
+                toast({ description: result ? "Repository liked" : "Repository unliked" })
             } catch (error) {
-                toast.error("Failed to update like status")
+                toast({ description: "Failed to update like status", variant: "destructive" })
                 console.error(error)
             }
         })
@@ -71,31 +73,38 @@ export function PublicRepositoryHeader({ repository, folder, versions = [], curr
     const handleFork = () => {
         startForkTransition(async () => {
             try {
-                let newRepo;
+                let result;
                 if (folder) {
-                    newRepo = await forkFolderToDefaultAction({
+                    result = await forkFolderToDefaultAction({
                         sourceFolderId: folder.id,
                         sourceRepositoryId: repository.id,
                         name: `${folder.name} (Fork)`,
                         description: folder.description
                     })
                 } else {
-                    newRepo = await forkRepositoryToDefaultAction({
+                    result = await forkRepositoryToDefaultAction({
                         sourceRepositoryId: repository.id,
                         name: `${repository.name} (Fork)`,
                         description: repository.description
                     })
                 }
                 
-                toast.success("Forked successfully")
-                window.open(`/workspace?repositoryId=${newRepo.id}`, "_blank")
-            } catch (error) {
-                if (error instanceof Error && error.message.includes("authenticated")) {
-                    toast.error("Please sign in to fork")
-                } else {
-                    toast.error("Failed to fork")
+                if (result.error) {
+                    if (result.error.includes("authenticated")) {
+                        toast({ description: "Please sign in to fork", variant: "destructive" })
+                    } else {
+                        toast({ description: result.error, variant: "destructive" })
+                    }
+                    return
                 }
+
+                toast({ description: "Forked successfully" })
+                if (result.data) {
+                    window.open(`/workspace?repositoryId=${result.data.id}`, "_blank")
+                }
+            } catch (error) {
                 console.error(error)
+                toast({ description: "Failed to fork", variant: "destructive" })
             }
         })
     }

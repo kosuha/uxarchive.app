@@ -4,8 +4,8 @@ import * as React from "react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { X, Download, ChevronLeft, ChevronRight } from "lucide-react"
-import { toast } from "sonner"
 import type { AssetRecord } from "@/lib/repositories/assets"
+import { useToast } from "@/components/ui/use-toast"
 
 interface PublicAssetDetailDialogProps {
     isOpen: boolean
@@ -24,6 +24,7 @@ export function PublicAssetDetailDialog({
     onAssetChange,
     canDownload = false
 }: PublicAssetDetailDialogProps) {
+    const { toast } = useToast()
     
     // Name is just from meta, no editing
     const name = (asset.meta as any)?.name || "Untitled"
@@ -72,7 +73,10 @@ export function PublicAssetDetailDialog({
             link.click();
             window.URL.revokeObjectURL(url);
         } catch (e) {
-            toast.error("Failed to download asset")
+            toast({
+                variant: "destructive",
+                description: "Failed to download asset",
+            })
         }
     }
 

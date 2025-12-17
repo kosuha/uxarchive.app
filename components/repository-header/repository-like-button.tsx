@@ -9,7 +9,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { toast } from "sonner"
+import { useToast } from "@/components/ui/use-toast"
 import { toggleRepositoryLikeAction } from "@/app/actions/interactions"
 import { cn, formatCompactNumber } from "@/lib/utils"
 import { useSupabaseSession } from "@/lib/supabase/session-context"
@@ -32,6 +32,7 @@ export function RepositoryLikeButton({
     const { user, loading: sessionLoading } = useSupabaseSession()
     const [isPending, startTransition] = React.useTransition()
     const supabase = getBrowserSupabaseClient()
+    const { toast } = useToast()
 
     // Fetch initial liked status
     const { data: initialIsLiked = false, isLoading: isLikeStatusLoading } = useQuery({
@@ -86,7 +87,10 @@ export function RepositoryLikeButton({
 
     const handleLike = () => {
         if (!user) {
-            toast.error("Please sign in to like repositories")
+            toast({
+                description: "Please sign in to like repositories",
+                variant: "destructive",
+            })
             return
         }
 
@@ -100,8 +104,12 @@ export function RepositoryLikeButton({
         startTransition(async () => {
             try {
                 await toggleRepositoryLikeAction(repositoryId)
+                toast({ description: nextIsLiked ? "Repository liked" : "Repository unliked" })
             } catch (error) {
-                toast.error("Failed to update like status")
+                toast({
+                    description: "Failed to update like status",
+                    variant: "destructive",
+                })
                 // Revert
                 setLikedState(!nextIsLiked)
                 setCountState(initialCount) // approximate revert, ideally decrement/increment back

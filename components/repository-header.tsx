@@ -19,7 +19,8 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-import { toast } from "sonner"
+// import { toast } from "sonner" // Removed sonner
+import { useToast } from "@/components/ui/use-toast"
 import { SnapshotsDialog } from "@/components/snapshots-dialog"
 
 interface RepositoryHeaderProps {
@@ -29,6 +30,10 @@ interface RepositoryHeaderProps {
 
 export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) {
     const { planData } = useRepositoryData()
+    const limit = planData?.plan.limits.maxPrivateRepositories ?? Infinity
+    const usage = planData?.usage.privateRepositories ?? 0
+    const canCreatePrivate = usage < limit
+    const { toast } = useToast()
     // Determine initial description based on context (folder vs repo)
     const initialDescription = folder ? (folder.description || "") : (repository.description || "")
     const initialTitle = folder ? folder.name : repository.name
@@ -70,9 +75,9 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
                     })
                     queryClient.invalidateQueries({ queryKey: ["repositories"] })
                 }
-                toast.success("Description updated")
+                toast({ description: "Description updated" })
             } catch (error) {
-                toast.error("Failed to update description")
+                toast({ description: "Failed to update description", variant: "destructive" })
                 setDescription(currentDescription) // Revert
             }
         }
@@ -82,12 +87,11 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
         // Folder visibility is inherited for now, so this is only for repo
         if (folder) return 
 
-        const limit = planData?.plan.limits.maxPrivateRepositories ?? Infinity
-        const usage = planData?.usage.privateRepositories ?? 0
-        const canCreatePrivate = usage < limit
+        if (folder) return 
+
 
         if (!isPublic && !canCreatePrivate) {
-            toast.error(`You have reached the limit of ${limit} private repositories.`)
+            toast({ description: `You have reached the limit of ${limit} private repositories.`, variant: "destructive" })
             return
         }
 
@@ -101,16 +105,16 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
             })
             queryClient.invalidateQueries({ queryKey: ["repositories"] })
             queryClient.invalidateQueries({ queryKey: ["plan-limits"] })
-            toast.success(`Repository is now ${isPublic ? 'Public' : 'Private'}`)
+            toast({ description: `Repository is now ${isPublic ? 'Public' : 'Private'}` })
         } catch (error) {
-            toast.error("Failed to update visibility")
+            toast({ description: "Failed to update visibility", variant: "destructive" })
         }
     }
 
     const handleCopyLink = () => {
         const url = `${window.location.origin}/share/r/${repository.id}`
         navigator.clipboard.writeText(url)
-        toast.success("Link copied to clipboard")
+        toast({ description: "Link copied to clipboard" })
         setIsCopied(true)
         setTimeout(() => setIsCopied(false), 2000)
     }
@@ -135,9 +139,9 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
                     })
                     queryClient.invalidateQueries({ queryKey: ["repositories"] })
                 }
-                toast.success("Name updated")
+                toast({ description: "Name updated" })
             } catch (error) {
-                toast.error("Failed to update name")
+                toast({ description: "Failed to update name", variant: "destructive" })
                 setTitleState(currentTitle) // Revert
             }
         } else if (titleState.trim() === "") {
@@ -148,9 +152,7 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
     const title = folder ? folder.name : repository.name
     const creationDate = folder ? folder.createdAt : repository.createdAt
 
-    const limit = planData?.plan.limits.maxPrivateRepositories ?? Infinity
-    const usage = planData?.usage.privateRepositories ?? 0
-    const canCreatePrivate = usage < limit
+
 
 
     const [showHistory, setShowHistory] = React.useState(false)

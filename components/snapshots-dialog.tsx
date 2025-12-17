@@ -30,7 +30,8 @@ import { SnapshotTreeViewer } from "./snapshot-tree-viewer"
 import { SnapshotFolderView } from "./snapshot-folder-view"
 import { Trash2, RotateCcw, Plus, History, FileImage, Folder, PanelLeft, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { toast } from "sonner"
+// import { toast } from "sonner" // Removed sonner
+import { useToast } from "@/components/ui/use-toast"
 
 interface SnapshotsDialogProps {
     repositoryId: string
@@ -40,6 +41,7 @@ interface SnapshotsDialogProps {
 }
 
 export function SnapshotsDialog({ repositoryId, repositoryName, open, onOpenChange }: SnapshotsDialogProps) {
+    const { toast } = useToast()
     const [snapshots, setSnapshots] = React.useState<SnapshotRecord[]>([])
     const [loading, setLoading] = React.useState(false)
     // Separate create state
@@ -76,7 +78,7 @@ export function SnapshotsDialog({ repositoryId, repositoryName, open, onOpenChan
             setSnapshots(data)
         } catch (e) {
             console.error(e)
-            toast.error("Failed to load snapshots")
+            toast({ description: "Failed to load snapshots", variant: "destructive" })
         } finally {
             setLoading(false)
         }
@@ -100,7 +102,7 @@ export function SnapshotsDialog({ repositoryId, repositoryName, open, onOpenChan
                 setSnapshotTree(tree)
             } catch (e) {
                 console.error(e)
-                toast.error("Failed to load snapshot details")
+                toast({ description: "Failed to load snapshot details", variant: "destructive" })
             } finally {
                 setTreeLoading(false)
             }
@@ -116,11 +118,11 @@ export function SnapshotsDialog({ repositoryId, repositoryName, open, onOpenChan
                 versionName: versionName.trim(),
                 description: description.trim() || undefined
             })
-            toast.success("Snapshot created")
+            toast({ description: "Snapshot created" })
             await fetchSnapshots()
         } catch (e) {
             console.error(e)
-            toast.error("Failed to create snapshot")
+            toast({ description: "Failed to create snapshot", variant: "destructive" })
         } finally {
             setCreating(false)
         }
@@ -131,12 +133,12 @@ export function SnapshotsDialog({ repositoryId, repositoryName, open, onOpenChan
 
         try {
             await deleteSnapshotAction(snapshotId)
-            toast.success("Snapshot deleted")
+            toast({ description: "Snapshot deleted" })
             if (selectedSnapshot?.id === snapshotId) setSelectedSnapshot(null)
             await fetchSnapshots()
         } catch (e) {
             console.error(e)
-            toast.error("Failed to delete snapshot")
+            toast({ description: "Failed to delete snapshot", variant: "destructive" })
         }
     }
 
@@ -146,12 +148,12 @@ export function SnapshotsDialog({ repositoryId, repositoryName, open, onOpenChan
 
         try {
             await restoreSnapshotAction(repositoryId, selectedSnapshot.id)
-            toast.success("Repository restored to " + selectedSnapshot.versionName)
+            toast({ description: "Repository restored to " + selectedSnapshot.versionName })
             onOpenChange(false) // Close dialog on success so user sees changes
             window.location.reload() // Force reload to ensure all state is fresh
         } catch (e) {
             console.error(e)
-            toast.error("Failed to restore snapshot")
+            toast({ description: "Failed to restore snapshot", variant: "destructive" })
         }
     }
 

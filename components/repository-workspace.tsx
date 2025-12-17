@@ -2,13 +2,13 @@
 
 import * as React from "react"
 import { useRepositoryData } from "@/components/repository-data-context"
-import { Upload as UploadIcon, Loader2, FolderPlus, ChevronRight, PanelLeft } from "lucide-react"
+import { Folder, Upload, Plus, File, Trash2, ArrowLeft, MoreHorizontal, ArrowUp, ChevronRight, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useQueryClient, useQuery } from "@tanstack/react-query"
 import { createAssetAction, listAssetsAction } from "@/app/actions/assets"
 import { Button } from "@/components/ui/button"
 import { getBrowserSupabaseClient } from "@/lib/supabase/browser-client"
-import { toast } from "sonner"
+import { useToast } from "@/components/ui/use-toast"
 import { CreateFolderDialog } from "./create-folder-dialog"
 import { RepositoryFolderSection } from "./repository-folder-section"
 import { AssetDetailDialog } from "@/components/asset-detail-dialog"
@@ -31,6 +31,7 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
         refresh
     } = useRepositoryData()
     const queryClient = useQueryClient()
+    const { toast } = useToast()
 
     const currentRepository = repositories.find(r => r.id === selectedRepositoryId)
     const currentFolder = folders.find(f => f.id === currentFolderId)
@@ -39,33 +40,27 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
     const handlePaste = async (targetFolderId: string | null) => {
         if (!clipboard || !selectedRepositoryId) return
         
+        const { id: pasteToastId, update } = toast({ description: "Pasting from clipboard...", duration: 99999 }) // Keep toast open
         try {
             if (clipboard.type === 'asset') {
-                toast.promise(duplicateAssetAction({
+                await duplicateAssetAction({
                     assetId: clipboard.id,
                     targetRepositoryId: selectedRepositoryId,
                     targetFolderId
-                }), {
-                    loading: "Pasting asset...",
-                    success: "Asset pasted",
-                    error: "Failed to paste asset"
                 })
             } else if (clipboard.type === 'folder') {
-                toast.promise(copyRepositoryFolderAction({
+                await copyRepositoryFolderAction({
                     sourceFolderId: clipboard.id,
                     sourceRepositoryId: clipboard.repositoryId,
                     targetRepositoryId: selectedRepositoryId,
                     targetParentId: targetFolderId
-                }), {
-                    loading: "Pasting folder...",
-                    success: "Folder pasted",
-                    error: "Failed to paste folder"
                 })
             }
+            update({ description: "Pasted successfully", duration: 3000, id: pasteToastId })
             await refresh() 
         } catch (e) {
             console.error("Paste failed", e)
-            toast.error("Failed to paste")
+            update({ description: "Failed to paste", variant: "destructive", duration: 3000, id: pasteToastId })
         }
     }
 
@@ -188,9 +183,9 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
         const failed = results.filter(r => r.status === 'rejected')
 
         if (failed.length > 0) {
-            toast.error(`Failed to upload ${failed.length} images`)
+            toast({ description: `Failed to upload ${failed.length} images`, variant: "destructive" })
         } else {
-            toast.success(`Uploaded ${results.length} images`)
+            toast({ description: `Uploaded ${results.length} images` })
         }
 
         setUploading(false)
@@ -252,7 +247,7 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                         parentId={currentFolderId || null}
                         trigger={
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                                <FolderPlus className="w-4 h-4" />
+                                <Plus className="w-4 h-4" />
                             </Button>
                         }
                     />
@@ -272,7 +267,7 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                         disabled={uploading}
                         className="bg-[#4ADE80] hover:bg-[#22c55e] text-black font-medium gap-2 rounded-full px-4 h-8 text-xs shadow-none"
                     >
-                        {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <UploadIcon className="w-3 h-3" />}
+                        {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
                         {uploading ? "Uploading" : "Upload"}
                     </Button>
                 </div>
@@ -382,13 +377,13 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                                         type="folder"
                                         onCopy={() => {
                                             setClipboard({ type: 'folder', id: folder.id, repositoryId: folder.repositoryId })
-                                            toast.success("Copied folder to clipboard")
+                                            toast({ description: "Copied folder to clipboard" })
                                         }}
                                         onPaste={clipboard ? () => handlePaste(folder.id) : undefined}
                                         onDelete={async () => {
                                             if (confirm(`Are you sure you want to delete folder ${folder.name}?`)) {
                                                 await deleteRepositoryFolderAction({ id: folder.id, repositoryId: folder.repositoryId })
-                                                toast.success("Folder deleted")
+                                                toast({ description: "Folder deleted" })
                                                 refresh()
                                             }
                                         }}

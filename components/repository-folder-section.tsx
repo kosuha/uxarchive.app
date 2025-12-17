@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query"
 import { listAssetsAction } from "@/app/actions/assets"
 import { useDraggableScroll } from "@/hooks/use-draggable-scroll"
 import { useRepositoryData, RepositoryDataContext } from "@/components/repository-data-context"
-import { toast } from "sonner"
+import { useToast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
 import { ItemContextMenu } from "./item-context-menu"
 import { FileImage, Loader2 } from "lucide-react"
@@ -38,6 +38,7 @@ export function RepositoryFolderSection({
 
     const assets = propsAssets || fetchedAssets
     const { ref, events, isDragging } = useDraggableScroll()
+    const { toast } = useToast()
     
     // safe usage of context since this might be used in public view without provider
     const context = React.useContext(RepositoryDataContext)
@@ -90,7 +91,7 @@ export function RepositoryFolderSection({
                             onCopy={() => {
                                 if (setClipboard) {
                                     setClipboard({ type: 'asset', id: asset.id, repositoryId })
-                                    toast.success("Copied asset to clipboard")
+                                    toast({ description: "Copied asset to clipboard" })
                                 }
                             }}
                         >

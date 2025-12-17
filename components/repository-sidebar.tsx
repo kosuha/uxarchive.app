@@ -22,12 +22,13 @@ import { SnapshotsDialog } from "./snapshots-dialog"
 import { deleteRepositoryAction, forkRepositoryAction } from "@/app/actions/repositories"
 import { listAssetsAction } from "@/app/actions/assets"
 import { useQuery } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { useToast } from "@/components/ui/use-toast"
 import { duplicateAssetAction } from "@/app/actions/copy-paste"
 import { copyRepositoryFolderAction, deleteRepositoryFolderAction } from "@/app/actions/repository-folders"
 
 export function RepositorySidebar({ className }: { className?: string }) {
     const { repositories, selectedRepositoryId, setSelectedRepositoryId, folders, refresh, setCurrentFolderId } = useRepositoryData()
+    const { toast } = useToast()
     const [snapshotRepoId, setSnapshotRepoId] = React.useState<string | null>(null) // State to control which repo's snapshots to show
 
     // Actually, I should update context to expose workspaceId.
@@ -49,18 +50,18 @@ export function RepositorySidebar({ className }: { className?: string }) {
         const newName = prompt("Enter name for forked repository:", `${repo.name} (Fork)`)
         if (!newName) return
 
-        try {
-            await forkRepositoryAction({
-                sourceRepositoryId: repo.id,
-                workspaceId,
-                name: newName,
-                description: repo.description
-            })
-            await refresh()
-        } catch (e) {
-            console.error("Fork failed", e)
-            alert("Failed to fork repository")
+        const result = await forkRepositoryAction({
+            sourceRepositoryId: repo.id,
+            workspaceId,
+            name: newName,
+            description: repo.description
+        })
+
+        if (result.error) {
+            alert(`Failed to fork repository: ${result.error}`)
+            return
         }
+        await refresh()
     }
 
     return (
@@ -160,6 +161,7 @@ function FolderTree({ repositoryId, folders }: { repositoryId: string, folders: 
 
 function RootAssets({ repositoryId }: { repositoryId: string }) {
     const { setClipboard } = useRepositoryData()
+    const { toast } = useToast()
     const { data: assets = [] } = useQuery({
         queryKey: ["assets", repositoryId, "root"],
         queryFn: async () => listAssetsAction({ repositoryId, folderId: null }),
@@ -176,7 +178,7 @@ function RootAssets({ repositoryId }: { repositoryId: string }) {
                     type="asset"
                     onCopy={() => {
                         setClipboard({ type: 'asset', id: asset.id, repositoryId })
-                        toast.success("Copied asset to clipboard")
+                        toast({ description: "Copied asset to clipboard" })
                     }}
                 >
                     <SidebarMenuButton className="pl-6 h-8 text-muted-foreground">
@@ -200,6 +202,7 @@ function SidebarFolderItem({
 }) {
     const [isOpen, setIsOpen] = React.useState(false)
     const { setClipboard, refresh, clipboard } = useRepositoryData()
+    const { toast } = useToast()
     
     const children = allFolders.filter(f => f.parentId === folder.id).sort((a, b) => a.order - b.order)
 
@@ -217,43 +220,43 @@ function SidebarFolderItem({
             type="folder"
             onCopy={() => {
                 setClipboard({ type: 'folder', id: folder.id, repositoryId })
-                toast.success("Copied folder to clipboard")
+                toast({ description: "Copied folder to clipboard" })
             }}
             onDelete={async () => {
                 if (confirm(`Are you sure you want to delete folder ${folder.name}?`)) {
                     await deleteRepositoryFolderAction({ id: folder.id, repositoryId })
-                    toast.success("Folder deleted")
+                    toast({ description: "Folder deleted" })
                     refresh()
                 }
             }}
             onPaste={clipboard ? async () => {
                 try {
                     if (clipboard.type === 'asset') {
-                        toast.promise(duplicateAssetAction({
+                        // Toast promise removed for simplicity, or we can use a library that supports it or custom logic
+                        // shadcn toast doesn't support promise chaining out of the box like sonner
+                        // We will simplify to loading/success/error manually if needed, or just await
+                        toast({ description: "Pasting asset..." })
+                        await duplicateAssetAction({
                             assetId: clipboard.id,
                             targetRepositoryId: repositoryId,
                             targetFolderId: folder.id
-                        }), {
-                            loading: "Pasting asset...",
-                            success: "Asset pasted",
-                            error: "Failed to paste asset"
                         })
+                        toast({ description: "Asset pasted" })
+
                     } else if (clipboard.type === 'folder') {
-                        toast.promise(copyRepositoryFolderAction({
+                        toast({ description: "Pasting folder..." })
+                        await copyRepositoryFolderAction({
                             sourceFolderId: clipboard.id,
                             sourceRepositoryId: clipboard.repositoryId,
                             targetRepositoryId: repositoryId,
                             targetParentId: folder.id
-                        }), {
-                            loading: "Pasting folder...",
-                            success: "Folder pasted",
-                            error: "Failed to paste folder"
                         })
+                        toast({ description: "Folder pasted" })
                     }
                     await refresh()
                 } catch (e) {
                     console.error("Paste failed", e)
-                    toast.error("Failed to paste")
+                    toast({ description: "Failed to paste", variant: "destructive" })
                 }
             } : undefined}
         >
@@ -301,7 +304,7 @@ function SidebarFolderItem({
                             type="asset"
                             onCopy={() => {
                                 setClipboard({ type: 'asset', id: asset.id, repositoryId })
-                                toast.success("Copied asset to clipboard")
+                                toast({ description: "Copied asset to clipboard" })
                             }}
                         >
                             <SidebarMenuButton className="pl-6 h-8 text-muted-foreground">

@@ -98,84 +98,94 @@ export async function forkRepositoryAction(input: {
   name: string;
   description?: string | null;
 }) {
-  const supabase = await createActionSupabaseClient();
-  const user = await requireAuthenticatedUser(supabase);
+  try {
+    const supabase = await createActionSupabaseClient();
+    const user = await requireAuthenticatedUser(supabase);
 
-  // Check limits
-  await ensureForkAllowed(supabase, user.id);
-  await ensureRepositoryCreationAllowed(supabase, user.id, input.workspaceId);
-  await ensurePrivateRepositoryAllowed(supabase, user.id, input.workspaceId);
+    // Check limits
+    await ensureForkAllowed(supabase, user.id);
+    await ensureRepositoryCreationAllowed(supabase, user.id, input.workspaceId);
+    await ensurePrivateRepositoryAllowed(supabase, user.id, input.workspaceId);
 
-  // 1. Create Forked Repository Record
-  const newRepo = await createRepository(supabase, {
-    workspaceId: input.workspaceId,
-    name: input.name,
-    description: input.description,
-    isPublic: false, // Forks usually private by default?
-    forkOriginId: input.sourceRepositoryId,
-  });
+    // 1. Create Forked Repository Record
+    const newRepo = await createRepository(supabase, {
+      workspaceId: input.workspaceId,
+      name: input.name,
+      description: input.description,
+      isPublic: false, // Forks usually private by default?
+      forkOriginId: input.sourceRepositoryId,
+    });
 
-  // 2. Increment Fork Count on Source
-  // Logic: fetch source, update +1 only if NOT a self-fork (user is not member of source workspace).
-  const { data: sourceRepo } = await supabase.from("repositories").select(
-    "fork_count, workspace_id",
-  ).eq("id", input.sourceRepositoryId).single();
+    // 2. Increment Fork Count on Source
+    // Logic: fetch source, update +1 only if NOT a self-fork (user is not member of source workspace).
+    const { data: sourceRepo } = await supabase.from("repositories").select(
+      "fork_count, workspace_id",
+    ).eq("id", input.sourceRepositoryId).single();
 
-  if (sourceRepo) {
-    // Check if user is member of source workspace
-    const { data: membership } = await supabase
-      .from("workspace_members")
-      .select("workspace_id")
-      .eq("workspace_id", sourceRepo.workspace_id)
-      .eq("profile_id", user.id)
-      .maybeSingle();
+    if (sourceRepo) {
+      // Check if user is member of source workspace
+      const { data: membership } = await supabase
+        .from("workspace_members")
+        .select("workspace_id")
+        .eq("workspace_id", sourceRepo.workspace_id)
+        .eq("profile_id", user.id)
+        .maybeSingle();
 
-    const isSelfFork = !!membership;
+      const isSelfFork = !!membership;
 
-    if (!isSelfFork) {
-      await supabase.from("repositories").update({
-        fork_count: (sourceRepo.fork_count || 0) + 1,
-      }).eq("id", input.sourceRepositoryId);
+      if (!isSelfFork) {
+        await supabase.from("repositories").update({
+          fork_count: (sourceRepo.fork_count || 0) + 1,
+        }).eq("id", input.sourceRepositoryId);
+      }
     }
-  }
 
-  // 3. Copy Content
-  // 3.1. Copy Root Assets
-  const { data: rootAssets } = await supabase
-    .from("assets")
-    .select()
-    .eq("repository_id", input.sourceRepositoryId)
-    .is("folder_id", null);
+    // 3. Copy Content
+    // 3.1. Copy Root Assets
+    const { data: rootAssets } = await supabase
+      .from("assets")
+      .select()
+      .eq("repository_id", input.sourceRepositoryId)
+      .is("folder_id", null);
 
-  if (rootAssets) {
-    for (const asset of rootAssets) {
-      await createAsset(supabase, {
-        repositoryId: newRepo.id,
-        folderId: null,
-        storagePath: asset.storage_path,
-        width: asset.width,
-        height: asset.height,
-        meta: asset.meta,
-        order: asset.order,
-      });
+    if (rootAssets) {
+      for (const asset of rootAssets) {
+        await createAsset(supabase, {
+          repositoryId: newRepo.id,
+          folderId: null,
+          storagePath: asset.storage_path,
+          width: asset.width,
+          height: asset.height,
+          meta: asset.meta,
+          order: asset.order,
+        });
+      }
     }
+
+    // 3.2. Copy Folders
+    const allSourceFolders = await listRepositoryFolders(supabase, {
+      repositoryId: input.sourceRepositoryId,
+    });
+    const rootFolders = allSourceFolders.filter((f) => !f.parentId);
+
+    await copyFoldersRecursively(supabase, {
+      sourceRepositoryId: input.sourceRepositoryId,
+      targetRepositoryId: newRepo.id,
+      targetParentId: null,
+      sourceFolderIds: rootFolders.map((f) => f.id),
+    });
+
+    revalidatePath("/", "layout");
+    return { data: newRepo, error: null };
+  } catch (error) {
+    console.error("Fork repository error:", error);
+    return {
+      data: null,
+      error: error instanceof Error
+        ? error.message
+        : "Failed to fork repository",
+    };
   }
-
-  // 3.2. Copy Folders
-  const allSourceFolders = await listRepositoryFolders(supabase, {
-    repositoryId: input.sourceRepositoryId,
-  });
-  const rootFolders = allSourceFolders.filter((f) => !f.parentId);
-
-  await copyFoldersRecursively(supabase, {
-    sourceRepositoryId: input.sourceRepositoryId,
-    targetRepositoryId: newRepo.id,
-    targetParentId: null,
-    sourceFolderIds: rootFolders.map((f) => f.id),
-  });
-
-  revalidatePath("/", "layout");
-  return newRepo;
 }
 
 export async function forkRepositoryToDefaultAction(input: {
@@ -183,30 +193,40 @@ export async function forkRepositoryToDefaultAction(input: {
   name: string;
   description?: string | null;
 }) {
-  const supabase = await createActionSupabaseClient();
-  const user = await requireAuthenticatedUser(supabase);
+  try {
+    const supabase = await createActionSupabaseClient();
+    const user = await requireAuthenticatedUser(supabase);
 
-  // 1. Find a target workspace for the user
-  // We pick the first workspace they are a member of (Owner/Editor preference?)
-  // Reusing the logic from getWorkspaceMembershipAction basically
-  const { data: membership } = await supabase
-    .from("workspace_members")
-    .select("workspace_id")
-    .eq("profile_id", user.id)
-    .order("role", { ascending: true }) // owner first
-    .limit(1)
-    .single();
+    // 1. Find a target workspace for the user
+    // We pick the first workspace they are a member of (Owner/Editor preference?)
+    // Reusing the logic from getWorkspaceMembershipAction basically
+    const { data: membership } = await supabase
+      .from("workspace_members")
+      .select("workspace_id")
+      .eq("profile_id", user.id)
+      .order("role", { ascending: true }) // owner first
+      .limit(1)
+      .single();
 
-  if (!membership) {
-    throw new Error("You must belong to a workspace to fork repositories.");
+    if (!membership) {
+      throw new Error("You must belong to a workspace to fork repositories.");
+    }
+
+    return forkRepositoryAction({
+      sourceRepositoryId: input.sourceRepositoryId,
+      workspaceId: membership.workspace_id,
+      name: input.name,
+      description: input.description,
+    });
+  } catch (error) {
+    console.error("Fork repository to default error:", error);
+    return {
+      data: null,
+      error: error instanceof Error
+        ? error.message
+        : "Failed to fork repository",
+    };
   }
-
-  return forkRepositoryAction({
-    sourceRepositoryId: input.sourceRepositoryId,
-    workspaceId: membership.workspace_id,
-    name: input.name,
-    description: input.description,
-  });
 }
 
 export async function forkFolderAction(input: {
@@ -216,87 +236,95 @@ export async function forkFolderAction(input: {
   name: string;
   description?: string | null;
 }) {
-  const supabase = await createActionSupabaseClient();
-  const user = await requireAuthenticatedUser(supabase);
+  try {
+    const supabase = await createActionSupabaseClient();
+    const user = await requireAuthenticatedUser(supabase);
 
-  // Check limits
-  await ensureForkAllowed(supabase, user.id);
-  await ensureRepositoryCreationAllowed(supabase, user.id, input.workspaceId);
-  await ensurePrivateRepositoryAllowed(supabase, user.id, input.workspaceId);
+    // Check limits
+    await ensureForkAllowed(supabase, user.id);
+    await ensureRepositoryCreationAllowed(supabase, user.id, input.workspaceId);
+    await ensurePrivateRepositoryAllowed(supabase, user.id, input.workspaceId);
 
-  // 1. Create Forked Repository
-  const newRepo = await createRepository(supabase, {
-    workspaceId: input.workspaceId,
-    name: input.name,
-    description: input.description,
-    isPublic: false,
-    forkOriginId: input.sourceRepositoryId,
-  });
+    // 1. Create Forked Repository
+    const newRepo = await createRepository(supabase, {
+      workspaceId: input.workspaceId,
+      name: input.name,
+      description: input.description,
+      isPublic: false,
+      forkOriginId: input.sourceRepositoryId,
+    });
 
-  // 2. Increment Fork Count on Source Repo (optional but good for tracking)
-  const { data: sourceRepo } = await supabase.from("repositories").select(
-    "fork_count, workspace_id",
-  ).eq("id", input.sourceRepositoryId).single();
+    // 2. Increment Fork Count on Source Repo (optional but good for tracking)
+    const { data: sourceRepo } = await supabase.from("repositories").select(
+      "fork_count, workspace_id",
+    ).eq("id", input.sourceRepositoryId).single();
 
-  if (sourceRepo) {
-    // Check if user is member of source workspace
-    const { data: membership } = await supabase
-      .from("workspace_members")
-      .select("workspace_id")
-      .eq("workspace_id", sourceRepo.workspace_id)
-      .eq("profile_id", user.id)
-      .maybeSingle();
+    if (sourceRepo) {
+      // Check if user is member of source workspace
+      const { data: membership } = await supabase
+        .from("workspace_members")
+        .select("workspace_id")
+        .eq("workspace_id", sourceRepo.workspace_id)
+        .eq("profile_id", user.id)
+        .maybeSingle();
 
-    const isSelfFork = !!membership;
+      const isSelfFork = !!membership;
 
-    if (!isSelfFork) {
-      await supabase.from("repositories").update({
-        fork_count: (sourceRepo.fork_count || 0) + 1,
-      }).eq("id", input.sourceRepositoryId);
+      if (!isSelfFork) {
+        await supabase.from("repositories").update({
+          fork_count: (sourceRepo.fork_count || 0) + 1,
+        }).eq("id", input.sourceRepositoryId);
+      }
     }
-  }
 
-  // 3. Copy Content (Promote Folder Content to Root)
+    // 3. Copy Content (Promote Folder Content to Root)
 
-  // 3.1. Copy Assets directly in the source folder -> New Repo Root
-  const { data: folderAssets } = await supabase
-    .from("assets")
-    .select()
-    .eq("folder_id", input.sourceFolderId);
+    // 3.1. Copy Assets directly in the source folder -> New Repo Root
+    const { data: folderAssets } = await supabase
+      .from("assets")
+      .select()
+      .eq("folder_id", input.sourceFolderId);
 
-  if (folderAssets) {
-    for (const asset of folderAssets) {
-      await createAsset(supabase, {
-        repositoryId: newRepo.id,
-        folderId: null, // Promote to root
-        storagePath: asset.storage_path,
-        width: asset.width,
-        height: asset.height,
-        meta: asset.meta,
-        order: asset.order,
+    if (folderAssets) {
+      for (const asset of folderAssets) {
+        await createAsset(supabase, {
+          repositoryId: newRepo.id,
+          folderId: null, // Promote to root
+          storagePath: asset.storage_path,
+          width: asset.width,
+          height: asset.height,
+          meta: asset.meta,
+          order: asset.order,
+        });
+      }
+    }
+
+    // 3.2. Copy Subfolders -> New Repo Root Folders
+    const allRepoFolders = await listRepositoryFolders(supabase, {
+      repositoryId: input.sourceRepositoryId,
+    });
+    const directChildren = allRepoFolders.filter((f) =>
+      f.parentId === input.sourceFolderId
+    );
+
+    if (directChildren.length > 0) {
+      await copyFoldersRecursively(supabase, {
+        sourceRepositoryId: input.sourceRepositoryId,
+        targetRepositoryId: newRepo.id,
+        targetParentId: null, // Promote to root
+        sourceFolderIds: directChildren.map((f) => f.id),
       });
     }
+
+    revalidatePath("/", "layout");
+    return { data: newRepo, error: null };
+  } catch (error) {
+    console.error("Fork folder error:", error);
+    return {
+      data: null,
+      error: error instanceof Error ? error.message : "Failed to fork folder",
+    };
   }
-
-  // 3.2. Copy Subfolders -> New Repo Root Folders
-  const allRepoFolders = await listRepositoryFolders(supabase, {
-    repositoryId: input.sourceRepositoryId,
-  });
-  const directChildren = allRepoFolders.filter((f) =>
-    f.parentId === input.sourceFolderId
-  );
-
-  if (directChildren.length > 0) {
-    await copyFoldersRecursively(supabase, {
-      sourceRepositoryId: input.sourceRepositoryId,
-      targetRepositoryId: newRepo.id,
-      targetParentId: null, // Promote to root
-      sourceFolderIds: directChildren.map((f) => f.id),
-    });
-  }
-
-  revalidatePath("/", "layout");
-  return newRepo;
 }
 
 export async function forkFolderToDefaultAction(input: {
@@ -305,28 +333,36 @@ export async function forkFolderToDefaultAction(input: {
   name: string;
   description?: string | null;
 }) {
-  const supabase = await createActionSupabaseClient();
-  const user = await requireAuthenticatedUser(supabase);
+  try {
+    const supabase = await createActionSupabaseClient();
+    const user = await requireAuthenticatedUser(supabase);
 
-  const { data: membership } = await supabase
-    .from("workspace_members")
-    .select("workspace_id")
-    .eq("profile_id", user.id)
-    .order("role", { ascending: true })
-    .limit(1)
-    .single();
+    const { data: membership } = await supabase
+      .from("workspace_members")
+      .select("workspace_id")
+      .eq("profile_id", user.id)
+      .order("role", { ascending: true })
+      .limit(1)
+      .single();
 
-  if (!membership) {
-    throw new Error("You must belong to a workspace to fork folders.");
+    if (!membership) {
+      throw new Error("You must belong to a workspace to fork folders.");
+    }
+
+    return forkFolderAction({
+      sourceFolderId: input.sourceFolderId,
+      sourceRepositoryId: input.sourceRepositoryId,
+      workspaceId: membership.workspace_id,
+      name: input.name,
+      description: input.description,
+    });
+  } catch (error) {
+    console.error("Fork folder to default error:", error);
+    return {
+      data: null,
+      error: error instanceof Error ? error.message : "Failed to fork folder",
+    };
   }
-
-  return forkFolderAction({
-    sourceFolderId: input.sourceFolderId,
-    sourceRepositoryId: input.sourceRepositoryId,
-    workspaceId: membership.workspace_id,
-    name: input.name,
-    description: input.description,
-  });
 }
 
 export async function moveRepositoryToRepositoryAction(input: {
