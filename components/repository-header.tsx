@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { SnapshotsDialog } from "@/components/snapshots-dialog"
 
 interface RepositoryHeaderProps {
     repository: RepositoryRecord
@@ -151,119 +152,139 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
     const usage = planData?.usage.privateRepositories ?? 0
     const canCreatePrivate = usage < limit
 
+
+    const [showHistory, setShowHistory] = React.useState(false)
+
     return (
-        <div className="px-6 py-8 border-b border-border/40 space-y-4">
-            <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                    {folder && <Folder className="w-6 h-6 text-muted-foreground/50 shrink-0" />}
-                    <div className="flex-1 min-w-0">
-                        <Input
-                            value={titleState}
-                            onChange={(e) => setTitleState(e.target.value)}
-                            onBlur={handleTitleBlur}
-                            className="text-2xl md:text-2xl font-semibold tracking-tight h-auto p-0 border-none hover:bg-transparent focus-visible:ring-0 px-1 -ml-1 w-full truncate shadow-none"
-                        />
+        <>
+            <div className="px-6 py-8 border-b border-border/40 space-y-4">
+                <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                        {folder && <Folder className="w-6 h-6 text-muted-foreground/50 shrink-0" />}
+                        <div className="flex-1 min-w-0">
+                            <Input
+                                value={titleState}
+                                onChange={(e) => setTitleState(e.target.value)}
+                                onBlur={handleTitleBlur}
+                                className="text-2xl md:text-2xl font-semibold tracking-tight h-auto p-0 border-none hover:bg-transparent focus-visible:ring-0 px-1 -ml-1 w-full truncate shadow-none"
+                            />
+                        </div>
+                        
+                        {!folder && (
+                            <div className="flex items-center gap-2 shrink-0">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Badge 
+                                            variant="secondary" 
+                                            className={cn(
+                                                "gap-1.5 h-6 px-2.5 font-normal text-muted-foreground cursor-pointer hover:bg-secondary/80 transition-colors",
+                                                repository.isPublic ? "text-green-600 bg-green-500/10 hover:bg-green-500/20" : ""
+                                            )}
+                                        >
+                                            {repository.isPublic ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                                            {repository.isPublic ? "Public" : "Private"}
+                                            <ChevronDown className="w-3 h-3 opacity-50 ml-1" />
+                                        </Badge>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start">
+                                        <DropdownMenuItem onClick={() => handleVisibilityChange(true)}>
+                                            <Globe className="w-4 h-4 mr-2" />
+                                            Public
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem 
+                                            onClick={() => handleVisibilityChange(false)}
+                                            disabled={!canCreatePrivate && repository.isPublic}
+                                        >
+                                            <Lock className="w-4 h-4 mr-2" />
+                                            Private
+                                            {!canCreatePrivate && repository.isPublic && (
+                                                <span className="ml-2 text-[10px] text-muted-foreground">(Limit Reached)</span>
+                                            )}
+                                        </DropdownMenuItem>
+                                        {!canCreatePrivate && repository.isPublic && (
+                                            <div className="px-2 py-1.5 text-xs text-muted-foreground w-64">
+                                                Free plan is limited to {planData?.plan.limits.maxPrivateRepositories ?? 3} private repositories.
+                                            </div>
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+
+                                <button
+                                    onClick={() => setShowHistory(true)}
+                                    className="flex items-center gap-1.5 h-6 px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/80 rounded-full transition-all duration-200"
+                                    title="Version History"
+                                >
+                                    <Calendar className="w-3 h-3" />
+                                    History
+                                </button>
+
+                                {repository.isPublic && (
+                                    <button
+                                        onClick={handleCopyLink}
+                                        className={cn(
+                                            "flex items-center gap-1.5 h-6 px-2.5 text-xs font-medium rounded-full transition-all duration-200",
+                                            isCopied 
+                                                ? "text-green-600 bg-green-500/10 cursor-default" 
+                                                : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+                                        )}
+                                        title="Copy public link"
+                                        disabled={isCopied}
+                                    >
+                                        {isCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                        {isCopied ? "Copied" : "Copy Link"}
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
                     
-                    {!folder && (
-                        <div className="flex items-center gap-2 shrink-0">
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Badge 
-                                        variant="secondary" 
-                                        className={cn(
-                                            "gap-1.5 h-6 px-2.5 font-normal text-muted-foreground cursor-pointer hover:bg-secondary/80 transition-colors",
-                                            repository.isPublic ? "text-green-600 bg-green-500/10 hover:bg-green-500/20" : ""
-                                        )}
-                                    >
-                                        {repository.isPublic ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                                        {repository.isPublic ? "Public" : "Private"}
-                                        <ChevronDown className="w-3 h-3 opacity-50 ml-1" />
-                                    </Badge>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="start">
-                                    <DropdownMenuItem onClick={() => handleVisibilityChange(true)}>
-                                        <Globe className="w-4 h-4 mr-2" />
-                                        Public
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                        onClick={() => handleVisibilityChange(false)}
-                                        disabled={!canCreatePrivate && repository.isPublic}
-                                    >
-                                        <Lock className="w-4 h-4 mr-2" />
-                                        Private
-                                        {!canCreatePrivate && repository.isPublic && (
-                                            <span className="ml-2 text-[10px] text-muted-foreground">(Limit Reached)</span>
-                                        )}
-                                    </DropdownMenuItem>
-                                    {!canCreatePrivate && repository.isPublic && (
-                                        <div className="px-2 py-1.5 text-xs text-muted-foreground w-64">
-                                            Free plan is limited to {planData?.plan.limits.maxPrivateRepositories ?? 3} private repositories.
-                                        </div>
-                                    )}
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                    <div className="max-w-2xl">
+                        <Textarea 
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            onBlur={handleDescriptionBlur}
+                            placeholder={folder ? "Add a folder description..." : "Add a repository description..."}
+                            className="resize-none min-h-[40px] h-auto overflow-hidden bg-transparent border-transparent hover:border-input focus:border-input transition-all px-0 py-1 text-base leading-relaxed text-muted-foreground placeholder:text-muted-foreground/50 focus-visible:ring-0 focus-visible:ring-offset-0 -ml-1 pl-1"
+                            rows={1}
+                            onInput={(e) => {
+                                const target = e.target as HTMLTextAreaElement;
+                                target.style.height = "auto";
+                                target.style.height = `${target.scrollHeight}px`;
+                            }}
+                        />
+                    </div>
+                </div>
 
-                            {repository.isPublic && (
-                                <button
-                                    onClick={handleCopyLink}
-                                    className={cn(
-                                        "flex items-center gap-1.5 h-6 px-2.5 text-xs font-medium rounded-full transition-all duration-200",
-                                        isCopied 
-                                            ? "text-green-600 bg-green-500/10 cursor-default" 
-                                            : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
-                                    )}
-                                    title="Copy public link"
-                                    disabled={isCopied}
-                                >
-                                    {isCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                                    {isCopied ? "Copied" : "Copy Link"}
-                                </button>
-                            )}
+
+                <div className="flex flex-col items-start gap-1 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                        <Calendar className="w-4 h-4 opacity-70" />
+                        <span>Created {formatDistanceToNow(new Date(creationDate), { addSuffix: true })}</span>
+                    </div>
+                    {!folder && (
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-1.5">
+                                <Eye className="w-4 h-4 opacity-70" />
+                                <span>{repository.viewCount} views</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <GitFork className="w-4 h-4 opacity-70" />
+                                <span>{repository.forkCount} forks</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <Heart className="w-4 h-4 opacity-70" />
+                                <span>{repository.likeCount} likes</span>
+                            </div>
                         </div>
                     )}
                 </div>
-                
-                <div className="max-w-2xl">
-                    <Textarea 
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        onBlur={handleDescriptionBlur}
-                        placeholder={folder ? "Add a folder description..." : "Add a repository description..."}
-                        className="resize-none min-h-[40px] h-auto overflow-hidden bg-transparent border-transparent hover:border-input focus:border-input transition-all px-0 py-1 text-base leading-relaxed text-muted-foreground placeholder:text-muted-foreground/50 focus-visible:ring-0 focus-visible:ring-offset-0 -ml-1 pl-1"
-                        rows={1}
-                        onInput={(e) => {
-                            const target = e.target as HTMLTextAreaElement;
-                            target.style.height = "auto";
-                            target.style.height = `${target.scrollHeight}px`;
-                        }}
-                    />
-                </div>
             </div>
-
-
-            <div className="flex flex-col items-start gap-1 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4 opacity-70" />
-                    <span>Created {formatDistanceToNow(new Date(creationDate), { addSuffix: true })}</span>
-                </div>
-                {!folder && (
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5">
-                            <Eye className="w-4 h-4 opacity-70" />
-                            <span>{repository.viewCount} views</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <GitFork className="w-4 h-4 opacity-70" />
-                            <span>{repository.forkCount} forks</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <Heart className="w-4 h-4 opacity-70" />
-                            <span>{repository.likeCount} likes</span>
-                        </div>
-                    </div>
-                )}
-            </div>
-        </div>
+            
+            <SnapshotsDialog 
+                repositoryId={repository.id}
+                open={showHistory}
+                onOpenChange={setShowHistory}
+            />
+        </>
     )
 }
