@@ -19,10 +19,11 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-// import { toast } from "sonner" // Removed sonner
 import { useToast } from "@/components/ui/use-toast"
 import { SnapshotsDialog } from "@/components/snapshots-dialog"
-import { TagSelector } from "@/components/tags/tag-selector"
+import { ManageTagsDialog } from "@/components/tags/manage-tags-dialog"
+import { TagBadge } from "@/components/tag-badge"
+import { Plus } from "lucide-react"
 import { Tag } from "@/lib/types"
 
 interface RepositoryHeaderProps {
@@ -36,6 +37,7 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
     const usage = planData?.usage.privateRepositories ?? 0
     const canCreatePrivate = usage < limit
     const { toast } = useToast()
+    
     // Determine initial description based on context (folder vs repo)
     const initialDescription = folder ? (folder.description || "") : (repository.description || "")
     const initialTitle = folder ? folder.name : repository.name
@@ -46,6 +48,7 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
     const [titleState, setTitleState] = React.useState(initialTitle)
     // Copy feedback state
     const [isCopied, setIsCopied] = React.useState(false)
+    const [isTagDialogOpen, setIsTagDialogOpen] = React.useState(false)
 
     // Sync local state when prop updates (e.g. navigation or re-fetch)
     React.useEffect(() => {
@@ -63,10 +66,13 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
         : (repositoryTags[repository.id] ?? [])
 
     const selectedTags = React.useMemo(() => {
-        return associatedTagIds.map(id => tags.find(t => t.id === id)).filter((t): t is Tag => !!t)
+        return associatedTagIds
+            .map(id => tags.find(t => t.id === id))
+            .filter((t): t is Tag => !!t)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     }, [associatedTagIds, tags])
 
-    const handleSelectTag = async (tagId: string) => {
+    const handleAssignTag = async (tagId: string) => {
         try {
             if (folder) {
                 await mutations.addTagToFolder(folder.id, tagId)
@@ -75,6 +81,7 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
             }
         } catch (error) {
             toast({ description: "Failed to add tag", variant: "destructive" })
+            throw error
         }
     }
 
@@ -87,16 +94,20 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
             }
         } catch (error) {
             toast({ description: "Failed to remove tag", variant: "destructive" })
+            throw error
         }
     }
 
-    const handleCreateTag = async (label: string) => {
+    const handleCreateTag = async (input: { label?: string; type?: any; color?: string | null }, options?: any) => {
         try {
-            const newTag = await mutations.createTag({ label, type: "custom" })
-            await handleSelectTag(newTag.id)
-            toast({ description: "Tag created and added" })
+            const newTag = await mutations.createTag(input)
+            // If the dialog is open, we might want to automatically assign it too, 
+            // but ManageTagsDialog handles the optimistic creation return. 
+            // However ManageTagsDialog calls onAssignTag separately after creation if implemented that way.
+            return newTag
         } catch (error) {
             toast({ description: "Failed to create tag", variant: "destructive" })
+            throw error
         }
     }
 
@@ -131,9 +142,6 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
     const handleVisibilityChange = async (isPublic: boolean) => {
         // Folder visibility is inherited for now, so this is only for repo
         if (folder) return 
-
-        if (folder) return 
-
 
         if (!isPublic && !canCreatePrivate) {
             toast({ description: `You have reached the limit of ${limit} private repositories.`, variant: "destructive" })
@@ -196,9 +204,6 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
 
     const title = folder ? folder.name : repository.name
     const creationDate = folder ? folder.createdAt : repository.createdAt
-
-
-
 
     const [showHistory, setShowHistory] = React.useState(false)
 
@@ -302,13 +307,30 @@ export function RepositoryHeader({ repository, folder }: RepositoryHeaderProps) 
                     </div>
 
                     <div className="pt-2">
-                        <TagSelector
-                            availableTags={tags}
-                            selectedTags={selectedTags}
-                            onSelectTag={handleSelectTag}
+                        <ManageTagsDialog
+                            open={isTagDialogOpen}
+                            onOpenChange={setIsTagDialogOpen}
+                            allTags={tags}
+                            assignedTags={selectedTags}
+                            onAssignTag={handleAssignTag}
                             onRemoveTag={handleRemoveTag}
                             onCreateTag={handleCreateTag}
-                        />
+                            onUpdateTag={mutations.updateTag}
+                            onDeleteTag={mutations.deleteTag}
+                        >
+                            <div className="flex flex-wrap gap-2">
+                                {selectedTags.length > 0 && selectedTags.map(tag => (
+                                    <TagBadge key={tag.id} tag={tag} />
+                                ))}
+                                <button
+                                    type="button"
+                                    className="text-muted-foreground inline-flex items-center gap-1 rounded-full border border-dashed border-border/80 px-2.5 py-0.5 text-[11px] font-medium transition hover:border-foreground/70 hover:text-foreground"
+                                >
+                                    <Plus className="size-3" />
+                                    tags
+                                </button>
+                            </div>
+                        </ManageTagsDialog>
                     </div>
                 </div>
 

@@ -23,14 +23,18 @@ import { useRouter } from "next/navigation"
 
 import { Loader2 } from "lucide-react"
 
+import { TagSelector } from "@/components/tags/tag-selector"
+import { Tag } from "@/lib/types"
+
 interface PublicRepositoryHeaderProps {
     repository: RepositoryRecord
     folder?: RepositoryFolderRecord
     versions?: { id: string; name: string; createdAt: string }[]
     currentVersionId?: string | null
+    tags?: Tag[]
 }
 
-export function PublicRepositoryHeader({ repository, folder, versions = [], currentVersionId }: PublicRepositoryHeaderProps) {
+export function PublicRepositoryHeader({ repository, folder, versions = [], currentVersionId, tags = [] }: PublicRepositoryHeaderProps) {
     const router = useRouter()
     const { toast } = useToast()
     // Context: Folder vs Repo
@@ -162,6 +166,18 @@ export function PublicRepositoryHeader({ repository, folder, versions = [], curr
                         <p className="text-base leading-relaxed text-muted-foreground min-h-[40px] py-1">{description}</p>
                     )}
                 </div>
+
+                {tags.length > 0 && (
+                    <div className="pt-2">
+                        <TagSelector
+                            availableTags={[]}
+                            selectedTags={tags}
+                            onSelectTag={() => {}}
+                            onRemoveTag={() => {}}
+                            readonly
+                        />
+                    </div>
+                )}
             </div>
 
 

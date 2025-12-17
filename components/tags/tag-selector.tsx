@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Check, Hash, Plus, X } from "lucide-react"
+import { Check, Plus, X } from "lucide-react"
 
 import {
   Command,
@@ -10,13 +10,10 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator,
 } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { TagBadge } from "@/components/tag-badge"
-import { cn } from "@/lib/utils"
 import { Tag } from "@/lib/types"
 
 interface TagSelectorProps {
@@ -58,8 +55,8 @@ export function TagSelector({
           variant="outline"
           className="flex items-center gap-1 pr-1"
           style={{
-            backgroundColor: tag.color ? \`\${tag.color}20\` : undefined,
-            borderColor: tag.color ? \`\${tag.color}40\` : undefined,
+            backgroundColor: tag.color ? `${tag.color}20` : undefined,
+            borderColor: tag.color ? `${tag.color}40` : undefined,
             color: tag.color ? tag.color : undefined,
           }}
         >
@@ -114,10 +111,12 @@ export function TagSelector({
                          Create "{searchValue}"
                        </Button>
                      </div>
-                  ) : "No tags found."}
+                  ) : (
+                    "No tags found."
+                  )}
                 </CommandEmpty>
                 <CommandGroup heading="Tags">
-                  {availableTags.map((tag) => {
+                  {filteredTags.map((tag) => {
                     const isSelected = selectedTagIds.has(tag.id)
                     return (
                       <CommandItem

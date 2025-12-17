@@ -6,7 +6,7 @@ import { listAssets } from "@/lib/repositories/assets"
 import { listRepositoryTags } from "@/lib/repositories/repository-tags"
 import { listAllFolderTagsForRepository } from "@/lib/repositories/folder-tags"
 import { PublicRepositoryViewer } from "@/components/public-view/public-repository-viewer"
-import { TagType } from "@/lib/types"
+import { Tag, TagType } from "@/lib/types"
 import { notFound } from "next/navigation"
 
 interface PageProps {
@@ -55,85 +55,100 @@ export default async function SharedRepositoryPage({
     const { versionId } = await searchParams
     const supabase = getServiceRoleSupabaseClient()
 
-    try {
-        // 1. Fetch live repository details (metadata mostly)
-        // We need this even for versions to check existence/visibility
-        const repository = await getPublicRepositoryById(supabase as any, repositoryId)
-        if (!repository) notFound()
+    // 1. Fetch live repository details (metadata mostly)
+    // We need this even for versions to check existence/visibility
+    
+    // Debug: Check if repo exists at all (ignoring public status) to give better feedback
+    const { data: rawRepo } = await supabase
+        .from('repositories')
+        .select('id, is_public')
+        .eq('id', repositoryId)
+        .single() as { data: { id: string; is_public: boolean } | null, error: any }
 
-        // 2. Fetch available versions (snapshots)
-        // Note: listSnapshots currently fetches ALL snapshots. 
-        // We might want to filter or limit, but for now it's fine.
-        const snapshots = await listSnapshots(supabase as any, repositoryId)
-        const versions = snapshots.map(s => ({
-            id: s.id,
-            name: s.versionName,
-            createdAt: s.createdAt
-        }))
-
-        // 3. Determine Data Source (Live vs Version)
-        let folders, assets, viewRepository;
-        
-        // 4. Fetch Tags (Live only)
-        let tags: { id: string; label: string; type: TagType; color?: string }[] = []
-        let folderTags: Record<string, { id: string; label: string; type: TagType; color?: string }[]> = {}
-
-        if (versionId) {
-            // Fetch Version Data
-            const snapshotData = await getSnapshotAsRepositoryData(supabase as any, repositoryId, versionId)
-            
-            if (snapshotData) {
-                viewRepository = snapshotData.repository
-                folders = snapshotData.folders
-                assets = snapshotData.assets
-            } else {
-                notFound()
-            }
-        } else {
-            // Live Data
-            viewRepository = repository
-            const [f, a, rTags, fTags] = await Promise.all([
-                listRepositoryFolders(supabase as any, { repositoryId }),
-                listAssets(supabase as any, { repositoryId, mode: "recursive" }),
-                listRepositoryTags(supabase as any, repositoryId),
-                listAllFolderTagsForRepository(supabase as any, repositoryId)
-            ])
-            folders = f
-            assets = a
-            
-            tags = rTags.map(r => ({
-                 id: r.tag.id,
-                 label: r.tag.label,
-                 type: r.tag.type as TagType,
-                 color: r.tag.color || undefined,
-                 createdAt: r.tag.createdAt
-             }))
-
-             fTags.forEach(f => {
-                 if (!folderTags[f.folderId]) folderTags[f.folderId] = []
-                 folderTags[f.folderId].push({
-                     id: f.tag.id,
-                     label: f.tag.label,
-                     type: f.tag.type as TagType,
-                     color: f.tag.color || undefined,
-                     createdAt: f.tag.createdAt
-                 })
-             })
-        }
-
-        return (
-            <PublicRepositoryViewer 
-                repository={viewRepository}
-                folders={folders}
-                assets={assets}
-                versions={versions}
-                currentVersionId={versionId}
-                tags={tags}
-                folderTags={folderTags}
-            />
-        )
-
-    } catch (e) {
-        notFound()
+    if (!rawRepo) {
+        // notFound() 
+        return <div className="p-10 text-red-500 font-bold">DEBUG: Repository ID not found in database. ID: {repositoryId}</div>
     }
+
+    if (!rawRepo.is_public) {
+        // It exists but is private. 
+        console.error(`Repository ${repositoryId} exists but is private.`)
+        // notFound()
+        return <div className="p-10 text-amber-500 font-bold">DEBUG: Repository exists but is PRIVATE. (ID: {repositoryId})</div>
+    }
+
+    const repository = await getPublicRepositoryById(supabase as any, repositoryId)
+    // if (!repository) notFound() // redundant given the check above and getPublicRepositoryById logic (which throws or returns)
+
+    // 2. Fetch available versions (snapshots)
+    // Note: listSnapshots currently fetches ALL snapshots. 
+    // We might want to filter or limit, but for now it's fine.
+    const snapshots = await listSnapshots(supabase as any, repositoryId)
+    const versions = snapshots.map(s => ({
+        id: s.id,
+        name: s.versionName,
+        createdAt: s.createdAt
+    }))
+
+    // 3. Determine Data Source (Live vs Version)
+    let folders, assets, viewRepository;
+    
+    // 4. Fetch Tags (Live only)
+    let tags: { id: string; label: string; type: TagType; color?: string }[] = []
+    let folderTags: Record<string, { id: string; label: string; type: TagType; color?: string }[]> = {}
+
+    if (versionId) {
+        // Fetch Version Data
+        const snapshotData = await getSnapshotAsRepositoryData(supabase as any, repositoryId, versionId)
+        
+        if (snapshotData) {
+            viewRepository = snapshotData.repository
+            folders = snapshotData.folders
+            assets = snapshotData.assets
+        } else {
+            notFound()
+        }
+    } else {
+        // Live Data
+        viewRepository = repository
+        const [f, a, rTags, fTags] = await Promise.all([
+            listRepositoryFolders(supabase as any, { repositoryId }),
+            listAssets(supabase as any, { repositoryId, mode: "recursive" }),
+            listRepositoryTags(supabase as any, repositoryId),
+            listAllFolderTagsForRepository(supabase as any, repositoryId)
+        ])
+        folders = f
+        assets = a
+        
+        tags = rTags.map(r => ({
+                id: r.tag.id,
+                label: r.tag.label,
+                type: r.tag.type as TagType,
+                color: r.tag.color || undefined,
+                createdAt: r.tag.createdAt
+            }))
+
+            fTags.forEach(f => {
+                if (!folderTags[f.folderId]) folderTags[f.folderId] = []
+                folderTags[f.folderId].push({
+                    id: f.tag.id,
+                    label: f.tag.label,
+                    type: f.tag.type as TagType,
+                    color: f.tag.color || undefined,
+                    createdAt: f.tag.createdAt
+                })
+            })
+    }
+
+    return (
+        <PublicRepositoryViewer 
+            repository={viewRepository}
+            folders={folders}
+            assets={assets}
+            versions={versions}
+            currentVersionId={versionId}
+            tags={tags}
+            folderTags={folderTags}
+        />
+    )
 }
