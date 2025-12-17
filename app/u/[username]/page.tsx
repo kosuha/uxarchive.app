@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation"
 
 import { getProfileByUsername } from "@/lib/api/profile"
-import { fetchShareList } from "@/lib/api/share"
+import { listUserPublicRepositoriesAction } from "@/app/actions/repositories"
 import { PatternsHeader } from "@/components/share/patterns-header"
 import { ProfileHeader } from "@/components/profile/profile-header"
-import { ShareListing } from "@/components/share/share-listing"
+import { PublicRepositoryList } from "@/components/public-view/public-repository-list"
 
 interface PageProps {
     params: Promise<{
@@ -22,18 +22,8 @@ export default async function ProfilePage(props: PageProps) {
         notFound()
     }
 
-    // Fetch initial posts for this user
-    const { items } = await fetchShareList(
-        {
-            userId: profile.id,
-            sort: "recent",
-            perPage: 24,
-            includeCaptures: true,
-        },
-        { next: { revalidate: 60 } }
-    )
-
-    const initialPosts = items.filter((item) => item.isPublic)
+    // Fetch initial public repositories for this user
+    const { repositories } = await listUserPublicRepositoriesAction(username)
 
     return (
         <div className="min-h-screen bg-background text-foreground">
@@ -42,11 +32,8 @@ export default async function ProfilePage(props: PageProps) {
                 <ProfileHeader profile={profile} />
 
                 <div className="mt-8 border-t border-white/10 pt-8">
-                    <h2 className="mb-6 text-xl font-semibold">Published Patterns</h2>
-                    <ShareListing
-                        initialPosts={initialPosts}
-                        userId={profile.id}
-                    />
+                    <h2 className="mb-6 text-xl font-semibold">Public Repositories</h2>
+                    <PublicRepositoryList repositories={repositories} />
                 </div>
             </div>
         </div>

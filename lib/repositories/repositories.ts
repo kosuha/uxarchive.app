@@ -216,13 +216,15 @@ export type ListPublicRepositoriesParams = {
   perPage?: number;
   search?: string;
   sort?: "recent" | "popular";
+  workspaceIds?: string[];
 };
 
 export const listPublicRepositoriesWithPagination = async (
   client: SupabaseRepositoryClient,
   params: ListPublicRepositoriesParams,
 ): Promise<{ repositories: RepositoryRecord[]; hasNextPage: boolean }> => {
-  const { page = 1, perPage = 24, search, sort = "recent" } = params;
+  const { page = 1, perPage = 24, search, sort = "recent", workspaceIds } =
+    params;
   const from = (page - 1) * perPage;
   const to = from + perPage; // Fetch one extra to check for next page
 
@@ -231,6 +233,10 @@ export const listPublicRepositoriesWithPagination = async (
     // @ts-ignore - Supabase type definition might not infer the nested select correctly
     .select("*, assets(storage_path, order)", { count: "exact" })
     .eq("is_public", true);
+
+  if (workspaceIds && workspaceIds.length > 0) {
+    query = query.in("workspace_id", workspaceIds);
+  }
 
   if (search) {
     query = query.ilike("name", `%${search}%`);

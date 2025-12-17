@@ -480,3 +480,41 @@ export async function getPublicRepositoriesAction(
   const supabase = await createActionSupabaseClient();
   return listPublicRepositoriesWithPagination(supabase, params);
 }
+
+export async function listUserPublicRepositoriesAction(username: string) {
+  const supabase = await createActionSupabaseClient();
+
+  // 1. Get User Profile ID by Username
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("username", username)
+    .single();
+
+  if (!profile) {
+    return { repositories: [], hasNextPage: false };
+  }
+
+  // 2. Get Workspaces where user is a member
+  // Note: We might want to filter by role if only owners/editors 'own' the repo in user's eyes,
+  // but for "User's Public Repos", being a member is likely enough to show it on their profile
+  // or sticking to workspaces they created?
+  // For now, let's include all workspaces they are a member of.
+  const { data: memberships } = await supabase
+    .from("workspace_members")
+    .select("workspace_id")
+    .eq("profile_id", profile.id);
+
+  const workspaceIds = memberships?.map((m) => m.workspace_id) || [];
+
+  if (workspaceIds.length === 0) {
+    return { repositories: [], hasNextPage: false };
+  }
+
+  // 3. List Public Repositories for these workspaces
+  return listPublicRepositoriesWithPagination(supabase, {
+    workspaceIds,
+    perPage: 24,
+    sort: "recent",
+  });
+}
