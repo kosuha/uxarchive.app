@@ -75,7 +75,6 @@ export function AppSidebar({
   const [uiSelectedPatternId, setUiSelectedPatternId] = React.useState<string | null>(null)
   const [activeNavId, setActiveNavId] = React.useState(PRIMARY_NAV_ITEMS[0]?.id ?? "")
   const [searchQuery, setSearchQuery] = React.useState("")
-  const [searchSelectedTagIds, setSearchSelectedTagIds] = React.useState<string[]>([])
   // Keep the sidebar expanded inside the mobile sheet so content stays visible.
   const isSidebarCollapsed = !isMobile && sidebarState === "collapsed"
 
@@ -526,11 +525,9 @@ export function AppSidebar({
               activeNavId={resolvedActiveNavId}
               exploreView={exploreView}
               searchViewProps={{
-                onPatternSelect: handlePatternSelect,
+                // onPatternSelect: handlePatternSelect, // Removed as it is not in SearchViewProps
                 query: searchQuery,
                 setQuery: setSearchQuery,
-                selectedTagIds: searchSelectedTagIds,
-                setSelectedTagIds: setSearchSelectedTagIds,
               }}
               favoritesViewProps={{
                 onPatternSelect: handlePatternSelect,

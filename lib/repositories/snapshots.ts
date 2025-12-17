@@ -347,7 +347,7 @@ export async function restoreSnapshot(
     // 0. Fetch Snapshot Metadata to get saved Repository Description
     const { data: snapshot, error: snapshotError } = await client
         .from("repository_snapshots")
-        .select("repository_description, version_name")
+        .select("repository_description, version_name, tags")
         .eq("id", snapshotId)
         .single();
 

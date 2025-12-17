@@ -78,8 +78,8 @@ export async function copyFoldersRecursively(
                 storagePath: newStoragePath,
                 width: asset.width,
                 height: asset.height,
-                meta: asset.meta.image
-                    ? { ...asset.meta, image: undefined }
+                meta: (asset.meta as any)?.image
+                    ? { ...asset.meta as any, image: undefined }
                     : asset.meta, // Cleanup meta if needed, though usually meta is fine.
                 order: asset.order,
             });
