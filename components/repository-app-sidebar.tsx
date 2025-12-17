@@ -21,13 +21,13 @@ import { cn } from "@/lib/utils"
 const PRIMARY_NAV_ITEMS: NavItem[] = [
     {
         id: "explore",
-        title: "EXPLORE",
+        title: "My Repositories",
         description: "",
         icon: File,
     },
     {
         id: "search",
-        title: "SEARCH",
+        title: "Search",
         description: "",
         icon: Search,
     },
