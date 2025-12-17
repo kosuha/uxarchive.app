@@ -32,9 +32,10 @@ interface PublicRepositoryHeaderProps {
     versions?: { id: string; name: string; createdAt: string }[]
     currentVersionId?: string | null
     tags?: Tag[]
+    isLiked?: boolean
 }
 
-export function PublicRepositoryHeader({ repository, folder, versions = [], currentVersionId, tags = [] }: PublicRepositoryHeaderProps) {
+export function PublicRepositoryHeader({ repository, folder, versions = [], currentVersionId, tags = [], isLiked = false }: PublicRepositoryHeaderProps) {
     const router = useRouter()
     const { toast } = useToast()
     // Context: Folder vs Repo
@@ -43,7 +44,7 @@ export function PublicRepositoryHeader({ repository, folder, versions = [], curr
     const creationDate = folder ? folder.createdAt : repository.createdAt
     const dateObj = new Date(creationDate)
     const isValidDate = !isNaN(dateObj.getTime())
-    
+
     // Copy feedback state
     const [isCopied, setIsCopied] = React.useState(false)
 
@@ -59,7 +60,7 @@ export function PublicRepositoryHeader({ repository, folder, versions = [], curr
     const [isLikePending, startLikeTransition] = React.useTransition()
     const [isForkPending, startForkTransition] = React.useTransition()
     // Local state for like visualization (optimistic/result-based)
-    const [hasLiked, setHasLiked] = React.useState(false)
+    const [hasLiked, setHasLiked] = React.useState(isLiked)
 
     const handleLike = () => {
         startLikeTransition(async () => {
@@ -92,7 +93,7 @@ export function PublicRepositoryHeader({ repository, folder, versions = [], curr
                         description: repository.description
                     })
                 }
-                
+
                 if (result.error) {
                     if (result.error.includes("authenticated")) {
                         toast({ description: "Please sign in to fork", variant: "destructive" })
@@ -137,7 +138,7 @@ export function PublicRepositoryHeader({ repository, folder, versions = [], curr
                         {folder && <Folder className="w-6 h-6 text-muted-foreground/50" />}
                         {title}
                     </h1>
-                    
+
                     {!folder && (
                         <div className="flex items-center gap-2">
                             {repository.isPublic && (
@@ -145,8 +146,8 @@ export function PublicRepositoryHeader({ repository, folder, versions = [], curr
                                     onClick={handleCopyLink}
                                     className={cn(
                                         "flex items-center gap-1.5 h-6 px-2.5 text-xs font-medium rounded-full transition-all duration-200",
-                                        isCopied 
-                                            ? "text-green-600 bg-green-500/10 cursor-default" 
+                                        isCopied
+                                            ? "text-green-600 bg-green-500/10 cursor-default"
                                             : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                                     )}
                                     title="Copy public link"
@@ -160,7 +161,7 @@ export function PublicRepositoryHeader({ repository, folder, versions = [], curr
                     )}
                 </div>
 
-                
+
                 <div className="max-w-2xl">
                     {description && (
                         <p className="text-base leading-relaxed text-muted-foreground min-h-[40px] py-1">{description}</p>
@@ -225,8 +226,8 @@ export function PublicRepositoryHeader({ repository, folder, versions = [], curr
                         </Select>
                     )}
                     {!folder && (
-                        <Button 
-                            variant="outline" 
+                        <Button
+                            variant="outline"
                             className={cn("w-24 gap-1.5 transition-colors", hasLiked && "text-red-500 border-red-200 bg-red-50 hover:bg-red-100 hover:text-red-600 dark:bg-red-950/20 dark:border-red-900/50")}
                             onClick={handleLike}
                             disabled={isLikePending}
@@ -239,8 +240,8 @@ export function PublicRepositoryHeader({ repository, folder, versions = [], curr
                             <span>{hasLiked ? "Liked" : "Like"}</span>
                         </Button>
                     )}
-                    <Button 
-                        variant="outline" 
+                    <Button
+                        variant="outline"
                         className="w-24 gap-1.5"
                         onClick={handleFork}
                         disabled={isForkPending}

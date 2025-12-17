@@ -1,5 +1,5 @@
 import { Metadata, ResolvingMetadata } from "next"
-import { getServiceRoleSupabaseClient } from "@/lib/supabase/service-client"
+import { getServerSupabaseClient } from "@/lib/supabase/server-client"
 import { getPublicRepositoryById } from "@/lib/repositories/repositories"
 import { listRepositoryFolders } from "@/lib/repositories/repository-folders"
 import { listAssets } from "@/lib/repositories/assets"
@@ -18,7 +18,7 @@ export async function generateMetadata(
     parent: ResolvingMetadata
 ): Promise<Metadata> {
     const { repositoryId } = await params
-    const supabase = getServiceRoleSupabaseClient()
+    const supabase = await getServerSupabaseClient()
 
     try {
         const repo = await getPublicRepositoryById(supabase as any, repositoryId)
@@ -53,7 +53,7 @@ export default async function SharedRepositoryPage({
 }) {
     const { repositoryId } = await params
     const { versionId } = await searchParams
-    const supabase = getServiceRoleSupabaseClient()
+    const supabase = await getServerSupabaseClient()
 
     // 1. Fetch live repository details (metadata mostly)
     // We need this even for versions to check existence/visibility
@@ -140,6 +140,21 @@ export default async function SharedRepositoryPage({
         })
     }
 
+    // 5. Check if liked by current user (if authenticated)
+    let isLiked = false
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (user) {
+        const { data: likeData } = await supabase
+            .from('repository_likes')
+            .select('repository_id')
+            .eq('repository_id', repositoryId)
+            .eq('user_id', user.id)
+            .single()
+
+        isLiked = !!likeData
+    }
+
     return (
         <PublicRepositoryViewer
             repository={viewRepository}
@@ -149,6 +164,7 @@ export default async function SharedRepositoryPage({
             currentVersionId={versionId}
             tags={tags}
             folderTags={folderTags}
+            isLiked={isLiked}
         />
     )
 }

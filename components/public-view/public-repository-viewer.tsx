@@ -24,13 +24,14 @@ interface PublicRepositoryViewerProps {
     currentVersionId?: string | null
     tags?: Tag[]
     folderTags?: Record<string, Tag[]>
+    isLiked?: boolean
 }
 
-export function PublicRepositoryViewer({ repository, folders, assets, versions, currentVersionId, tags = [], folderTags = {} }: PublicRepositoryViewerProps) {
+export function PublicRepositoryViewer({ repository, folders, assets, versions, currentVersionId, tags = [], folderTags = {}, isLiked = false }: PublicRepositoryViewerProps) {
     const [currentFolderId, setCurrentFolderId] = React.useState<string | null>(null)
     const [selectedAsset, setSelectedAsset] = React.useState<AssetRecord | null>(null)
     const [viewerAssets, setViewerAssets] = React.useState<AssetRecord[]>([])
-    
+
     // Desktop Sidebar State
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(true)
     // Mobile Sidebar State
@@ -95,24 +96,24 @@ export function PublicRepositoryViewer({ repository, folders, assets, versions, 
 
     if (!repository.isPublic) {
         return (
-             <div className="flex flex-col items-center justify-center min-h-screen">
+            <div className="flex flex-col items-center justify-center min-h-screen">
                 <Lock className="w-12 h-12 mb-4 opacity-50" />
                 <h1 className="text-xl font-bold">Private Repository</h1>
                 <p className="text-muted-foreground">This repository is not public.</p>
-             </div>
+            </div>
         )
     }
 
     return (
         <div className="flex flex-col h-screen bg-background overflow-hidden">
-             {/* Top Global Header (UX Archive) */}
-             <div className="shrink-0 border-b border-border bg-background z-50">
+            {/* Top Global Header (UX Archive) */}
+            <div className="shrink-0 border-b border-border bg-background z-50">
                 <PatternsHeader hideSearch />
-             </div>
+            </div>
 
-             <div className="flex flex-1 overflow-hidden m-4">
+            <div className="flex flex-1 overflow-hidden m-4">
                 {/* Desktop Sidebar */}
-                <div 
+                <div
                     className={cn(
                         "hidden md:flex border border-border bg-card rounded-2xl flex-col transition-all duration-300 ease-in-out shrink-0 w-[260px]",
                         !isSidebarOpen && "w-0 -ml-4 border-0 opacity-0 overflow-hidden p-0"
@@ -139,11 +140,11 @@ export function PublicRepositoryViewer({ repository, folders, assets, versions, 
                 {/* Mobile Sidebar (Sheet) */}
                 <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
                     <SheetContent side="left" className="p-0 w-[280px]">
-                         <div className="flex flex-col h-full bg-card">
-                             <div className="p-4 border-b border-border flex items-center">
-                                 <SheetTitle>{repository.name}</SheetTitle>
-                             </div>
-                             <div className="flex-1 overflow-y-auto p-2">
+                        <div className="flex flex-col h-full bg-card">
+                            <div className="p-4 border-b border-border flex items-center">
+                                <SheetTitle>{repository.name}</SheetTitle>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-2">
                                 <PublicRepositoryTree
                                     repositoryName={repository.name}
                                     folders={folders}
@@ -162,37 +163,37 @@ export function PublicRepositoryViewer({ repository, folders, assets, versions, 
                                         setIsMobileOpen(false)
                                     }}
                                 />
-                             </div>
-                         </div>
+                            </div>
+                        </div>
                     </SheetContent>
                 </Sheet>
 
                 {/* Main Content */}
                 <div className="flex flex-col flex-1 min-w-0 bg-background dark:bg-background">
-                    
+
                     {/* Workspace Header / Breadcrumbs */}
                     <div className="flex items-center gap-4 px-4 py-3 border-b border-border/40 text-sm bg-background/50 backdrop-blur-sm sticky top-0 z-20 shrink-0">
-                         <div className="flex items-center gap-2">
-                             {/* Desktop Toggle Button */}
-                             <button 
+                        <div className="flex items-center gap-2">
+                            {/* Desktop Toggle Button */}
+                            <button
                                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                                 className="hidden md:block text-muted-foreground hover:text-foreground p-1 hover:bg-muted rounded-md transition-colors"
-                             >
-                                 <PanelLeft className="w-4 h-4" />
-                             </button>
+                            >
+                                <PanelLeft className="w-4 h-4" />
+                            </button>
 
-                             {/* Mobile Toggle Button */}
-                             <button 
+                            {/* Mobile Toggle Button */}
+                            <button
                                 onClick={() => setIsMobileOpen(true)}
                                 className="md:hidden text-muted-foreground hover:text-foreground p-1 hover:bg-muted rounded-md transition-colors"
-                             >
-                                 <PanelLeft className="w-4 h-4" />
-                             </button>
+                            >
+                                <PanelLeft className="w-4 h-4" />
+                            </button>
 
-                             <div className="w-px h-4 bg-border/60 mx-1" />
-                         </div>
+                            <div className="w-px h-4 bg-border/60 mx-1" />
+                        </div>
 
-                         <div className="flex items-center gap-1 text-muted-foreground overflow-x-auto scrollbar-hide flex-1">
+                        <div className="flex items-center gap-1 text-muted-foreground overflow-x-auto scrollbar-hide flex-1">
                             <button
                                 onClick={() => setCurrentFolderId(null)}
                                 className={cn(
@@ -216,36 +217,37 @@ export function PublicRepositoryViewer({ repository, folders, assets, versions, 
                                     </button>
                                 </React.Fragment>
                             ))}
-                         </div>
+                        </div>
                     </div>
 
                     {/* Scrollable Content Area */}
                     <div className="flex-1 overflow-y-auto p-0">
-                         {/* Repository/Folder Header - Public Version */}
-            {/* Header */}
-            <PublicRepositoryHeader 
-                repository={repository} 
-                folder={currentFolder}
-                versions={versions}
-                currentVersionId={currentVersionId}
-                tags={currentFolder ? folderTags[currentFolder.id] : tags}
-            />
+                        {/* Repository/Folder Header - Public Version */}
+                        {/* Header */}
+                        <PublicRepositoryHeader
+                            repository={repository}
+                            folder={currentFolder}
+                            versions={versions}
+                            currentVersionId={currentVersionId}
+                            tags={currentFolder ? folderTags[currentFolder.id] : tags}
+                            isLiked={isLiked}
+                        />
 
-                         <div className="pb-32">
-                             {/* 1. Screens (Direct assets of current view) */}
-                             <div className="mt-2">
-                                 <RepositoryFolderSection
-                                     repositoryId={repository.id}
-                                     folderId={currentFolderId}
-                                     title="Screens"
-                                     showIfEmpty={childFolders.length === 0}
-                                     assets={assets.filter(a => a.folderId === (currentFolderId || null))}
-                                     onAssetClick={handleAssetClick}
-                                 />
-                             </div>
+                        <div className="pb-32">
+                            {/* 1. Screens (Direct assets of current view) */}
+                            <div className="mt-2">
+                                <RepositoryFolderSection
+                                    repositoryId={repository.id}
+                                    folderId={currentFolderId}
+                                    title="Screens"
+                                    showIfEmpty={childFolders.length === 0}
+                                    assets={assets.filter(a => a.folderId === (currentFolderId || null))}
+                                    onAssetClick={handleAssetClick}
+                                />
+                            </div>
 
-                             {/* 2. Subfolders */}
-                             {childFolders.length > 0 && (
+                            {/* 2. Subfolders */}
+                            {childFolders.length > 0 && (
                                 <div className="mt-2 border-t border-border/40 pt-6">
                                     <div className="space-y-4">
                                         {childFolders.map(folder => {
@@ -274,22 +276,22 @@ export function PublicRepositoryViewer({ repository, folders, assets, versions, 
                                         })}
                                     </div>
                                 </div>
-                             )}
-                         </div>
+                            )}
+                        </div>
                     </div>
                 </div>
-             </div>
+            </div>
 
-             {selectedAsset && (
-                  <PublicAssetDetailDialog
-                      isOpen={!!selectedAsset}
-                      onClose={() => setSelectedAsset(null)}
-                      asset={selectedAsset}
-                      assets={viewerAssets}
-                      onAssetChange={setSelectedAsset}
-                      canDownload
-                  />
-             )}
+            {selectedAsset && (
+                <PublicAssetDetailDialog
+                    isOpen={!!selectedAsset}
+                    onClose={() => setSelectedAsset(null)}
+                    asset={selectedAsset}
+                    assets={viewerAssets}
+                    onAssetChange={setSelectedAsset}
+                    canDownload
+                />
+            )}
         </div>
     )
 }
