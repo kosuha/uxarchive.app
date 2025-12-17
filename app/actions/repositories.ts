@@ -481,7 +481,11 @@ export async function getPublicRepositoriesAction(
   return listPublicRepositoriesWithPagination(supabase, params);
 }
 
-export async function listUserPublicRepositoriesAction(username: string) {
+export async function listUserPublicRepositoriesAction(
+  username: string,
+  page: number = 1,
+  perPage: number = 24,
+) {
   const supabase = await createActionSupabaseClient();
 
   // 1. Get User Profile ID by Username
@@ -514,7 +518,8 @@ export async function listUserPublicRepositoriesAction(username: string) {
   // 3. List Public Repositories for these workspaces
   return listPublicRepositoriesWithPagination(supabase, {
     workspaceIds,
-    perPage: 24,
+    page,
+    perPage,
     sort: "recent",
   });
 }

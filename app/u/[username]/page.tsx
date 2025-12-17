@@ -4,7 +4,7 @@ import { getProfileByUsername } from "@/lib/api/profile"
 import { listUserPublicRepositoriesAction } from "@/app/actions/repositories"
 import { PatternsHeader } from "@/components/share/patterns-header"
 import { ProfileHeader } from "@/components/profile/profile-header"
-import { PublicRepositoryList } from "@/components/public-view/public-repository-list"
+import { PublicRepositoryListing } from "@/components/public-view/public-repository-listing"
 
 interface PageProps {
     params: Promise<{
@@ -33,7 +33,7 @@ export default async function ProfilePage(props: PageProps) {
 
                 <div className="mt-8 border-t border-white/10 pt-8">
                     <h2 className="mb-6 text-xl font-semibold">Public Repositories</h2>
-                    <PublicRepositoryList repositories={repositories} />
+                    <PublicRepositoryListing initialRepositories={repositories} username={username} />
                 </div>
             </div>
         </div>
