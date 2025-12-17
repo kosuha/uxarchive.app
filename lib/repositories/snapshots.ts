@@ -448,3 +448,130 @@ export async function restoreSnapshot(
         await insertNode(root, null);
     }
 }
+
+// ----------------------------------------------------------------------------
+// Public / Share View Helpers
+// ----------------------------------------------------------------------------
+
+import { RepositoryRecord } from "./repositories";
+import { RepositoryFolderRecord } from "./repository-folders";
+import { AssetRecord } from "./assets";
+
+export async function getSnapshotAsRepositoryData(
+    client: SupabaseRepositoryClient,
+    repositoryId: string,
+    snapshotId: string,
+): Promise<
+    {
+        repository: RepositoryRecord;
+        folders: RepositoryFolderRecord[];
+        assets: AssetRecord[];
+    } | null
+> {
+    // 1. Fetch Snapshot Metadata
+    const { data: snapshot, error: snapshotError } = await client
+        .from("repository_snapshots")
+        .select("*")
+        .eq("id", snapshotId)
+        .eq("repository_id", repositoryId)
+        .single();
+
+    if (snapshotError || !snapshot) return null;
+
+    // 2. Fetch Original Repository (for base metadata)
+    const { data: originalRepo, error: repoError } = await client
+        .from("repositories")
+        .select("*")
+        .eq("id", repositoryId)
+        .single();
+
+    if (repoError || !originalRepo) return null;
+
+    // 3. Construct RepositoryRecord from Snapshot + Original
+    // We use the snapshot's repository_description if available,
+    // and maybe append version info to name? Or keep original name.
+    // Let's keep original name but use snapshot description.
+    const repository: RepositoryRecord = {
+        id: originalRepo.id,
+        workspaceId: originalRepo.workspace_id,
+        name: originalRepo.name, // Keep original name
+        description: snapshot.repository_description ||
+            originalRepo.description, // Use snapshot description
+        isPublic: originalRepo.is_public,
+        viewCount: originalRepo.view_count,
+        forkCount: originalRepo.fork_count,
+        likeCount: (originalRepo as any).like_count ?? 0,
+        forkOriginId: originalRepo.fork_origin_id ?? null,
+        createdAt: originalRepo.created_at,
+        updatedAt: snapshot.created_at, // Use snapshot time as "updated"? Or keep original? Let's use snapshot time to indicate this version's time.
+        thumbnailUrl: null, // We'll fill this later if needed, or leave null
+    };
+
+    // 4. Fetch Snapshot Items (Tree)
+    // We can use getSnapshotTree, but we need flat lists for the viewer currently (it builds its own tree or uses flat list).
+    // The viewer takes `folders` and `assets` arrays.
+    // So let's fetch raw items and map them.
+    const { data: items, error: itemsError } = await client
+        .from("snapshot_items")
+        .select("*")
+        .eq("snapshot_id", snapshotId);
+
+    if (itemsError) return null;
+
+    const folders: RepositoryFolderRecord[] = [];
+    const assets: AssetRecord[] = [];
+
+    // Map items
+    // ID Mapping: We can use the snapshot_item.id as the "id" for folders/assets in this view.
+    // This ensures they are unique and consistent within this view context.
+    // original_item_id might NOT be unique if multiple snapshot items point to same original (unlikely but possible if logic changes).
+    // Safest is to use snapshot_item.id.
+
+    for (const item of items) {
+        if (item.item_type === "folder") {
+            folders.push({
+                id: item.id, // Use snapshot_item.id as ephemeral folder id
+                repositoryId: repositoryId,
+                parentId: item.parent_snapshot_item_id,
+                name: item.item_data.name,
+                description: item.item_data.description || null,
+                order: item.item_data.order || 0,
+                createdAt: item.created_at,
+                updatedAt: item.created_at,
+            });
+        } else if (item.item_type === "asset") {
+            const assetData = item.item_data;
+            // Derive name similar to mapAsset
+            const meta = assetData.meta as
+                | { name?: string; filename?: string }
+                | null;
+            const name = meta?.name ?? meta?.filename ??
+                assetData.storage_path.split("/").pop() ?? "Untitled Asset";
+
+            assets.push({
+                id: item.id, // Use snapshot_item.id
+                name,
+                repositoryId: repositoryId, // Belongs to this repo context
+                folderId: item.parent_snapshot_item_id!, // Should not be null usually
+                storagePath: assetData.storage_path,
+                width: assetData.width,
+                height: assetData.height,
+                meta: assetData.meta || {},
+                order: assetData.order || 0,
+                createdAt: item.created_at,
+                updatedAt: item.created_at, // Snapshot time
+            });
+        }
+    }
+
+    // Sort? The viewer usually sorts.
+    // But let's sort roughly by order.
+    folders.sort((a, b) => a.order - b.order);
+    assets.sort((a, b) => a.order - b.order);
+
+    return {
+        repository,
+        folders,
+        assets,
+    };
+}

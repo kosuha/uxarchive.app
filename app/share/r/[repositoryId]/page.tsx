@@ -38,26 +38,74 @@ export async function generateMetadata(
 
 // Revalidate frequently or use 0 for fresh data? 
 // Pattern page uses cache().
-export const revalidate = 60
+export const revalidate = 0 // Dynamic for searchParams
 
-export default async function SharedRepositoryPage({ params }: PageProps) {
+import { listSnapshots, getSnapshotAsRepositoryData } from "@/lib/repositories/snapshots"
+
+export default async function SharedRepositoryPage({
+    params,
+    searchParams,
+}: {
+    params: Promise<{ repositoryId: string }>
+    searchParams: Promise<{ versionId?: string }>
+}) {
     const { repositoryId } = await params
+    const { versionId } = await searchParams
     const supabase = getServiceRoleSupabaseClient()
 
     try {
+        // 1. Fetch live repository details (metadata mostly)
+        // We need this even for versions to check existence/visibility
         const repository = await getPublicRepositoryById(supabase as any, repositoryId)
         if (!repository) notFound()
 
-        const [folders, assets] = await Promise.all([
-            listRepositoryFolders(supabase as any, { repositoryId }),
-            listAssets(supabase as any, { repositoryId, mode: "recursive" })
-        ])
+        // 2. Fetch available versions (snapshots)
+        // Note: listSnapshots currently fetches ALL snapshots. 
+        // We might want to filter or limit, but for now it's fine.
+        const snapshots = await listSnapshots(supabase as any, repositoryId)
+        const versions = snapshots.map(s => ({
+            id: s.id,
+            name: s.versionName,
+            createdAt: s.createdAt
+        }))
+
+        // 3. Determine Data Source (Live vs Version)
+        let folders, assets, viewRepository;
+
+        if (versionId) {
+            // Fetch Version Data
+            const snapshotData = await getSnapshotAsRepositoryData(supabase as any, repositoryId, versionId)
+            
+            if (snapshotData) {
+                viewRepository = snapshotData.repository
+                folders = snapshotData.folders
+                assets = snapshotData.assets
+            } else {
+                // Version not found or error, fallback to live? or 404?
+                // Let's fallback to live but maybe show a toast or something? 
+                // Currently just falling back effectively or 404ing the content if we default to null.
+                // Let's redirect to live if version missing? No, server component.
+                // Let's just 404 for now if version ID is bad.
+                notFound()
+            }
+        } else {
+            // Live Data
+            viewRepository = repository
+            const [f, a] = await Promise.all([
+                listRepositoryFolders(supabase as any, { repositoryId }),
+                listAssets(supabase as any, { repositoryId, mode: "recursive" })
+            ])
+            folders = f
+            assets = a
+        }
 
         return (
             <PublicRepositoryViewer 
-                repository={repository}
+                repository={viewRepository}
                 folders={folders}
                 assets={assets}
+                versions={versions}
+                currentVersionId={versionId}
             />
         )
 

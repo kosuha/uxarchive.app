@@ -11,32 +11,19 @@ import { toast } from "sonner"
 import { Button } from "../ui/button"
 import { toggleRepositoryLikeAction } from "@/app/actions/interactions"
 import { forkRepositoryToDefaultAction, forkFolderToDefaultAction } from "@/app/actions/repositories"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
-import { useRouter } from "next/navigation"
 
 import { Loader2 } from "lucide-react"
 
 interface PublicRepositoryHeaderProps {
     repository: RepositoryRecord
     folder?: RepositoryFolderRecord
-    versions?: { id: string; name: string; createdAt: string }[]
-    currentVersionId?: string | null
 }
 
-export function PublicRepositoryHeader({ repository, folder, versions = [], currentVersionId }: PublicRepositoryHeaderProps) {
-    const router = useRouter()
+export function PublicRepositoryHeader({ repository, folder }: PublicRepositoryHeaderProps) {
     // Context: Folder vs Repo
     const description = folder ? (folder.description || "") : (repository.description || "")
     const title = folder ? folder.name : repository.name
     const creationDate = folder ? folder.createdAt : repository.createdAt
-    const dateObj = new Date(creationDate)
-    const isValidDate = !isNaN(dateObj.getTime())
     
     // Copy feedback state
     const [isCopied, setIsCopied] = React.useState(false)
@@ -157,52 +144,11 @@ export function PublicRepositoryHeader({ repository, folder, versions = [], curr
 
 
             <div className="flex flex-col items-start gap-4 text-sm text-muted-foreground">
-                {isValidDate && (
-                    <div className="flex items-center gap-1.5">
-                        <Calendar className="w-4 h-4 opacity-70" />
-                        <span>Created {formatDistanceToNow(dateObj, { addSuffix: true })}</span>
-                    </div>
-                )}
+                <div className="flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 opacity-70" />
+                    <span>Created {formatDistanceToNow(new Date(creationDate), { addSuffix: true })}</span>
+                </div>
                 <div className="flex items-center gap-2">
-                    {!folder && versions.length > 0 && (
-                        <Select
-                            value={currentVersionId || "live"}
-                            onValueChange={(val) => {
-                                const url = new URL(window.location.href)
-                                if (val === "live") {
-                                    url.searchParams.delete("versionId")
-                                } else {
-                                    url.searchParams.set("versionId", val)
-                                }
-                                router.push(url.toString())
-                            }}
-                        >
-                            <SelectTrigger className="w-[140px] h-8 text-xs">
-                                <SelectValue placeholder="Select version" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="live">
-                                    <span className="font-medium">Live (Latest)</span>
-                                </SelectItem>
-                                {versions.map((v) => {
-                                    const vDate = new Date(v.createdAt)
-                                    const isVDateValid = !isNaN(vDate.getTime())
-                                    return (
-                                        <SelectItem key={v.id} value={v.id}>
-                                            <div className="flex flex-col items-start text-xs">
-                                                <span className="font-medium">{v.name}</span>
-                                                {isVDateValid && (
-                                                    <span className="text-[10px] text-muted-foreground">
-                                                        {formatDistanceToNow(vDate, { addSuffix: true })}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </SelectItem>
-                                    )
-                                })}
-                            </SelectContent>
-                        </Select>
-                    )}
                     {!folder && (
                         <Button 
                             variant="outline" 

@@ -18,9 +18,11 @@ interface PublicRepositoryViewerProps {
     repository: RepositoryRecord
     folders: RepositoryFolderRecord[]
     assets: AssetRecord[]
+    versions?: { id: string; name: string; createdAt: string }[]
+    currentVersionId?: string | null
 }
 
-export function PublicRepositoryViewer({ repository, folders, assets }: PublicRepositoryViewerProps) {
+export function PublicRepositoryViewer({ repository, folders, assets, versions, currentVersionId }: PublicRepositoryViewerProps) {
     const [currentFolderId, setCurrentFolderId] = React.useState<string | null>(null)
     const [selectedAsset, setSelectedAsset] = React.useState<AssetRecord | null>(null)
     const [viewerAssets, setViewerAssets] = React.useState<AssetRecord[]>([])
@@ -219,6 +221,8 @@ export function PublicRepositoryViewer({ repository, folders, assets }: PublicRe
                          <PublicRepositoryHeader 
                              repository={repository} 
                              folder={currentFolder} 
+                             versions={versions}
+                             currentVersionId={currentVersionId}
                          />
 
                          <div className="pb-32">
