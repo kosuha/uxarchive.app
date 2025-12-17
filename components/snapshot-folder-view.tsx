@@ -9,12 +9,15 @@ import { useDraggableScroll } from "@/hooks/use-draggable-scroll"
 interface SnapshotFolderViewProps {
     title: string
     description?: string | null
+    tags?: { id: string; label: string; color: string }[]
     items: SnapshotItemRecord[] // Children of the current folder (or roots)
     onNavigate: (folder: SnapshotItemRecord) => void
     onAssetClick: (asset: SnapshotItemRecord) => void
 }
 
-export function SnapshotFolderView({ title, description, items, onNavigate, onAssetClick }: SnapshotFolderViewProps) {
+import { Badge } from "@/components/ui/badge"
+
+export function SnapshotFolderView({ title, description, tags, items, onNavigate, onAssetClick }: SnapshotFolderViewProps) {
     const assets = items.filter(i => i.itemType === 'asset')
     const folders = items.filter(i => i.itemType === 'folder').sort((a, b) => (a.itemData.order || 0) - (b.itemData.order || 0))
 
@@ -22,8 +25,28 @@ export function SnapshotFolderView({ title, description, items, onNavigate, onAs
         <div className="w-full h-full flex flex-col bg-background">
             <div className="flex-1 overflow-y-auto overflow-x-hidden pb-32 pt-4">
                 {/* Header Section */}
-                <div className="px-8 pb-6 pt-2 space-y-2">
-                    <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+                <div className="px-8 pb-6 pt-2 space-y-3">
+                    <div className="space-y-1">
+                        <h1 className="text-2xl font-semibold tracking-tight mb-4">{title}</h1>
+                         {tags && tags.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                                {tags.map(tag => (
+                                    <Badge 
+                                        key={tag.id} 
+                                        variant="outline" 
+                                        className="text-xs font-normal px-2 py-0 border-transparent bg-secondary text-secondary-foreground" // Fallback style
+                                        style={tag.color ? {
+                                            backgroundColor: `${tag.color}20`,
+                                            color: tag.color,
+                                            borderColor: `${tag.color}30`
+                                        } : undefined}
+                                    >
+                                        {tag.label}
+                                    </Badge>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                     {description && (
                         <p className="text-muted-foreground text-sm leading-relaxed max-w-3xl whitespace-pre-wrap">
                             {description}
@@ -56,6 +79,7 @@ export function SnapshotFolderView({ title, description, items, onNavigate, onAs
                                     e.stopPropagation()
                                     onAssetClick(asset)
                                 }}
+                                tags={folder.itemData.tags}
                                 isFolder
                             />
                         </div>
@@ -72,14 +96,16 @@ function SnapshotSection({
     onClickAsset, 
     emptyMessage = "No items", 
     showIfEmpty = false,
-    isFolder = false
+    isFolder = false,
+    tags
 }: { 
     title: string, 
     assets: SnapshotItemRecord[], 
     onClickAsset: (asset: SnapshotItemRecord, e: React.MouseEvent) => void,
     emptyMessage?: string,
     showIfEmpty?: boolean,
-    isFolder?: boolean
+    isFolder?: boolean,
+    tags?: { id: string; label: string; color: string }[]
 }) {
     const { ref, events, isDragging } = useDraggableScroll()
 
@@ -87,10 +113,28 @@ function SnapshotSection({
 
     return (
         <div className="py-6 space-y-4">
-            <div className="flex items-baseline gap-2 px-8">
-                {isFolder && <Folder className="w-4 h-4 text-muted-foreground self-center mr-1" />}
-                <h3 className="text-sm font-semibold text-foreground/80">{title}</h3>
-                <span className="text-xs text-muted-foreground">{assets.length} items</span>
+            <div className="flex items-center gap-2 px-8">
+                 <div className="flex items-baseline gap-2">
+                    {isFolder && <Folder className="w-4 h-4 text-muted-foreground self-center mr-1" />}
+                    <h3 className="text-sm font-semibold text-foreground/80">{title}</h3>
+                    <span className="text-xs text-muted-foreground">{assets.length} items</span>
+                 </div>
+                 {tags && tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 ml-2">
+                        {tags.map(tag => (
+                            <div 
+                                key={tag.id} 
+                                className="text-[10px] px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground"
+                                style={tag.color ? {
+                                    backgroundColor: `${tag.color}15`,
+                                    color: tag.color
+                                } : undefined}
+                            >
+                                {tag.label}
+                            </div>
+                        ))}
+                    </div>
+                 )}
             </div>
 
             <div

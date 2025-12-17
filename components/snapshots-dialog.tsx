@@ -32,6 +32,7 @@ import { Trash2, RotateCcw, Plus, History, FileImage, Folder, PanelLeft, Loader2
 import { cn } from "@/lib/utils"
 // import { toast } from "sonner" // Removed sonner
 import { useToast } from "@/components/ui/use-toast"
+import { Badge } from "@/components/ui/badge"
 
 interface SnapshotsDialogProps {
     repositoryId: string
@@ -234,11 +235,29 @@ export function SnapshotsDialog({ repositoryId, repositoryName, open, onOpenChan
                              {/* Sidebar Footer */}
                              {selectedSnapshot && (
                                  <div className="p-4 border-t border-border/40 bg-background/50 space-y-2">
-                                     <div className="text-xs text-muted-foreground px-1">
-                                         <p className="line-clamp-2 italic opacity-80 mb-3">
-                                             {selectedSnapshot.description || "No description provided."}
-                                         </p>
-                                     </div>
+                                      <div className="text-xs text-muted-foreground px-1">
+                                          {selectedSnapshot.tags && selectedSnapshot.tags.length > 0 && (
+                                              <div className="flex flex-wrap gap-1.5 mb-3">
+                                                  {selectedSnapshot.tags.map(tag => (
+                                                      <Badge 
+                                                          key={tag.id}
+                                                          variant="outline"
+                                                          className="text-[10px] px-1.5 py-0 h-5 font-normal border-transparent bg-secondary/50 text-secondary-foreground"
+                                                          style={tag.color ? {
+                                                              backgroundColor: `${tag.color}15`,
+                                                              color: tag.color,
+                                                              borderColor: `${tag.color}20`
+                                                          } : undefined}
+                                                      >
+                                                          {tag.label}
+                                                      </Badge>
+                                                  ))}
+                                              </div>
+                                          )}
+                                          <p className="line-clamp-2 italic opacity-80 mb-3">
+                                              {selectedSnapshot.description || "No description provided."}
+                                          </p>
+                                      </div>
                                      <div className="grid grid-cols-2 gap-2">
                                          <Button
                                              variant="outline"
@@ -327,6 +346,7 @@ export function SnapshotsDialog({ repositoryId, repositoryName, open, onOpenChan
                                         items={viewingItem.children || []}
                                         onNavigate={(folder) => setViewingItem(folder)}
                                         onAssetClick={(asset) => setViewingItem(asset)}
+                                        tags={viewingItem.itemData?.tags}
                                      />
                                  )
                              ) : (
@@ -338,6 +358,7 @@ export function SnapshotsDialog({ repositoryId, repositoryName, open, onOpenChan
                                         items={snapshotTree}
                                         onNavigate={(folder) => setViewingItem(folder)}
                                         onAssetClick={(asset) => setViewingItem(asset)}
+                                        tags={selectedSnapshot.tags || undefined}
                                     />
                                  ) : (
                                     <div className="h-full flex flex-col items-center justify-center text-center p-8 max-w-md mx-auto">
