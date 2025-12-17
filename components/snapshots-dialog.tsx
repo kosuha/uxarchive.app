@@ -333,7 +333,7 @@ export function SnapshotsDialog({ repositoryId, repositoryName, open, onOpenChan
 
                                          <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
                                              <img
-                                                 src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/repository-assets/${viewingItem.itemData.storage_path}`}
+                                                 src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ux-archive-captures/${viewingItem.itemData.storage_path}`}
                                                  alt="Preview"
                                                  className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
                                              />

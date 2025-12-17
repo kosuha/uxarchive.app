@@ -162,12 +162,13 @@ function SnapshotSection({
                                     <div className="absolute inset-0 bg-muted/10" />
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
-                                        src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/repository-assets/${asset.itemData.storage_path}`}
+                                        src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ux-archive-captures/${asset.itemData.storage_path}`}
                                         alt={name}
                                         className="w-full h-full object-cover"
                                         loading="lazy"
                                         draggable={false}
                                     />
+
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </div>
 
