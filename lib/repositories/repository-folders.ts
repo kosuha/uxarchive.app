@@ -19,6 +19,7 @@ export type RepositoryFolderRecord = {
   order: number;
   createdAt: string;
   updatedAt: string;
+  tags?: { id: string; label: string; color: string }[];
 };
 
 const mapRepositoryFolder = (
@@ -32,6 +33,9 @@ const mapRepositoryFolder = (
   order: row.order,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
+  tags: ((row as any).folder_tags || []).map((ft: any) => ft.tags).filter((
+    t: any,
+  ) => !!t),
 });
 
 export type CreateRepositoryFolderInput = {
@@ -150,7 +154,7 @@ export const listRepositoryFolders = async (
   params: ListRepositoryFoldersParams,
 ): Promise<RepositoryFolderRecord[]> => {
   let query = client.from("repository_folders").select(
-    "*, repositories!inner(workspace_id)",
+    "*, repositories!inner(workspace_id), folder_tags(tags(id, label, color))",
   );
 
   if (params.repositoryId) {
