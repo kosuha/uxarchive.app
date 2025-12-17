@@ -19,7 +19,7 @@ export async function generateMetadata(
 ): Promise<Metadata> {
     const { repositoryId } = await params
     const supabase = getServiceRoleSupabaseClient()
-    
+
     try {
         const repo = await getPublicRepositoryById(supabase as any, repositoryId)
         return {
@@ -57,7 +57,7 @@ export default async function SharedRepositoryPage({
 
     // 1. Fetch live repository details (metadata mostly)
     // We need this even for versions to check existence/visibility
-    
+
     // Debug: Check if repo exists at all (ignoring public status) to give better feedback
     const { data: rawRepo } = await supabase
         .from('repositories')
@@ -92,15 +92,15 @@ export default async function SharedRepositoryPage({
 
     // 3. Determine Data Source (Live vs Version)
     let folders, assets, viewRepository;
-    
+
     // 4. Fetch Tags (Live only)
-    let tags: { id: string; label: string; type: TagType; color?: string }[] = []
-    let folderTags: Record<string, { id: string; label: string; type: TagType; color?: string }[]> = {}
+    let tags: Tag[] = []
+    let folderTags: Record<string, Tag[]> = {}
 
     if (versionId) {
         // Fetch Version Data
         const snapshotData = await getSnapshotAsRepositoryData(supabase as any, repositoryId, versionId)
-        
+
         if (snapshotData) {
             viewRepository = snapshotData.repository
             folders = snapshotData.folders
@@ -119,29 +119,29 @@ export default async function SharedRepositoryPage({
         ])
         folders = f
         assets = a
-        
-        tags = rTags.map(r => ({
-                id: r.tag.id,
-                label: r.tag.label,
-                type: r.tag.type as TagType,
-                color: r.tag.color || undefined,
-                createdAt: r.tag.createdAt
-            }))
 
-            fTags.forEach(f => {
-                if (!folderTags[f.folderId]) folderTags[f.folderId] = []
-                folderTags[f.folderId].push({
-                    id: f.tag.id,
-                    label: f.tag.label,
-                    type: f.tag.type as TagType,
-                    color: f.tag.color || undefined,
-                    createdAt: f.tag.createdAt
-                })
+        tags = rTags.map(r => ({
+            id: r.tag.id,
+            label: r.tag.label,
+            type: r.tag.type as TagType,
+            color: r.tag.color || undefined,
+            createdAt: r.tag.createdAt
+        }))
+
+        fTags.forEach(f => {
+            if (!folderTags[f.folderId]) folderTags[f.folderId] = []
+            folderTags[f.folderId].push({
+                id: f.tag.id,
+                label: f.tag.label,
+                type: f.tag.type as TagType,
+                color: f.tag.color || undefined,
+                createdAt: f.tag.createdAt
             })
+        })
     }
 
     return (
-        <PublicRepositoryViewer 
+        <PublicRepositoryViewer
             repository={viewRepository}
             folders={folders}
             assets={assets}
