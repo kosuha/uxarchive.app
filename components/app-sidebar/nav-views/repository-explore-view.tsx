@@ -192,43 +192,71 @@ export function RepositoryExploreView() {
     }
 
     const handleRenameFolder = async (id: string, newName: string, repositoryId: string) => {
-        console.log("handleRenameFolder called", { id, newName, repositoryId })
+        // Optimistic Update
+        if (workspaceId) {
+            queryClient.setQueryData<any[]>(["repository-folders", "workspace", workspaceId], (old) => {
+                if (!old) return old
+                return old.map(f => f.id === id ? { ...f, name: newName } : f)
+            })
+        }
+
         await updateRepositoryFolderAction({ id, repositoryId, name: newName })
-        refresh()
+        queryClient.invalidateQueries({ queryKey: ["repository-folders"] })
     }
 
     const handleMoveFolder = async (id: string, newParentId: string | null, repositoryId: string) => {
-        console.log("handleMoveFolder called", { id, newParentId, repositoryId })
         try {
+            // Optimistic Update
+            if (workspaceId) {
+                queryClient.setQueryData<any[]>(["repository-folders", "workspace", workspaceId], (old) => {
+                    if (!old) return old
+                    return old.map(f => f.id === id ? { ...f, parentId: newParentId } : f)
+                })
+            }
+
             await moveRepositoryFolderAction({ id, repositoryId, newParentId })
-            refresh()
+            queryClient.invalidateQueries({ queryKey: ["repository-folders"] })
         } catch (error) {
             console.error("Failed to move folder", error)
             alert("Failed to move folder")
+            queryClient.invalidateQueries({ queryKey: ["repository-folders"] }) // Revert on error
         }
     }
 
     const handleMoveAsset = async (id: string, newFolderId: string | null, repositoryId: string) => {
         try {
+            // Optimistic Update
+            if (workspaceId) {
+                queryClient.setQueryData<any[]>(["assets", "workspace", workspaceId], (old) => {
+                    if (!old) return old
+                    return old.map(a => a.id === id ? { ...a, folderId: newFolderId } : a)
+                })
+            }
+
             await moveRepositoryAssetAction({ id, repositoryId, newFolderId })
-            refresh()
+            queryClient.invalidateQueries({ queryKey: ["assets"] })
         } catch (error) {
             console.error("Failed to move asset", error)
             alert("Failed to move asset")
+            queryClient.invalidateQueries({ queryKey: ["assets"] }) // Revert on error
         }
     }
 
-
-
-
     const handleRenameAsset = async (id: string, newName: string, repositoryId: string) => {
-        console.log("handleRenameAsset called", { id, newName, repositoryId })
         const asset = assets.find(a => a.id === id)
         const meta = (asset?.meta as any) || {}
         const newMeta = { ...meta, name: newName }
 
+        // Optimistic Update
+        if (workspaceId) {
+            queryClient.setQueryData<any[]>(["assets", "workspace", workspaceId], (old) => {
+                if (!old) return old
+                return old.map(a => a.id === id ? { ...a, meta: newMeta } : a)
+            })
+        }
+
         await updateRepositoryAssetAction({ id, repositoryId, meta: newMeta })
-        refresh()
+        queryClient.invalidateQueries({ queryKey: ["assets"] })
     }
 
     const handleDeleteAsset = async (id: string, repositoryId: string) => {

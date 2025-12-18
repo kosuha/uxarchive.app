@@ -15,7 +15,8 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { createRepositoryFolderAction } from "@/app/actions/repository-folders"
 import { useRepositoryData } from "@/components/repository-data-context"
-import { FolderPlus } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query" // Added
+import type { RepositoryFolderRecord } from "@/lib/repositories/repository-folders" // Added
 
 interface CreateFolderDialogProps {
     repositoryId: string
@@ -32,7 +33,8 @@ export function CreateFolderDialog({
     onOpenChange: setControlledOpen,
     trigger
 }: CreateFolderDialogProps) {
-    const { refresh } = useRepositoryData()
+    const { workspaceId } = useRepositoryData()
+    const queryClient = useQueryClient()
     const [internalOpen, setInternalOpen] = React.useState(false)
 
     const isControlled = controlledOpen !== undefined
@@ -59,12 +61,26 @@ export function CreateFolderDialog({
         }
 
         try {
-            await createRepositoryFolderAction({
+            const newFolder = await createRepositoryFolderAction({
                 repositoryId,
                 parentId,
                 name: name.trim(),
             })
-            await refresh()
+
+            // Optimized update: Update cache directly instead of refreshing everything
+            if (workspaceId) {
+                queryClient.setQueryData<RepositoryFolderRecord[]>(
+                    ["repository-folders", "workspace", workspaceId],
+                    (oldFolders) => {
+                        if (!oldFolders) return [newFolder]
+                        return [...oldFolders, newFolder].sort((a, b) => a.order - b.order)
+                    }
+                )
+            }
+
+            // Invalidate strictly just in case (non-blocking)
+            queryClient.invalidateQueries({ queryKey: ["repository-folders"] })
+
             handleOpenChange(false)
             setName("")
         } catch (error) {
