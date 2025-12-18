@@ -8,7 +8,7 @@ import { useRepositoryData, RepositoryDataContext } from "@/components/repositor
 import { useToast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
 import { ItemContextMenu } from "./item-context-menu"
-import { FileImage, Loader2 } from "lucide-react"
+import { FileImage, Loader2, Folder } from "lucide-react"
 
 
 import type { AssetRecord } from "@/lib/repositories/assets"
@@ -48,6 +48,7 @@ export function RepositoryFolderSection({
         return (
             <div className="py-6 space-y-4">
                 <div className="flex items-center gap-2 px-8">
+                    <Folder className="w-5 h-5 text-muted-foreground fill-muted-foreground/20" />
                     <h3 className="text-sm font-semibold text-foreground/80">{title}</h3>
                 </div>
                 <div className="px-8 flex gap-4 overflow-hidden">
@@ -63,9 +64,10 @@ export function RepositoryFolderSection({
 
     return (
         <div className="py-6 space-y-4">
-            <div className="flex items-baseline gap-2 px-8">
+            <div className="flex items-center gap-2 px-8">
+                <Folder className="w-5 h-5 text-muted-foreground fill-muted-foreground/20" />
                 <h3 className="text-sm font-semibold text-foreground/80">{title}</h3>
-                <span className="text-xs text-muted-foreground">{assets.length} items</span>
+                <span className="text-xs text-muted-foreground ml-1">{assets.length} items</span>
             </div>
 
             <div
