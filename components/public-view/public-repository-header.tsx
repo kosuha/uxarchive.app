@@ -4,7 +4,7 @@ import * as React from "react"
 import { RepositoryRecord } from "@/lib/repositories/repositories"
 import { RepositoryFolderRecord } from "@/lib/repositories/repository-folders"
 import { Badge } from "@/components/ui/badge"
-import { Lock, Globe, Calendar, Eye, GitFork, Folder, Heart, Copy, Check } from "lucide-react"
+import { Lock, Globe, Calendar, Eye, GitFork, Folder, Heart, Copy, Check, User } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
 // import { toast } from "sonner" // Removed sonner
@@ -25,6 +25,8 @@ import { Loader2 } from "lucide-react"
 
 import { TagBadge } from "@/components/tag-badge"
 import { Tag } from "@/lib/types"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import Link from "next/link"
 
 interface PublicRepositoryHeaderProps {
     repository: RepositoryRecord
@@ -118,18 +120,20 @@ export function PublicRepositoryHeader({ repository, folder, versions = [], curr
         <div className="px-6 py-8 border-b border-border/40 space-y-4">
             <div className="space-y-2">
                 {!folder && (
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1.5">
-                            <Eye className="w-4 h-4 opacity-70" />
-                            <span>{repository.viewCount}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <GitFork className="w-4 h-4 opacity-70" />
-                            <span>{repository.forkCount}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <Heart className="w-4 h-4 opacity-70" />
-                            <span>{repository.likeCount}</span>
+                    <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1.5">
+                                <Eye className="w-4 h-4 opacity-70" />
+                                <span>{repository.viewCount}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <GitFork className="w-4 h-4 opacity-70" />
+                                <span>{repository.forkCount}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <Heart className="w-4 h-4 opacity-70" />
+                                <span>{repository.likeCount}</span>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -179,6 +183,12 @@ export function PublicRepositoryHeader({ repository, folder, versions = [], curr
 
 
             <div className="flex flex-col items-start gap-4 text-sm text-muted-foreground">
+                {repository.author && (
+                    <Link href={`/u/${repository.author.username}`} className="flex items-center gap-2 hover:text-foreground transition-colors mr-2">
+                        <User className="w-4 h-4 opacity-70" />
+                        <span className="font-medium">{repository.author.username}</span>
+                    </Link>
+                )}
                 {isValidDate && (
                     <div className="flex items-center gap-1.5">
                         <Calendar className="w-4 h-4 opacity-70" />

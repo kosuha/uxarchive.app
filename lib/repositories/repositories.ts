@@ -20,6 +20,11 @@ export type RepositoryRecord = {
   createdAt: string;
   updatedAt: string;
   thumbnailUrl: string | null;
+  author?: {
+    username: string;
+    displayName: string;
+    avatarUrl?: string | null;
+  };
 };
 
 const mapRepository = (
@@ -288,5 +293,41 @@ export const getPublicRepositoryById = async (
     .single();
 
   const row = ensureData(data, error, "Repository not found or not public.");
-  return mapRepository(row);
+  const repo = mapRepository(row);
+
+  // Fetch author (workspace owner)
+  const { data: ownerData } = await client
+    .from("workspace_members")
+    .select(`
+      profile:profiles (
+        username,
+        display_name,
+        avatar_url
+      )
+    `)
+    .eq("workspace_id", row.workspace_id)
+    .eq("role", "owner")
+    .limit(1)
+    .maybeSingle();
+
+  if (ownerData && ownerData.profile) {
+    // The joined relation might be returned as an array depending on schema inference
+    const profileOrArray = ownerData.profile;
+    const profile = Array.isArray(profileOrArray)
+      ? profileOrArray[0]
+      : profileOrArray;
+
+    if (profile) {
+      repo.author = {
+        // @ts-ignore - Supabase type inference on joins can be tricky
+        username: profile.username,
+        // @ts-ignore
+        displayName: profile.display_name,
+        // @ts-ignore
+        avatarUrl: profile.avatar_url,
+      };
+    }
+  }
+
+  return repo;
 };
