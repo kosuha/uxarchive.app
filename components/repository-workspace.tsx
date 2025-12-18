@@ -367,7 +367,17 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                                 ).map(a => ({
                                     ...a,
                                     path: getRelativeAssetPath(a.folderId, folder.id)
-                                }))
+                                })).sort((a, b) => {
+                                    // Prioritize direct children (where folderId matches the current folder.id)
+                                    const aIsDirect = a.folderId === folder.id
+                                    const bIsDirect = b.folderId === folder.id
+
+                                    if (aIsDirect && !bIsDirect) return -1
+                                    if (!aIsDirect && bIsDirect) return 1
+
+                                    // Secondary sort: Keep original order (defined by 'order' field)
+                                    return (a.order || 0) - (b.order || 0)
+                                })
 
                                 return (
                                     <ItemContextMenu
