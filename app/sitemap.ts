@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const baseUrl = "https://uxarchive.app";
+const baseUrl = "https://www.uxarchive.app";
 
 const routes = ["", "/privacy", "/terms", "/refund-policy", "/share/r"];
 
