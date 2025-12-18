@@ -1,44 +1,46 @@
-import { createSupabaseServerActionClient as createClient } from "../supabase/server-clients"
+import { getServiceRoleSupabaseClient } from "../supabase/service-client";
 
 export type Profile = {
-  id: string
-  username: string
-  display_name: string
-  avatar_url?: string | null
-  bio?: string | null
-  created_at: string
-}
+  id: string;
+  username: string;
+  display_name: string;
+  avatar_url?: string | null;
+  bio?: string | null;
+  created_at: string;
+};
 
-export async function getProfileByUsername(username: string): Promise<Profile | null> {
-  const supabase = await createClient()
-  
+export async function getProfileByUsername(
+  username: string,
+): Promise<Profile | null> {
+  const supabase = getServiceRoleSupabaseClient();
+
   const { data, error } = await supabase
     .from("profiles")
     .select("id, username, display_name, avatar_url, bio, created_at")
     .eq("username", username)
-    .single()
+    .single();
 
   if (error) {
-    console.error("Error fetching profile by username:", error)
-    return null
+    console.error("Error fetching profile by username:", error);
+    return null;
   }
 
-  return data
+  return data;
 }
 
 export async function getProfileById(id: string): Promise<Profile | null> {
-  const supabase = await createClient()
-  
+  const supabase = getServiceRoleSupabaseClient();
+
   const { data, error } = await supabase
     .from("profiles")
     .select("id, username, display_name, avatar_url, bio, created_at")
     .eq("id", id)
-    .single()
+    .single();
 
   if (error) {
-    console.error("Error fetching profile by id:", error)
-    return null
+    console.error("Error fetching profile by id:", error);
+    return null;
   }
 
-  return data
+  return data;
 }

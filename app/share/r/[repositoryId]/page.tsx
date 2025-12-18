@@ -1,5 +1,6 @@
 import { Metadata, ResolvingMetadata } from "next"
 import { getServerSupabaseClient } from "@/lib/supabase/server-client"
+import { getServiceRoleSupabaseClient } from "@/lib/supabase/service-client"
 import { getPublicRepositoryById } from "@/lib/repositories/repositories"
 import { listRepositoryFolders } from "@/lib/repositories/repository-folders"
 import { listAssets } from "@/lib/repositories/assets"
@@ -77,7 +78,8 @@ export default async function SharedRepositoryPage({
         return <div className="p-10 text-amber-500 font-bold">DEBUG: Repository exists but is PRIVATE. (ID: {repositoryId})</div>
     }
 
-    const repository = await getPublicRepositoryById(supabase as any, repositoryId)
+    const adminSupabase = getServiceRoleSupabaseClient()
+    const repository = await getPublicRepositoryById(adminSupabase as any, repositoryId)
     // if (!repository) notFound() // redundant given the check above and getPublicRepositoryById logic (which throws or returns)
 
     // 2. Fetch available versions (snapshots)

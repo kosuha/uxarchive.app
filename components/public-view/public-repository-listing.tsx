@@ -80,7 +80,7 @@ export function PublicRepositoryListing({ initialRepositories, username }: Publi
 
   return (
     <div className="w-full">
-      <div className="columns-1 gap-6 sm:columns-1 lg:columns-2 xl:columns-3">
+      <div className="columns-1 gap-6 sm:columns-1 md:columns-2 lg:columns-3 xl:columns-5">
         {repositories.map((repo) => (
           <div key={repo.id} className="break-inside-avoid mb-6">
             <RepositoryCard repo={repo} />

@@ -27,6 +27,7 @@ import {
   ensurePrivateRepositoryAllowed,
   ensureRepositoryCreationAllowed,
 } from "@/lib/plan-limits";
+import { getServiceRoleSupabaseClient } from "@/lib/supabase/service-client";
 
 export async function listRepositoriesAction(workspaceId: string) {
   const supabase = await createActionSupabaseClient();
@@ -486,14 +487,18 @@ export async function listUserPublicRepositoriesAction(
   page: number = 1,
   perPage: number = 24,
 ) {
-  const supabase = await createActionSupabaseClient();
+  // Use Service Role client to bypass RLS for profile lookup and workspace membership
+  // This allows viewing any user's public repositories without being logged in
+  const supabase = getServiceRoleSupabaseClient();
 
   // 1. Get User Profile ID by Username
-  const { data: profile } = await supabase
+  const { data: profileData } = await supabase
     .from("profiles")
     .select("id")
     .eq("username", username)
     .single();
+
+  const profile = profileData as { id: string } | null;
 
   if (!profile) {
     return { repositories: [], hasNextPage: false };
@@ -504,10 +509,12 @@ export async function listUserPublicRepositoriesAction(
   // but for "User's Public Repos", being a member is likely enough to show it on their profile
   // or sticking to workspaces they created?
   // For now, let's include all workspaces they are a member of.
-  const { data: memberships } = await supabase
+  const { data: membershipData } = await supabase
     .from("workspace_members")
     .select("workspace_id")
     .eq("profile_id", profile.id);
+
+  const memberships = membershipData as { workspace_id: string }[] | null;
 
   const workspaceIds = memberships?.map((m) => m.workspace_id) || [];
 
