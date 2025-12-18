@@ -141,11 +141,15 @@ export const listAssets = async (
   client: SupabaseRepositoryClient,
   params: ListAssetsParams,
 ): Promise<AssetRecord[]> => {
-  // If fetching by workspaceId or recursive repositoryId, we need to join if we want to be safe,
-  // but for workspaceId we definitely need join.
-  let query = client.from("assets").select(
-    "*, repositories!inner(workspace_id)",
-  );
+  // Optimize query: Only join repositories if we need to filter by workspaceId.
+  // Unconditional inner join causes issues for non-members who can't see the workspace_id.
+  let query;
+
+  if (params.workspaceId) {
+    query = client.from("assets").select("*, repositories!inner(workspace_id)");
+  } else {
+    query = client.from("assets").select("*");
+  }
 
   if (params.repositoryId) {
     query = query.eq("repository_id", params.repositoryId);
