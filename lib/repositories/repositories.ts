@@ -248,7 +248,9 @@ export const listPublicRepositoriesWithPagination = async (
   }
 
   if (sort === "popular") {
-    query = query.order("view_count", { ascending: false });
+    query = query
+      .order("like_count", { ascending: false })
+      .order("view_count", { ascending: false });
   } else {
     query = query.order("created_at", { ascending: false });
   }
