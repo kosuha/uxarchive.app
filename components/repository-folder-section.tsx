@@ -20,6 +20,7 @@ interface RepositoryFolderSectionProps {
     showIfEmpty?: boolean
     assets?: (AssetRecord & { path?: string })[] // Optional pre-loaded assets with path info
     onAssetClick?: (asset: AssetRecord, siblings: AssetRecord[]) => void
+    showIcon?: boolean
 }
 
 export function RepositoryFolderSection({
@@ -28,7 +29,8 @@ export function RepositoryFolderSection({
     title,
     showIfEmpty = false,
     assets: propsAssets,
-    onAssetClick
+    onAssetClick,
+    showIcon = true
 }: RepositoryFolderSectionProps) {
     const { data: fetchedAssets = [], isLoading } = useQuery({
         queryKey: ["assets", repositoryId, folderId],
@@ -48,7 +50,7 @@ export function RepositoryFolderSection({
         return (
             <div className="py-6 space-y-4">
                 <div className="flex items-center gap-2 px-8">
-                    <Folder className="w-5 h-5 text-muted-foreground fill-muted-foreground/20" />
+                    {showIcon && <Folder className="w-5 h-5 text-muted-foreground fill-muted-foreground/20" />}
                     <h3 className="text-sm font-semibold text-foreground/80">{title}</h3>
                 </div>
                 <div className="px-8 flex gap-4 overflow-hidden">
@@ -65,7 +67,7 @@ export function RepositoryFolderSection({
     return (
         <div className="py-6 space-y-4">
             <div className="flex items-center gap-2 px-8">
-                <Folder className="w-5 h-5 text-muted-foreground fill-muted-foreground/20" />
+                {showIcon && <Folder className="w-5 h-5 text-muted-foreground fill-muted-foreground/20" />}
                 <h3 className="text-sm font-semibold text-foreground/80">{title}</h3>
                 <span className="text-xs text-muted-foreground ml-1">{assets.length} items</span>
             </div>

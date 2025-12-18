@@ -243,6 +243,7 @@ export function PublicRepositoryViewer({ repository, folders, assets, versions, 
                                     showIfEmpty={childFolders.length === 0}
                                     assets={assets.filter(a => a.folderId === (currentFolderId || null))}
                                     onAssetClick={handleAssetClick}
+                                    showIcon={false}
                                 />
                             </div>
 
