@@ -3,6 +3,7 @@
 import * as React from "react"
 import { RepositoryTree } from "../repository-tree"
 import { useRepositoryData } from "@/components/repository-data-context"
+import { useQueryClient } from "@tanstack/react-query"
 import { CreateRepositoryDialog } from "@/components/create-repository-dialog"
 import { SnapshotsDialog } from "@/components/snapshots-dialog"
 import { deleteRepositoryAction, forkRepositoryAction, moveRepositoryToRepositoryAction, updateRepositoryAction, forkFolderAction } from "@/app/actions/repositories"
@@ -25,8 +26,52 @@ import { AssetDetailDialog } from "@/components/asset-detail-dialog"
 
 // Wrapper to bridge data and logic
 export function RepositoryExploreView() {
-    const { repositories, folders, assets, selectedRepositoryId, setSelectedRepositoryId, currentFolderId, setCurrentFolderId, refresh, setClipboard, clipboard } = useRepositoryData()
+    const { repositories, folders, assets, selectedRepositoryId, setSelectedRepositoryId, currentFolderId, setCurrentFolderId, refresh, setClipboard, clipboard, workspaceId } = useRepositoryData()
+    const queryClient = useQueryClient()
     const { toast } = useToast()
+
+    // ... (rest of the file) ...
+
+    const handleReorderAsset = async (items: { id: string, order: number }[], repositoryId: string) => {
+        try {
+            // 1. Optimistic Update (Sidebar/Global Cache)
+            if (workspaceId) {
+                queryClient.setQueryData<any[]>(["assets", "workspace", workspaceId], (oldAssets) => {
+                    if (!oldAssets) return oldAssets
+                    const updateMap = new Map(items.map(u => [u.id, u.order]))
+
+                    return oldAssets.map(asset => {
+                        if (updateMap.has(asset.id)) {
+                            return { ...asset, order: updateMap.get(asset.id)! }
+                        }
+                        return asset
+                    })
+                })
+            }
+
+            // 2. Optimistic Update (Main Workspace Cache)
+            queryClient.setQueryData<any[]>(["assets", repositoryId, "recursive-all"], (oldAssets) => {
+                if (!oldAssets) return oldAssets
+                const updateMap = new Map(items.map(u => [u.id, u.order]))
+
+                return oldAssets.map(asset => {
+                    if (updateMap.has(asset.id)) {
+                        return { ...asset, order: updateMap.get(asset.id)! }
+                    }
+                    return asset
+                })
+            })
+
+            await reorderAssetsAction({ items, repositoryId })
+            // Optimized invalidation
+            await queryClient.invalidateQueries({ queryKey: ["assets"] })
+        } catch (error) {
+            console.error("Failed to reorder assets", error)
+            toast({ description: "Failed to reorder assets", variant: "destructive" })
+            // Revert logic would go here ideally
+            queryClient.invalidateQueries({ queryKey: ["assets"] })
+        }
+    }
 
     // State for Context Menus and Dialogs
     const [snapshotRepoId, setSnapshotRepoId] = React.useState<string | null>(null)
@@ -173,16 +218,7 @@ export function RepositoryExploreView() {
         }
     }
 
-    const handleReorderAsset = async (items: { id: string, order: number }[], repositoryId: string) => {
-        try {
-            // 1. Optimistic update is handled by RepositoryTree UI mostly, but we trigger refresh
-            await reorderAssetsAction({ items, repositoryId })
-            refresh()
-        } catch (error) {
-            console.error("Failed to reorder assets", error)
-            toast({ description: "Failed to reorder assets", variant: "destructive" })
-        }
-    }
+
 
 
     const handleRenameAsset = async (id: string, newName: string, repositoryId: string) => {

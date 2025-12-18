@@ -30,7 +30,8 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
         repositories,
         clipboard,
         setClipboard,
-        refresh
+        refresh,
+        workspaceId
     } = useRepositoryData()
     const queryClient = useQueryClient()
     const { toast } = useToast()
@@ -68,7 +69,8 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
 
 
     // Fetch all assets for the current repository
-    const { data: assets = [] } = useQuery({
+    // Fetch all assets for the current repository
+    const { data: queryAssets } = useQuery({
         queryKey: ["assets", selectedRepositoryId, "recursive-all"],
         queryFn: async () => {
             if (!selectedRepositoryId) return []
@@ -76,6 +78,8 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
         },
         enabled: !!selectedRepositoryId,
     })
+
+    const assets = React.useMemo(() => queryAssets || [], [queryAssets])
 
     // Derived state: child folders of current view
     const childFolders = folders.filter(f => {
@@ -103,7 +107,7 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
     const handleReorder = async (newOrderAssets: AssetRecord[]) => {
         if (!selectedRepositoryId) return
 
-        // 1. Optimistic Update
+        // 1. Optimistic Update (Local Grid)
         setOptimisticAssets(newOrderAssets)
 
         // 2. Prepare payload
@@ -112,14 +116,43 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
             order: index
         }))
 
-        // 3. Call Server Action
+        // 3. Optimistic Update (Sidebar/Global Cache)
+        if (workspaceId) {
+            queryClient.setQueryData<AssetRecord[]>(["assets", "workspace", workspaceId], (oldAssets) => {
+                if (!oldAssets) return oldAssets
+                const updateMap = new Map(updates.map(u => [u.id, u.order]))
+
+                return oldAssets.map(asset => {
+                    if (updateMap.has(asset.id)) {
+                        return { ...asset, order: updateMap.get(asset.id)! }
+                    }
+                    return asset
+                })
+            })
+        }
+
+        // 4. Optimistic Update (Current Repository Cache - Explicit)
+        queryClient.setQueryData<AssetRecord[]>(["assets", selectedRepositoryId, "recursive-all"], (oldAssets) => {
+            if (!oldAssets) return oldAssets
+            const updateMap = new Map(updates.map(u => [u.id, u.order]))
+
+            return oldAssets.map(asset => {
+                if (updateMap.has(asset.id)) {
+                    return { ...asset, order: updateMap.get(asset.id)! }
+                }
+                return asset
+            })
+        })
+
+        // 5. Call Server Action
         try {
             await reorderAssetsAction({ items: updates, repositoryId: selectedRepositoryId })
-            await queryClient.invalidateQueries({ queryKey: ["assets", selectedRepositoryId] })
-            await refresh()
+            // Invalidate to ensure consistency, but user sees update immediately
+            queryClient.invalidateQueries({ queryKey: ["assets"] })
         } catch (error) {
             console.error("Failed to reorder assets", error)
             toast({ description: "Failed to save new order", variant: "destructive" })
+            queryClient.invalidateQueries({ queryKey: ["assets"] }) // Revert
         }
     }
 
