@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRepositoryData } from "@/components/repository-data-context"
-import { Folder, Upload, Plus, File, Trash2, ArrowLeft, MoreHorizontal, ArrowUp, ChevronRight, Loader2 } from "lucide-react"
+import { Folder, Upload, Plus, File, Trash2, ArrowLeft, MoreHorizontal, ArrowUp, ChevronRight, Loader2, FolderPlus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useQueryClient, useQuery } from "@tanstack/react-query"
 import { createAssetAction, listAssetsAction } from "@/app/actions/assets"
@@ -39,7 +39,7 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
     // Paste Handler
     const handlePaste = async (targetFolderId: string | null) => {
         if (!clipboard || !selectedRepositoryId) return
-        
+
         const { id: pasteToastId, update } = toast({ description: "Pasting from clipboard...", duration: 99999 }) // Keep toast open
         try {
             if (clipboard.type === 'asset') {
@@ -57,7 +57,7 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                 })
             }
             update({ description: "Pasted successfully", duration: 3000, id: pasteToastId })
-            await refresh() 
+            await refresh()
         } catch (e) {
             console.error("Paste failed", e)
             update({ description: "Failed to paste", variant: "destructive", duration: 3000, id: pasteToastId })
@@ -247,7 +247,7 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                         parentId={currentFolderId || null}
                         trigger={
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                                <Plus className="w-4 h-4" />
+                                <FolderPlus className="w-4 h-4" />
                             </Button>
                         }
                     />
@@ -275,11 +275,11 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
 
             {/* 2. Main Content (Scrollable) */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden pb-32">
-                
+
                 {/* Repository Header (Always visible) */}
                 {currentRepository && (
-                    <RepositoryHeader 
-                        repository={currentRepository} 
+                    <RepositoryHeader
+                        repository={currentRepository}
                         folder={currentFolder}
                     />
                 )}
@@ -388,16 +388,16 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                                             }
                                         }}
                                     >
-                                    <div onClick={() => setCurrentFolderId(folder.id)} className="cursor-pointer hover:bg-muted transition-colors rounded-lg">
-                                        <RepositoryFolderSection
-                                            repositoryId={selectedRepositoryId}
-                                            folderId={folder.id}
-                                            title={folder.name}
-                                            showIfEmpty={true}
-                                            assets={recursiveAssets}
-                                            onAssetClick={handleAssetClick}
-                                        />
-                                    </div>
+                                        <div onClick={() => setCurrentFolderId(folder.id)} className="cursor-pointer hover:bg-muted transition-colors rounded-lg">
+                                            <RepositoryFolderSection
+                                                repositoryId={selectedRepositoryId}
+                                                folderId={folder.id}
+                                                title={folder.name}
+                                                showIfEmpty={true}
+                                                assets={recursiveAssets}
+                                                onAssetClick={handleAssetClick}
+                                            />
+                                        </div>
                                     </ItemContextMenu>
                                 )
                             })}
