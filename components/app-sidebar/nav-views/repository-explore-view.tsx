@@ -225,7 +225,7 @@ export function RepositoryExploreView() {
 
     const handleMoveAsset = async (id: string, newFolderId: string | null, repositoryId: string) => {
         try {
-            // Optimistic Update
+            // Optimistic Update 1: Workspace Global Cache
             if (workspaceId) {
                 queryClient.setQueryData<any[]>(["assets", "workspace", workspaceId], (old) => {
                     if (!old) return old
@@ -233,7 +233,16 @@ export function RepositoryExploreView() {
                 })
             }
 
+            // Optimistic Update 2: Current Repository View Cache
+            // This is crucial for the main workspace view to update instantly
+            queryClient.setQueryData<any[]>(["assets", repositoryId, "recursive-all"], (old) => {
+                if (!old) return old
+                return old.map(a => a.id === id ? { ...a, folderId: newFolderId } : a)
+            })
+
             await moveRepositoryAssetAction({ id, repositoryId, newFolderId })
+
+            // Invalidate both keys
             queryClient.invalidateQueries({ queryKey: ["assets"] })
         } catch (error) {
             console.error("Failed to move asset", error)
