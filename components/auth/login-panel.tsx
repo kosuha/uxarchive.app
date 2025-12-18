@@ -64,7 +64,7 @@ export const LoginPanel = () => {
           <p className="text-sm uppercase text-muted-foreground">
             UX ARCHIVE
           </p>
-          <h1 className="text-2xl font-semibold">Workspace sign-in</h1>
+          <h1 className="text-2xl font-semibold">Sign In With Google</h1>
           <p className="text-sm text-muted-foreground">
             Sign in with Google to save patterns and capture insights.
           </p>

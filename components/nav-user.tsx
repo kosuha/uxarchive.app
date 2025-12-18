@@ -334,29 +334,45 @@ export function NavUser({ showUserInfo = false }: { showUserInfo?: boolean }) {
             sideOffset={4}
           >
             <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-lg">
-                  {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName} /> : null}
-                  <AvatarFallback className="rounded-lg">
-                    {avatarUrl ? initials : <UserRound className="h-4 w-4" />}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{displayName}</span>
-                  <span className="truncate text-xs">{email}</span>
+              {!user && !loading ? (
+                <div className="p-1">
+                  <Button
+                    className="w-full"
+                    size="sm"
+                    onClick={() => router.push("/login")}
+                  >
+                    Sign In With Google
+                  </Button>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                  <Avatar className="h-8 w-8 rounded-lg">
+                    {avatarUrl ? <AvatarImage src={avatarUrl} alt={displayName} /> : null}
+                    <AvatarFallback className="rounded-lg">
+                      {avatarUrl ? initials : <UserRound className="h-4 w-4" />}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-medium">{displayName}</span>
+                    <span className="truncate text-xs">{email}</span>
+                  </div>
+                </div>
+              )}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="gap-2"
-              onSelect={(event) => {
-                event.preventDefault()
-                handleOpenProfile()
-              }}
-            >
-              <Settings className="h-4 w-4" /> Settings
-            </DropdownMenuItem>
+            {
+              user && (
+                <DropdownMenuItem
+                  className="gap-2"
+                  onSelect={(event) => {
+                    event.preventDefault()
+                    handleOpenProfile()
+                  }}
+                >
+                  <Settings className="h-4 w-4" /> Settings
+                </DropdownMenuItem>
+              )
+            }
             {metadata.username && (
               <DropdownMenuItem
                 className="gap-2"
