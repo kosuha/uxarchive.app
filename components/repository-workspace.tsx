@@ -279,7 +279,7 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
         <div className={cn("flex flex-col rounded-lg h-full bg-background", className)}>
 
             {/* 1. Global Navigation Bar (Breadcrumbs + Actions) */}
-            <div className="flex items-center gap-4 px-4 py-3 border-b border-border/40 text-sm bg-background/50 backdrop-blur-sm sticky top-0 z-20">
+            <div className="flex items-center gap-4 px-4 py-3 rounded-t-lg border-b border-border/40 text-sm bg-background/50 backdrop-blur-sm sticky top-0 z-20">
                 <div className="flex flex-1 items-center gap-2 min-w-0">
                     <SidebarTrigger className="-ml-1 shrink-0" />
                     <div className="w-px h-4 bg-border/60 mx-1 shrink-0" />
