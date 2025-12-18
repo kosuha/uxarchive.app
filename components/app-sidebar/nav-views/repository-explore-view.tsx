@@ -9,7 +9,7 @@ import { deleteRepositoryAction, forkRepositoryAction, moveRepositoryToRepositor
 import { deleteRepositoryFolderAction, updateRepositoryFolderAction, moveRepositoryFolderAction, copyRepositoryFolderAction } from "@/app/actions/repository-folders"
 import { duplicateAssetAction, copyRepositoryAsFolderAction } from "@/app/actions/copy-paste"
 import { useToast } from "@/components/ui/use-toast"
-import { moveRepositoryAssetAction, deleteRepositoryAssetAction, updateRepositoryAssetAction } from "@/app/actions/repository-assets"
+import { moveRepositoryAssetAction, deleteRepositoryAssetAction, updateRepositoryAssetAction, reorderAssetsAction } from "@/app/actions/repository-assets"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -34,9 +34,9 @@ export function RepositoryExploreView() {
     const [viewingAssetId, setViewingAssetId] = React.useState<string | null>(null)
 
     // Derived State
-    const viewingAsset = React.useMemo(() => 
+    const viewingAsset = React.useMemo(() =>
         assets.find(a => a.id === viewingAssetId) || null
-    , [assets, viewingAssetId])
+        , [assets, viewingAssetId])
 
     // Alert Dialog State
     const [alertState, setAlertState] = React.useState<{
@@ -94,8 +94,8 @@ export function RepositoryExploreView() {
 
         const newName = prompt("Fork Folder as Repository", `${folder.name} (Fork)`)
         if (newName) {
-             toast({ description: "Forking folder..." })
-             try {
+            toast({ description: "Forking folder..." })
+            try {
                 const result = await forkFolderAction({
                     sourceFolderId: folder.id,
                     sourceRepositoryId: folder.repositoryId,
@@ -103,7 +103,7 @@ export function RepositoryExploreView() {
                     name: newName,
                     description: `Forked from folder '${folder.name}' in '${repo.name}'`
                 })
-                
+
                 if (result.error) {
                     toast({ description: `Fork failed: ${result.error}`, variant: "destructive" })
                 } else {
@@ -120,11 +120,11 @@ export function RepositoryExploreView() {
     const handleRenameRepository = async (id: string, newName: string) => {
         const repo = repositories.find(r => r.id === id)
         if (!repo) return
-        
-        await updateRepositoryAction({ 
-            id, 
-            workspaceId: repo.workspaceId, 
-            name: newName 
+
+        await updateRepositoryAction({
+            id,
+            workspaceId: repo.workspaceId,
+            name: newName
         })
         refresh()
     }
@@ -170,6 +170,17 @@ export function RepositoryExploreView() {
         } catch (error) {
             console.error("Failed to move asset", error)
             alert("Failed to move asset")
+        }
+    }
+
+    const handleReorderAsset = async (items: { id: string, order: number }[], repositoryId: string) => {
+        try {
+            // 1. Optimistic update is handled by RepositoryTree UI mostly, but we trigger refresh
+            await reorderAssetsAction({ items, repositoryId })
+            refresh()
+        } catch (error) {
+            console.error("Failed to reorder assets", error)
+            toast({ description: "Failed to reorder assets", variant: "destructive" })
         }
     }
 
@@ -235,7 +246,7 @@ export function RepositoryExploreView() {
         if (!clipboard) return
 
         try {
-             if (clipboard.type === 'asset') {
+            if (clipboard.type === 'asset') {
                 toast({ description: "Pasting asset..." })
                 await duplicateAssetAction({
                     assetId: clipboard.id,
@@ -253,18 +264,18 @@ export function RepositoryExploreView() {
                 })
                 toast({ description: "Folder pasted" })
             } else if (clipboard.type === 'repository') {
-                 toast({ description: "Pasting repository as folder..." })
-                 try {
+                toast({ description: "Pasting repository as folder..." })
+                try {
                     await copyRepositoryAsFolderAction({
                         sourceRepositoryId: clipboard.id,
                         targetRepositoryId: repositoryId,
                         targetParentId: folderId
                     })
                     toast({ description: "Repository pasted as folder" })
-                 } catch (e: any) {
-                     console.error("Paste failed", e)
-                     toast({ description: `Paste failed: ${e.message || "Unknown error"}`, variant: "destructive" })
-                 }
+                } catch (e: any) {
+                    console.error("Paste failed", e)
+                    toast({ description: `Paste failed: ${e.message || "Unknown error"}`, variant: "destructive" })
+                }
             }
             await refresh()
         } catch (e) {
@@ -298,8 +309,8 @@ export function RepositoryExploreView() {
                 }
             } else if (clipboard.type === 'asset') {
                 // Paste Asset into Repository Root
-                 toast({ description: "Pasting asset..." })
-                 await duplicateAssetAction({
+                toast({ description: "Pasting asset..." })
+                await duplicateAssetAction({
                     assetId: clipboard.id,
                     targetRepositoryId: targetRepoId,
                     targetFolderId: null // Root
@@ -307,8 +318,8 @@ export function RepositoryExploreView() {
                 toast({ description: "Asset pasted" })
             } else if (clipboard.type === 'folder') {
                 // Paste Folder into Repository Root
-                 toast({ description: "Pasting folder..." })
-                 await copyRepositoryFolderAction({
+                toast({ description: "Pasting folder..." })
+                await copyRepositoryFolderAction({
                     sourceFolderId: clipboard.id,
                     sourceRepositoryId: clipboard.repositoryId,
                     targetRepositoryId: targetRepoId,
@@ -346,6 +357,7 @@ export function RepositoryExploreView() {
                 onRenameFolder={handleRenameFolder}
                 onMoveFolder={handleMoveFolder}
                 onMoveAsset={handleMoveAsset}
+                onReorderAsset={handleReorderAsset}
                 onDeleteAsset={handleDeleteAsset}
                 onRenameAsset={handleRenameAsset}
                 onSelectAsset={handleSelectAsset}

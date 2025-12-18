@@ -39,7 +39,7 @@ export function RepositoryFolderSection({
     const assets = propsAssets || fetchedAssets
     const { ref, events, isDragging } = useDraggableScroll()
     const { toast } = useToast()
-    
+
     // safe usage of context since this might be used in public view without provider
     const context = React.useContext(RepositoryDataContext)
     const setClipboard = context?.setClipboard
@@ -52,7 +52,7 @@ export function RepositoryFolderSection({
                 </div>
                 <div className="px-8 flex gap-4 overflow-hidden">
                     {[1, 2, 3].map(i => (
-                        <div key={i} className="w-[240px] h-[320px] bg-muted/20 animate-pulse rounded-xl" />
+                        <div key={i} className="w-[250px] h-[320px] bg-muted/20 animate-pulse rounded-xl" />
                     ))}
                 </div>
             </div>
@@ -72,7 +72,7 @@ export function RepositoryFolderSection({
                 ref={ref}
                 {...events}
                 className={cn(
-                    "flex gap-1 overflow-x-auto px-8 pb-4 scrollbar-hide snap-x",
+                    "flex gap-4 overflow-x-auto px-8 pb-4 scrollbar-hide snap-x",
                     isDragging ? "cursor-grabbing select-none snap-none" : "cursor-grab snap-mandatory"
                 )}
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -83,10 +83,10 @@ export function RepositoryFolderSection({
                     </div>
                 ) : (
                     assets.map((asset, index) => (
-                        <ItemContextMenu 
-                            key={asset.id} 
-                            type="asset" 
-                            onRename={() => { }} 
+                        <ItemContextMenu
+                            key={asset.id}
+                            type="asset"
+                            onRename={() => { }}
                             onDelete={() => { }}
                             onCopy={() => {
                                 if (setClipboard) {
@@ -96,7 +96,7 @@ export function RepositoryFolderSection({
                             }}
                         >
                             <div className="relative snap-center shrink-0 flex flex-col gap-3 group">
-                                <div className="w-[280px] aspect-[9/16] rounded-2xl overflow-hidden border bg-background shadow-sm hover:shadow-md transition-all relative select-none">
+                                <div className="w-[220px] aspect-[9/16] rounded-xl overflow-hidden border bg-background shadow-sm hover:shadow-md transition-all relative select-none">
                                     <div className="absolute inset-0 bg-muted/10" />
                                     <img
                                         src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ux-archive-captures/${asset.storagePath}`}
@@ -113,11 +113,15 @@ export function RepositoryFolderSection({
                                         <FileImage className="w-8 h-8 opacity-50" />
                                     </div>
 
-                                    {/* Overlay Gradient */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    
+                                    {/* Overlay Gradient with Name */}
+                                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-3 pt-8 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                        <p className="text-white text-xs font-medium truncate">
+                                            {(asset.meta as any)?.name || asset.storagePath.split('/').pop()}
+                                        </p>
+                                    </div>
+
                                     {/* Click Handler Overlay */}
-                                    <div 
+                                    <div
                                         className="absolute inset-0 cursor-pointer"
                                         onClick={(e) => {
                                             e.stopPropagation()
@@ -127,17 +131,6 @@ export function RepositoryFolderSection({
                                 </div>
 
 
-                                <div className="flex flex-col px-1">
-                                    <span className="text-xs text-muted-foreground font-medium truncate w-[280px]">
-                                        {(asset.meta as any)?.name || asset.storagePath.split('/').pop()}
-                                    </span>
-                                    {/* Display Path if available (Recursive view) */}
-                                    {(asset as any).path && (
-                                        <span className="text-[10px] text-muted-foreground/60 truncate w-[280px]">
-                                            {(asset as any).path}
-                                        </span>
-                                    )}
-                                </div>
                             </div>
                         </ItemContextMenu>
                     ))

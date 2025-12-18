@@ -18,6 +18,8 @@ import { RepositoryHeader } from "./repository-header"
 import { ItemContextMenu } from "./item-context-menu"
 import { duplicateAssetAction } from "@/app/actions/copy-paste"
 import { copyRepositoryFolderAction, deleteRepositoryFolderAction } from "@/app/actions/repository-folders"
+import { reorderAssetsAction } from "@/app/actions/repository-assets"
+import { AssetGrid } from "@/components/asset-grid"
 
 export function RepositoryWorkspace({ className }: { className?: string }) {
     const {
@@ -81,6 +83,45 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
         if (!currentFolderId) return !f.parentId // Root folders
         return f.parentId === currentFolderId
     }).sort((a, b) => a.order - b.order)
+
+    // Filter relevant assets for the current view (root or specific folder)
+    const currentViewAssets = React.useMemo(() => {
+        return assets.filter(a => {
+            if (currentFolderId) return a.folderId === currentFolderId
+            return !a.folderId // Root assets
+        }).sort((a, b) => a.order - b.order)
+    }, [assets, currentFolderId])
+
+    // Local state for optimistic reordering
+    const [optimisticAssets, setOptimisticAssets] = React.useState<AssetRecord[]>([])
+
+    // Sync optimistic state when data source changes
+    React.useEffect(() => {
+        setOptimisticAssets(currentViewAssets)
+    }, [currentViewAssets])
+
+    const handleReorder = async (newOrderAssets: AssetRecord[]) => {
+        if (!selectedRepositoryId) return
+
+        // 1. Optimistic Update
+        setOptimisticAssets(newOrderAssets)
+
+        // 2. Prepare payload
+        const updates = newOrderAssets.map((asset, index) => ({
+            id: asset.id,
+            order: index
+        }))
+
+        // 3. Call Server Action
+        try {
+            await reorderAssetsAction({ items: updates, repositoryId: selectedRepositoryId })
+            await queryClient.invalidateQueries({ queryKey: ["assets", selectedRepositoryId] })
+            await refresh()
+        } catch (error) {
+            console.error("Failed to reorder assets", error)
+            toast({ description: "Failed to save new order", variant: "destructive" })
+        }
+    }
 
     // Viewing Asset State
     const [viewingContext, setViewingContext] = React.useState<{ asset: AssetRecord, siblings: AssetRecord[] } | null>(null)
@@ -284,76 +325,33 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                     />
                 )}
 
-                {/* 1. Current Screens */}
-                <div className="mt-2">
-                    <RepositoryFolderSection
-                        repositoryId={selectedRepositoryId}
-                        folderId={currentFolderId}
-                        title="Screens"
-                        showIfEmpty={childFolders.length === 0}
-                        assets={(() => {
-                            // Calculate recursive assets for current view (currentFolderId or Root)
-                            if (!currentFolderId) {
-                                // Root case: Show all repo assets? Or just orphans + roots?
-                                // User says: "Repo assets at top". Usually means direct assets of repo.
-                                // BUT: "Repo -> Folder A -> Folder B". "Repo open -> Repo assets top".
-                                // If Repo has assets directly, show them.
-                                // Recursion? User said "Repo assets at top". Doesn't explicitly say recursive repo assets.
-                                // BUT for Folder A, he said "Asset 1, 2 ALL listed".
-                                // Let's try recursive for everything to be safe based on "list all assets in folder".
-                                // If Root is "No specific folder", it contains everything.
-                                // But usually "Screens" section in Root view is for un-foldered assets.
-                                // IF we show ALL assets in "Screens", we duplicate what's in "Subfolders".
-                                // "Repo -> Folder A".
-                                // If "Screens" shows Asset 1 (from Folder A), and "Folder A" section shows Asset 1... Duplicate!
+                {/* 1. Current Screens (Grid View + Sortable) */}
+                <div className="mt-6">
+                    <div className="flex items-baseline gap-2 px-8 mb-4">
+                        <h3 className="text-sm font-semibold text-foreground/80">Screens</h3>
+                        <span className="text-xs text-muted-foreground">{optimisticAssets.length} items</span>
+                    </div>
 
-                                // LOGIC:
-                                // "Screens" section = Assets belonging DIRECTLY to current view (currentFolderId or null).
-                                // "Subfolders" sections = Assets belonging to each child folder RECURSIVELY.
-
-                                // Re-reading user: "Repo assets at top... below that Folder A's assets".
-                                // This implies "Screens" = Direct assets only.
-                                // "Folder A" section = Recursive assets of A.
-
-                                // So for "Screens" section:
-                                return assets.filter(a => a.folderId === (currentFolderId || null)).map(a => ({
-                                    ...a,
-                                    path: "" // No relative path needed for direct assets
-                                }))
-                            } else {
-                                // If we are IN Folder A.
-                                // "Screens" = Direct assets of A?
-                                // Or recursive assets of A?
-                                // User: "Folder A 에셋1, 2 모두 나열". (Asset 1 in A, Asset 2 in B).
-                                // So when inside Folder A: "Screens" should be recursive?
-                                // If we are inside Folder A, we see:
-                                // 1. Screens (Assets of A + B).
-                                // 2. Subfolders (Folder B).
-                                // If Screens shows Asset 2 (from B), and Folder B section shows Asset 2... Duplicate!
-
-                                // Maybe "Subfolders" sections shouldn't be shown if "Screens" shows everything?
-                                // OR: "Screens" = Direct assets only.
-                                // "Subfolders" = Recursive assets of subfolders.
-                                // AND we need to show nested content somehow.
-
-                                // User said: "Repo open -> Repo assets top, below Folder A assets".
-                                // This is Root View.
-                                // Root View:
-                                // 1. Screens (Repo direct assets).
-                                // 2. Folder A Section (Asset 1, Asset 2).
-
-                                // This confirms:
-                                // - Top "Screens" section: Direct assets of current view ONLY.
-                                // - Child Folder Sections: Recursive assets of that child folder.
-
-                                return assets.filter(a => a.folderId === currentFolderId).map(a => ({
-                                    ...a,
-                                    path: ""
-                                }))
-                            }
-                        })()}
-                        onAssetClick={handleAssetClick}
-                    />
+                    {optimisticAssets.length === 0 ? (
+                        <div className="px-8 pb-8">
+                            <div className="w-full flex items-center justify-center p-8 border border-dashed rounded-xl text-muted-foreground text-sm h-[200px]">
+                                No assets in this folder
+                            </div>
+                        </div>
+                    ) : (
+                        <AssetGrid
+                            assets={optimisticAssets}
+                            repositoryId={selectedRepositoryId}
+                            onReorder={handleReorder}
+                            onAssetClick={(asset) => handleAssetClick(asset, optimisticAssets)}
+                            onCopyAsset={(asset) => {
+                                if (setClipboard) {
+                                    setClipboard({ type: 'asset', id: asset.id, repositoryId: selectedRepositoryId })
+                                    toast({ description: "Copied asset to clipboard" })
+                                }
+                            }}
+                        />
+                    )}
                 </div>
 
                 {/* 2. Subfolders */}

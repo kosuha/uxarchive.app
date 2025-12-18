@@ -42,6 +42,13 @@ import {
     type DragEndEvent,
     type DragStartEvent,
 } from "@dnd-kit/core"
+import {
+    SortableContext,
+    useSortable,
+    verticalListSortingStrategy,
+    arrayMove
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 import { allowContextMenuProps } from "@/lib/context-menu"
 
 // Inline Create Input for Rename (simplified version of FolderTree's)
@@ -115,6 +122,7 @@ interface RepositoryTreeProps {
     onRenameFolder?: (id: string, newName: string, repositoryId: string) => void
     onMoveFolder?: (id: string, newParentId: string | null, repositoryId: string) => void // newParentId null means root of repo
     onMoveAsset?: (id: string, newFolderId: string | null, repositoryId: string) => void // newFolderId null means root (no folder)
+    onReorderAsset?: (items: { id: string, order: number }[], repositoryId: string) => void
     onDeleteAsset?: (id: string, repositoryId: string) => void
     onRenameAsset?: (id: string, newName: string, repositoryId: string) => void
     onSelectAsset?: (asset: any) => void
@@ -145,6 +153,7 @@ export function RepositoryTree({
     onRenameFolder,
     onMoveFolder,
     onMoveAsset,
+    onReorderAsset,
     onDeleteAsset,
     onRenameAsset,
     onSelectAsset,
@@ -254,7 +263,40 @@ export function RepositoryTree({
         // Safety: Don't move if dropped on itself
         if (activeId === overId) return
 
+        // Safety: Don't move if dropped on itself
         if (activeId === overId) return
+
+        // Check for Asset Reordering (Sortable)
+        if (activeId.startsWith("asset-") && overId.startsWith("asset-")) {
+            // Both are assets. Check if same container?
+            // We can just rely on onReorderAsset if implemented
+            if (onReorderAsset) {
+                const activeAssetId = activeId.replace("asset-", "")
+                const overAssetId = overId.replace("asset-", "")
+
+                const activeAsset = assets.find(a => a.id === activeAssetId)
+                const overAsset = assets.find(a => a.id === overAssetId)
+
+                if (activeAsset && overAsset && activeAsset.repositoryId === overAsset.repositoryId && activeAsset.folderId === overAsset.folderId) {
+                    // Same container (Same repo, same folder)
+                    // Calculate new order
+                    const containerAssets = assets.filter(a =>
+                        a.repositoryId === activeAsset.repositoryId &&
+                        a.folderId === activeAsset.folderId
+                    ).sort((a, b) => a.order - b.order)
+
+                    const oldIndex = containerAssets.findIndex(a => a.id === activeAssetId)
+                    const newIndex = containerAssets.findIndex(a => a.id === overAssetId)
+
+                    if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+                        const reordered = arrayMove(containerAssets, oldIndex, newIndex)
+                        const updates = reordered.map((a, i) => ({ id: a.id, order: i }))
+                        onReorderAsset(updates, activeAsset.repositoryId)
+                        return
+                    }
+                }
+            }
+        }
 
         // Extract real IDs
         // Drag ID format: "folder-{id}"
@@ -313,90 +355,90 @@ export function RepositoryTree({
 
             if (movingFolder.parentId === newParentId && newParentId !== null) return // No change (same folder)
             // If newParentId is null (root), and passing source repo ID, it stays in source repo root.
-            
+
             // NOTE: Cross-repo folder move is more complex (recursive update of children).
             // Let's stick to ASSET cross-repo move as requested.
-            
+
             // Check if target is in same repo for folder
             let targetRepoId = movingFolder.repositoryId
             // Determine target repo id from overId
-             if (overId.startsWith("repo-")) {
+            if (overId.startsWith("repo-")) {
                 targetRepoId = overId.replace("repo-", "")
-             } else if (overId.startsWith("folder-")) {
+            } else if (overId.startsWith("folder-")) {
                 const targetFolderId = overId.replace("folder-", "")
                 const targetFolder = folders.find(f => f.id === targetFolderId)
                 if (targetFolder) targetRepoId = targetFolder.repositoryId
-             }
+            }
 
-             if (targetRepoId !== movingFolder.repositoryId) {
-                 // Folder cross-repo move not fully supported/tested safely yet.
-                 // Maybe alert user or block?
-                 // For now, let's block to avoid partial state.
-                 // console.warn("Cross-repository folder move not supported yet")
-                 // return
-                 // Actually the user only asked for ASSET move.
-             }
+            if (targetRepoId !== movingFolder.repositoryId) {
+                // Folder cross-repo move not fully supported/tested safely yet.
+                // Maybe alert user or block?
+                // For now, let's block to avoid partial state.
+                // console.warn("Cross-repository folder move not supported yet")
+                // return
+                // Actually the user only asked for ASSET move.
+            }
 
             onMoveFolder(itemId!, newParentId, movingFolder.repositoryId)
         } else if (itemType === 'asset' && onMoveAsset) {
             const asset = assets.find(a => a.id === itemId)
             if (!asset) return
             const currentFolderId = asset?.folderId || null
-            
+
             // Determine Target Repository ID
             let targetRepositoryId = asset.repositoryId // Default to source
-            
+
             if (overId.startsWith("repo-")) {
-                 targetRepositoryId = overId.replace("repo-", "")
+                targetRepositoryId = overId.replace("repo-", "")
             } else if (overId.startsWith("folder-")) {
-                 const targetFolderId = overId.replace("folder-", "")
-                 const targetFolder = folders.find(f => f.id === targetFolderId)
-                 if (targetFolder) {
-                     targetRepositoryId = targetFolder.repositoryId
-                 }
+                const targetFolderId = overId.replace("folder-", "")
+                const targetFolder = folders.find(f => f.id === targetFolderId)
+                if (targetFolder) {
+                    targetRepositoryId = targetFolder.repositoryId
+                }
             }
 
             // Optimization: If same location, return
-            if (currentFolderId === newParentId && asset.repositoryId === targetRepositoryId) return 
+            if (currentFolderId === newParentId && asset.repositoryId === targetRepositoryId) return
 
             onMoveAsset(itemId!, newParentId, targetRepositoryId)
             onMoveAsset(itemId!, newParentId, targetRepositoryId)
         } else if (itemType === 'repository' && onMoveRepository) {
-             // Repository Move Logic
-             // Can be dropped on a Repo (repo-ID) OR a Folder (folder-ID)
-             
-             let targetRepoId: string | null = null
-             let targetFolderId: string | null = null
-             let targetName: string = ""
+            // Repository Move Logic
+            // Can be dropped on a Repo (repo-ID) OR a Folder (folder-ID)
 
-             if (overId.startsWith("repo-")) {
-                 targetRepoId = overId.replace("repo-", "")
-                 const r = repositories.find(repo => repo.id === targetRepoId)
-                 if (r) targetName = r.name
-             } else if (overId.startsWith("folder-")) {
-                 const fId = overId.replace("folder-", "")
-                 const f = folders.find(folder => folder.id === fId)
-                 if (f) {
-                     targetFolderId = f.id
-                     targetRepoId = f.repositoryId
-                     targetName = f.name
-                 }
-             }
+            let targetRepoId: string | null = null
+            let targetFolderId: string | null = null
+            let targetName: string = ""
 
-             if (!targetRepoId) return
-             if (itemId === targetRepoId) return // Cannot move to self
+            if (overId.startsWith("repo-")) {
+                targetRepoId = overId.replace("repo-", "")
+                const r = repositories.find(repo => repo.id === targetRepoId)
+                if (r) targetName = r.name
+            } else if (overId.startsWith("folder-")) {
+                const fId = overId.replace("folder-", "")
+                const f = folders.find(folder => folder.id === fId)
+                if (f) {
+                    targetFolderId = f.id
+                    targetRepoId = f.repositoryId
+                    targetName = f.name
+                }
+            }
 
-             const sourceRepo = repositories.find(r => r.id === itemId)
-             
-             if (sourceRepo) {
-                 setMoveRepoState({
-                     sourceId: sourceRepo.id,
-                     targetId: targetRepoId,
-                     targetFolderId: targetFolderId,
-                     sourceName: sourceRepo.name,
-                     targetName: targetName // Repo name or Folder name
-                 })
-             }
+            if (!targetRepoId) return
+            if (itemId === targetRepoId) return // Cannot move to self
+
+            const sourceRepo = repositories.find(r => r.id === itemId)
+
+            if (sourceRepo) {
+                setMoveRepoState({
+                    sourceId: sourceRepo.id,
+                    targetId: targetRepoId,
+                    targetFolderId: targetFolderId,
+                    sourceName: sourceRepo.name,
+                    targetName: targetName // Repo name or Folder name
+                })
+            }
         }
     }
 
@@ -421,9 +463,9 @@ export function RepositoryTree({
                         selectedFolderId={selectedFolderId}
                         onSelectRepository={onSelectRepository}
                         onSelectFolder={onSelectFolder}
-                        handlers={{ 
-                            onForkRepository, onSnapshotRepository, onDeleteRepository, onRenameRepository, 
-                            onDeleteFolder, onRenameFolder, onMoveFolder, onMoveAsset, 
+                        handlers={{
+                            onForkRepository, onSnapshotRepository, onDeleteRepository, onRenameRepository,
+                            onDeleteFolder, onRenameFolder, onMoveFolder, onMoveAsset, onReorderAsset,
                             onDeleteAsset, onRenameAsset, onSelectAsset,
                             onCopyAsset, onCopyFolder, onPasteToFolder,
                             onCopyRepository, onPasteToRepository, onForkFolder
@@ -440,7 +482,7 @@ export function RepositoryTree({
                     </div>
                 )}
             </DragOverlay>
-            
+
             <AlertDialog open={!!moveRepoState} onOpenChange={(open) => !open && setMoveRepoState(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -476,7 +518,7 @@ function RepositoryItem({ repo, isOpen, toggleRepo, folderTree, selectedReposito
         id: `repo-${repo.id}`,
         data: { type: 'repository', id: repo.id }
     })
-    
+
     const { attributes, listeners, setNodeRef: setDraggableRef, isDragging } = useDraggable({
         id: `repo-${repo.id}`,
         data: { type: 'repository', id: repo.id, name: repo.name }
@@ -601,23 +643,40 @@ function FolderList({ data, selectedFolderId, onSelectFolder, handlers, isClipbo
                 />
             ))}
 
-            {data.rootAssets.map((asset: any) => (
-                <AssetItem
-                    key={asset.id}
-                    asset={asset}
-                    onSelectFolder={onSelectFolder}
-                    handlers={handlers}
-                />
-            ))}
+
+
+            <SortableContext items={data.rootAssets.map((a: any) => `asset-${a.id}`)} strategy={verticalListSortingStrategy}>
+                {data.rootAssets.map((asset: any) => (
+                    <AssetItem
+                        key={asset.id}
+                        asset={asset}
+                        onSelectFolder={onSelectFolder}
+                        handlers={handlers}
+                    />
+                ))}
+            </SortableContext>
         </>
     )
 }
 
 function AssetItem({ asset, onSelectFolder, handlers }: any) {
-    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({
         id: `asset-${asset.id}`,
         data: { type: 'asset', id: asset.id, name: (asset.meta as any)?.name || "Asset" }
     })
+
+    const style = {
+        transform: CSS.Translate.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1
+    }
     const [isRenaming, setIsRenaming] = React.useState(false)
 
     // Fallback name
@@ -633,7 +692,7 @@ function AssetItem({ asset, onSelectFolder, handlers }: any) {
     return (
         <div
             ref={setNodeRef}
-            style={{ opacity: isDragging ? 0.5 : 1 }}
+            style={style}
             className="flex items-center w-full gap-0.5 rounded-sm"
         >
             <div className="w-[24px] h-6 shrink-0" />
