@@ -3,8 +3,10 @@
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { RepositoryCard } from "@/components/share/repository-card"
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { RepositoryRecord } from "@/lib/repositories/repositories"
+import { useDraggableScroll } from "@/hooks/use-draggable-scroll"
+import { cn } from "@/lib/utils"
 
 interface FeaturedRepositoriesSectionProps {
     title: string
@@ -14,6 +16,8 @@ interface FeaturedRepositoriesSectionProps {
 }
 
 export function FeaturedRepositoriesSection({ title, subtitle, items, href }: FeaturedRepositoriesSectionProps) {
+    const { ref, events, isDragging } = useDraggableScroll()
+
     if (!items || items.length === 0) return null
 
     return (
@@ -34,7 +38,17 @@ export function FeaturedRepositoriesSection({ title, subtitle, items, href }: Fe
                 )}
             </div>
 
-            <ScrollArea className="w-full whitespace-nowrap rounded-md">
+            <ScrollArea
+                className="w-full whitespace-nowrap rounded-md"
+                viewportRef={ref}
+                viewportProps={{
+                    ...events,
+                    className: cn(
+                        "cursor-grab active:cursor-grabbing",
+                        isDragging && "cursor-grabbing"
+                    ),
+                }}
+            >
                 <div className="flex w-max space-x-6 pb-4 p-1">
                     {items.map((item) => (
                         <div key={item.id} className="w-[300px]">
@@ -42,7 +56,6 @@ export function FeaturedRepositoriesSection({ title, subtitle, items, href }: Fe
                         </div>
                     ))}
                 </div>
-                <ScrollBar orientation="horizontal" />
             </ScrollArea>
         </section>
     )
