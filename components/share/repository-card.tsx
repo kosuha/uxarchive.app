@@ -6,6 +6,8 @@ import Link from "next/link"
 import Image from "next/image"
 import { useState } from "react"
 import { toggleRepositoryLikeAction } from "@/app/actions/interactions"
+import { useSupabaseSession } from "@/lib/supabase/session-context"
+import { useRouter } from "next/navigation"
 
 const FALLBACK_GRADIENTS = [
     "from-amber-100 via-orange-200 to-orange-300",
@@ -27,6 +29,8 @@ const pickGradient = (seed: string) => {
 const getInitial = (value: string) => (value?.trim()?.charAt(0) || "?").toUpperCase()
 
 export function RepositoryCard({ repo }: { repo: RepositoryRecord }) {
+    const router = useRouter()
+    const { user } = useSupabaseSession()
     const fallbackInitial = getInitial(repo.name)
     const fallbackGradient = pickGradient(repo.id || repo.name)
 
@@ -39,6 +43,11 @@ export function RepositoryCard({ repo }: { repo: RepositoryRecord }) {
     const handleLike = async (e: React.MouseEvent) => {
         e.stopPropagation()
         e.preventDefault()
+
+        if (!user) {
+            router.push(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`)
+            return
+        }
 
         // Optimistic update
         setLikeCount(prev => prev + (isLiked ? -1 : 1))

@@ -27,6 +27,7 @@ import { TagBadge } from "@/components/tag-badge"
 import { Tag } from "@/lib/types"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
+import { useSupabaseSession } from "@/lib/supabase/session-context"
 
 interface PublicRepositoryHeaderProps {
     repository: RepositoryRecord
@@ -40,6 +41,7 @@ interface PublicRepositoryHeaderProps {
 export function PublicRepositoryHeader({ repository, folder, versions = [], currentVersionId, tags = [], isLiked = false }: PublicRepositoryHeaderProps) {
     const router = useRouter()
     const { toast } = useToast()
+    const { user } = useSupabaseSession()
     // Context: Folder vs Repo
     const description = folder ? (folder.description || "") : (repository.description || "")
     const title = folder ? folder.name : repository.name
@@ -65,6 +67,10 @@ export function PublicRepositoryHeader({ repository, folder, versions = [], curr
     const [hasLiked, setHasLiked] = React.useState(isLiked)
 
     const handleLike = () => {
+        if (!user) {
+            router.push(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`)
+            return
+        }
         startLikeTransition(async () => {
             try {
                 const result = await toggleRepositoryLikeAction(repository.id)
@@ -78,6 +84,10 @@ export function PublicRepositoryHeader({ repository, folder, versions = [], curr
     }
 
     const handleFork = () => {
+        if (!user) {
+            router.push(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`)
+            return
+        }
         startForkTransition(async () => {
             try {
                 let result;
@@ -98,7 +108,7 @@ export function PublicRepositoryHeader({ repository, folder, versions = [], curr
 
                 if (result.error) {
                     if (result.error.includes("authenticated")) {
-                        toast({ description: "Please sign in to fork", variant: "destructive" })
+                        router.push(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`)
                     } else {
                         toast({ description: result.error, variant: "destructive" })
                     }
