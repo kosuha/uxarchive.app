@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import localFont from "next/font/local";
-import { Geist_Mono } from "next/font/google";
 import { AppProviders } from "@/components/app-providers";
 import { ContextMenuBlocker } from "@/components/context-menu-blocker";
+import { GoogleAnalytics } from '@next/third-parties/google'
 import "./globals.css";
 
 const pretendard = localFont({
@@ -152,6 +152,7 @@ export default function RootLayout({
           </div>
         </AppProviders>
       </body>
+      <GoogleAnalytics gaId="G-4PQDEMHPWP" />
     </html>
   );
 }
