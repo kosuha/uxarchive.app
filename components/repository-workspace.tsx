@@ -21,6 +21,8 @@ import { copyRepositoryFolderAction, deleteRepositoryFolderAction } from "@/app/
 import { reorderAssetsAction } from "@/app/actions/repository-assets"
 import { AssetGrid } from "@/components/asset-grid"
 
+import { AssetGridSkeleton } from "@/components/asset-grid-skeleton"
+
 export function RepositoryWorkspace({ className }: { className?: string }) {
     const {
         selectedRepositoryId,
@@ -67,10 +69,8 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
         }
     }
 
-
     // Fetch all assets for the current repository
-    // Fetch all assets for the current repository
-    const { data: queryAssets } = useQuery({
+    const { data: queryAssets, isLoading } = useQuery({
         queryKey: ["assets", selectedRepositoryId, "recursive-all"],
         queryFn: async () => {
             if (!selectedRepositoryId) return []
@@ -376,10 +376,12 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                 <div className="mt-6">
                     <div className="flex items-baseline gap-2 px-8 mb-4">
                         <h3 className="text-sm font-semibold text-foreground/80">Screens</h3>
-                        <span className="text-xs text-muted-foreground">{currentViewAssets.length} items</span>
+                        <span className="text-xs text-muted-foreground">{isLoading ? "..." : currentViewAssets.length} items</span>
                     </div>
 
-                    {currentViewAssets.length === 0 ? (
+                    {isLoading ? (
+                        <AssetGridSkeleton />
+                    ) : currentViewAssets.length === 0 ? (
                         <div className="px-8 pb-8">
                             <div className="w-full flex items-center justify-center p-8 border border-dashed rounded-xl text-muted-foreground text-sm h-[200px]">
                                 No assets in this folder

@@ -104,6 +104,8 @@ export function AssetGrid({
     )
 }
 
+import Image from "next/image"
+
 interface SortableAssetItemProps {
     asset: AssetRecord
     repositoryId: string
@@ -149,11 +151,12 @@ function SortableAssetItem({ asset, repositoryId, onClick, onCopy }: SortableAss
                 }}
             >
                 <div className="absolute inset-0 bg-muted/10" />
-                <img
+                <Image
                     src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ux-archive-captures/${asset.storagePath}`}
-                    alt="Screen"
-                    className="w-full h-full object-cover"
-                    loading="lazy"
+                    alt={(asset.meta as any)?.name || "Screen"}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
                     draggable={false}
                 />
 
