@@ -96,32 +96,31 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
         }).sort((a, b) => a.order - b.order)
     }, [assets, currentFolderId])
 
-    // Local state for optimistic reordering
-    const [optimisticAssets, setOptimisticAssets] = React.useState<AssetRecord[]>([])
+    // Local state for optimistic reordering - REMOVED to avoid race conditions
+    // const [optimisticAssets, setOptimisticAssets] = React.useState<AssetRecord[]>([])
 
-    // Sync optimistic state when data source changes
-    React.useEffect(() => {
-        setOptimisticAssets(currentViewAssets)
-    }, [currentViewAssets])
+    // Sync optimistic state when data source changes - REMOVED
+    // React.useEffect(() => {
+    //     setOptimisticAssets(currentViewAssets)
+    // }, [currentViewAssets])
 
     const handleReorder = async (newOrderAssets: AssetRecord[]) => {
         if (!selectedRepositoryId) return
 
-        // 1. Optimistic Update (Local Grid)
-        setOptimisticAssets(newOrderAssets)
+        // 1. Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+        await queryClient.cancelQueries({ queryKey: ["assets"] })
 
         // 2. Prepare payload
         const updates = newOrderAssets.map((asset, index) => ({
             id: asset.id,
             order: index
         }))
+        const updateMap = new Map(updates.map(u => [u.id, u.order]))
 
         // 3. Optimistic Update (Sidebar/Global Cache)
         if (workspaceId) {
             queryClient.setQueryData<AssetRecord[]>(["assets", "workspace", workspaceId], (oldAssets) => {
                 if (!oldAssets) return oldAssets
-                const updateMap = new Map(updates.map(u => [u.id, u.order]))
-
                 return oldAssets.map(asset => {
                     if (updateMap.has(asset.id)) {
                         return { ...asset, order: updateMap.get(asset.id)! }
@@ -134,8 +133,6 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
         // 4. Optimistic Update (Current Repository Cache - Explicit)
         queryClient.setQueryData<AssetRecord[]>(["assets", selectedRepositoryId, "recursive-all"], (oldAssets) => {
             if (!oldAssets) return oldAssets
-            const updateMap = new Map(updates.map(u => [u.id, u.order]))
-
             return oldAssets.map(asset => {
                 if (updateMap.has(asset.id)) {
                     return { ...asset, order: updateMap.get(asset.id)! }
@@ -147,12 +144,29 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
         // 5. Call Server Action
         try {
             await reorderAssetsAction({ items: updates, repositoryId: selectedRepositoryId })
-            // Invalidate to ensure consistency, but user sees update immediately
-            queryClient.invalidateQueries({ queryKey: ["assets"] })
+            // ONLY invalidate if strictly necessary. 
+            // In a perfect world, our manual cache update is enough.
+            // But to be safe against race conditions with OTHER users, we can invalidate.
+            // However, to prevent "stutter", we should rely on the setQueryData we just did.
+            // Let's delay invalidation or relying on manual update being 'good enough' for the user's session.
+            // Use invalidateQueries but maybe rely on the fact we cancelled previous ones?
+            // Actually, simply invalidating here is fine AS LONG AS we cancelled previous ones first 
+            // AND our setQueryData was correct.
+            // But if we invalidate immediately, it might flash old data if the server write hasn't propagated to the read replica yet.
+            // Given the user report of "reverting", it's likely the read after write is too fast or hitting stale replica.
+            // Strategy: Don't invalidate immediately. The optimistic update IS the truth for this user.
+            // We can invalidate quietly in the background or just let it be until next natural refresh.
+            // Compromise: Invalidate "assets" but with a delay or trust optimistic.
+            // Let's try NOT invalidating immediately to ensure smoothness, 
+            // OR invalidating specific keys that are less likely to cause full remounts.
+            // For now: Keep it simple. Trust the optimistic update.
+
+            // Optionally invalidate in background to catch up eventually
+            // queryClient.invalidateQueries({ queryKey: ["assets"] }) 
         } catch (error) {
             console.error("Failed to reorder assets", error)
             toast({ description: "Failed to save new order", variant: "destructive" })
-            queryClient.invalidateQueries({ queryKey: ["assets"] }) // Revert
+            queryClient.invalidateQueries({ queryKey: ["assets"] }) // Revert on failure
         }
     }
 
@@ -362,10 +376,10 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                 <div className="mt-6">
                     <div className="flex items-baseline gap-2 px-8 mb-4">
                         <h3 className="text-sm font-semibold text-foreground/80">Screens</h3>
-                        <span className="text-xs text-muted-foreground">{optimisticAssets.length} items</span>
+                        <span className="text-xs text-muted-foreground">{currentViewAssets.length} items</span>
                     </div>
 
-                    {optimisticAssets.length === 0 ? (
+                    {currentViewAssets.length === 0 ? (
                         <div className="px-8 pb-8">
                             <div className="w-full flex items-center justify-center p-8 border border-dashed rounded-xl text-muted-foreground text-sm h-[200px]">
                                 No assets in this folder
@@ -373,10 +387,10 @@ export function RepositoryWorkspace({ className }: { className?: string }) {
                         </div>
                     ) : (
                         <AssetGrid
-                            assets={optimisticAssets}
+                            assets={currentViewAssets}
                             repositoryId={selectedRepositoryId}
                             onReorder={handleReorder}
-                            onAssetClick={(asset) => handleAssetClick(asset, optimisticAssets)}
+                            onAssetClick={(asset) => handleAssetClick(asset, currentViewAssets)}
                             onCopyAsset={(asset) => {
                                 if (setClipboard) {
                                     setClipboard({ type: 'asset', id: asset.id, repositoryId: selectedRepositoryId })

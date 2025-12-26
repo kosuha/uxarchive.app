@@ -72,15 +72,7 @@ export function AssetGrid({
         setActiveId(null)
     }
 
-    const dropAnimation: DropAnimation = {
-        sideEffects: defaultDropAnimationSideEffects({
-            styles: {
-                active: {
-                    opacity: '0.5',
-                },
-            },
-        }),
-    }
+    const dropAnimation: DropAnimation | null = null
 
     return (
         <DndContext
