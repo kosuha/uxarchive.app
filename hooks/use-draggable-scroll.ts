@@ -35,7 +35,7 @@ export function useDraggableScroll() {
         const walk = (x - startX) * 1.5; // Scroll-fast multiplier
 
         // If moved more than a small threshold, consider it a drag
-        if (Math.abs(walk) > 5) {
+        if (Math.abs(walk) > 10) {
             hasDragged.current = true;
         }
 
