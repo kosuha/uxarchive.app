@@ -82,7 +82,7 @@ export function RepositoryListing({ initialRepositories, search }: RepositoryLis
         </div>
       ) : (
         <>
-          <div className="columns-1 gap-6 sm:columns-2 lg:columns-3 xl:columns-5">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {repositories.map((repo) => (
               <div key={repo.id} className="break-inside-avoid mb-6">
                 <RepositoryCard repo={repo} />
