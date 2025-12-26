@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react"
 
 import { Skeleton } from "@/components/ui/skeleton"
 import type { ShareListItem } from "@/lib/api/share"
-import { getPatternsAction } from "@/app/patterns/actions"
+import { getPatternsAction } from "@/app/share/actions"
 import { ShareCard } from "./share-card"
 
 export type ShareListingPost = ShareListItem
